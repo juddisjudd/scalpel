@@ -1,5 +1,6 @@
 import { Setting, CloseSmall, ChartHistogram, Flask, Buy } from '@icon-park/react'
 import type { OverlayData } from '../../../shared/types'
+import type { GameFeatures } from '../../../shared/game-features'
 import { chaosIcon } from '../shared/icons'
 import { divCardArtMap, iconMap, IP } from '../shared/constants'
 import dustIconAsset from '../assets/currency/thaumaturgic-dust.png'
@@ -23,6 +24,7 @@ interface TitleBarProps {
   view: View
   overlayData: OverlayData | null
   poeVersion: 1 | 2 | null
+  features: GameFeatures
   hasPriceCheckData: boolean
   onSetView: (view: View | ((prev: View) => View)) => void
   onClose: () => void
@@ -34,6 +36,7 @@ export function TitleBar({
   view,
   overlayData,
   poeVersion,
+  features,
   hasPriceCheckData,
   onSetView,
   onClose,
@@ -142,30 +145,34 @@ export function TitleBar({
             </button>
           )
         })()}
-        <button
-          onClick={() => onSetView('dust')}
-          title="Dust Explorer"
-          className="w-[30px] h-[30px] flex items-center justify-center p-0.5"
-          style={{
-            background: view === 'dust' ? 'var(--accent)' : undefined,
-          }}
-        >
-          <img src={dustIconAsset} alt="" className="w-[18px] h-[18px] object-contain" />
-        </button>
-        <button
-          onClick={() => onSetView('divcards')}
-          title="Div Card Explorer"
-          className="w-[30px] h-[30px] flex items-center justify-center p-0.5 text-[15px]"
-          style={{
-            background: view === 'divcards' ? 'var(--accent)' : undefined,
-          }}
-        >
-          <img
-            src="https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvRGl2aW5hdGlvbi9JbnZlbnRvcnlJY29uIiwidyI6MSwiaCI6MSwic2NhbGUiOjF9XQ/f34bf8cbb5/InventoryIcon.png"
-            alt=""
-            className="w-[18px] h-[18px] object-contain"
-          />
-        </button>
+        {features.dustExplorer && (
+          <button
+            onClick={() => onSetView('dust')}
+            title="Dust Explorer"
+            className="w-[30px] h-[30px] flex items-center justify-center p-0.5"
+            style={{
+              background: view === 'dust' ? 'var(--accent)' : undefined,
+            }}
+          >
+            <img src={dustIconAsset} alt="" className="w-[18px] h-[18px] object-contain" />
+          </button>
+        )}
+        {features.divCards && (
+          <button
+            onClick={() => onSetView('divcards')}
+            title="Div Card Explorer"
+            className="w-[30px] h-[30px] flex items-center justify-center p-0.5 text-[15px]"
+            style={{
+              background: view === 'divcards' ? 'var(--accent)' : undefined,
+            }}
+          >
+            <img
+              src="https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvRGl2aW5hdGlvbi9JbnZlbnRvcnlJY29uIiwidyI6MSwiaCI6MSwic2NhbGUiOjF9XQ/f34bf8cbb5/InventoryIcon.png"
+              alt=""
+              className="w-[18px] h-[18px] object-contain"
+            />
+          </button>
+        )}
         <button
           onClick={() => onSetView('regex')}
           title="Regex Tool"

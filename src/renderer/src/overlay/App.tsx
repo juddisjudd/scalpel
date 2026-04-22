@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AppSettings, OverlayData, PoeItem } from '../../../shared/types'
+import { getGameFeatures } from '../../../shared/game-features'
 import { FilterPanel } from '../components/FilterPanel'
 import { SettingsPanel } from '../components/SettingsPanel'
 import { SocketRecolor } from '../components/SocketRecolor'
@@ -71,8 +72,10 @@ export default function App(): JSX.Element {
   const [auditBlockIndex, setAuditBlockIndex] = useState<number | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  // PoE version detection
+  // PoE version detection. `features` is the single source of truth for UI
+  // divergence between PoE1 and PoE2 -- prefer it over branching on poeVersion.
   const [poeVersion, setPoeVersion] = useState<1 | 2 | null>(null)
+  const features = getGameFeatures(poeVersion)
 
   // Auto-update state
   const [updateVersion, setUpdateVersion] = useState<string | null>(null)
@@ -598,6 +601,7 @@ export default function App(): JSX.Element {
               view={view}
               overlayData={overlayData}
               poeVersion={poeVersion}
+              features={features}
               hasPriceCheckData={!!priceCheckData}
               onSetView={setView}
               onClose={close}
@@ -707,15 +711,15 @@ export default function App(): JSX.Element {
                     setAuditBlockIndex(null)
                     setView('audit')
                   }}
-                  onOpenTools={() => setView('tools')}
-                  onOpenDustExplore={() => setView('dust')}
-                  onOpenDivExplore={() => setView('divcards')}
+                  onOpenTools={features.socketRecolor ? () => setView('tools') : undefined}
+                  onOpenDustExplore={features.dustExplorer ? () => setView('dust') : undefined}
+                  onOpenDivExplore={features.divCards ? () => setView('divcards') : undefined}
                   tierSisterOpen={tierSisterOpen}
                   onToggleTierSister={() => setTierSisterOpen((v) => !v)}
                   tierSisterSide={cursorSide === 'left' ? 'right' : 'left'}
                 />
               )}
-              {view === 'tools' && overlayData && (
+              {view === 'tools' && overlayData && features.socketRecolor && (
                 <SocketRecolor item={overlayData.item} priceInfo={overlayData.priceInfo} />
               )}
               {view === 'pricecheck' &&
@@ -733,12 +737,16 @@ export default function App(): JSX.Element {
                 ) : (
                   <PriceCheckSkeleton />
                 ))}
-              <div className="flex-col flex-1 min-h-0" style={{ display: view === 'dust' ? 'flex' : 'none' }}>
-                <DustExplorer onSelectItem={() => setView('item')} />
-              </div>
-              <div className="flex-col flex-1 min-h-0" style={{ display: view === 'divcards' ? 'flex' : 'none' }}>
-                <DivCardExplorer onSelectItem={() => setView('item')} />
-              </div>
+              {features.dustExplorer && (
+                <div className="flex-col flex-1 min-h-0" style={{ display: view === 'dust' ? 'flex' : 'none' }}>
+                  <DustExplorer onSelectItem={() => setView('item')} />
+                </div>
+              )}
+              {features.divCards && (
+                <div className="flex-col flex-1 min-h-0" style={{ display: view === 'divcards' ? 'flex' : 'none' }}>
+                  <DivCardExplorer onSelectItem={() => setView('item')} />
+                </div>
+              )}
               <div className="flex-col flex-1 min-h-0" style={{ display: view === 'regex' ? 'flex' : 'none' }}>
                 <RegexTool />
               </div>
