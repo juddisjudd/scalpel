@@ -29,15 +29,36 @@ export const LISTED_TIME_OPTIONS: Array<{ value: ListedTime; label: string }> = 
   { value: '2months', label: 'Past 2 months' },
 ]
 
-/** PoE trade `trade_filters.price.option` values. */
-export type PriceOption = 'chaos_divine' | 'chaos_equivalent' | 'chaos' | 'divine'
+/** PoE trade `trade_filters.price.option` values. Exalted replaces chaos as the
+ *  baseline currency option in PoE2 (it's the low-tier economy unit there). The
+ *  `*_equivalent` variants bypass the API's price filter and do the conversion
+ *  client-side -- see trade.ts for the branch that skips the option field. */
+export type PriceOption =
+  | 'chaos_divine'
+  | 'chaos_equivalent'
+  | 'chaos'
+  | 'divine'
+  | 'exalted_divine'
+  | 'exalted_equivalent'
+  | 'exalted'
 
-export const PRICE_OPTIONS: Array<{ value: PriceOption; label: string }> = [
+const PRICE_OPTIONS_POE1: Array<{ value: PriceOption; label: string }> = [
   { value: 'chaos_divine', label: 'Chaos or Divine' },
   { value: 'chaos_equivalent', label: 'Chaos equivalent' },
   { value: 'chaos', label: 'Chaos only' },
   { value: 'divine', label: 'Divine only' },
 ]
+
+const PRICE_OPTIONS_POE2: Array<{ value: PriceOption; label: string }> = [
+  { value: 'exalted_divine', label: 'Exalted or Divine' },
+  { value: 'exalted_equivalent', label: 'Exalted equivalent' },
+  { value: 'exalted', label: 'Exalted only' },
+  { value: 'divine', label: 'Divine only' },
+]
+
+export function getPriceOptions(version: 1 | 2): Array<{ value: PriceOption; label: string }> {
+  return version === 2 ? PRICE_OPTIONS_POE2 : PRICE_OPTIONS_POE1
+}
 
 /**
  * Trade-listings mode. Maps to PoE trade `status.option`:

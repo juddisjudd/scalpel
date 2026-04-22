@@ -10,7 +10,8 @@ import {
   findStrandBreakpoints,
   evaluateBlock,
 } from './filter/matcher'
-import { getOverlayWindow, showOverlay, poeVersion } from './overlay'
+import { getOverlayWindow, showOverlay } from './overlay'
+import { poeVersion } from './game-state'
 import { sendCtrlCToPoE } from './hotkeys'
 import { focusGameWindow } from './overlay'
 import { snapshotClipboard } from './clipboard-preserve'

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { TradeListings } from '../price-check/TradeListings'
 import { RateLimitBar } from '../price-check/RateLimitBar'
 import type { Listing } from '../price-check/types'
+import { getTradeUrls } from '../../../../shared/endpoints'
 
 /** Above this result count, the in-Scalpel Travel-to-Hideout action gets unreliable:
  *  the page's live results churn between our API fetch and the click, so the data-id
@@ -47,6 +49,14 @@ export function TradeResults({
   rateLimitTiers,
 }: TradeResultsProps): JSX.Element {
   const warnHighVolume = (tradeTotal ?? 0) > RESULTS_WARNING_THRESHOLD
+  // Read poeVersion once for the "Open in Trade" URL. Version is stable per process
+  // (we relaunch on game switch), so this one-shot lookup beats prop-drilling through
+  // RegexTool -> RegexGenerator -> MapsGenerator -> body -> here.
+  const [poeVersion, setPoeVersion] = useState<1 | 2>(1)
+  useEffect(() => {
+    window.api.getSettings().then((s) => setPoeVersion(s.poeVersion ?? 1))
+  }, [])
+  const tradeUrls = getTradeUrls(poeVersion)
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-bg">
@@ -69,11 +79,7 @@ export function TradeResults({
         </span>
         {tradeQueryId && (
           <button
-            onClick={() =>
-              window.api.openExternal(
-                `https://www.pathofexile.com/trade/search/${encodeURIComponent(tradeLeague)}/${tradeQueryId}`,
-              )
-            }
+            onClick={() => window.api.openExternal(tradeUrls.webSearch(tradeLeague, tradeQueryId))}
             className={
               warnHighVolume
                 ? 'text-[10px] px-[10px] py-[5px] border-none cursor-pointer font-semibold bg-bg-card text-accent rounded-[3px]'

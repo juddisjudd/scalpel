@@ -294,7 +294,16 @@ export interface AppSettings {
   tradeStatus: 'securable' | 'online' | 'any'
   // NOTE: 'available' was a legacy value from earlier releases; it's migrated to 'any' on
   // launch (see main/index.ts). Typed here as its current set, not the legacy union.
-  tradePriceOption: 'chaos_divine' | 'chaos_equivalent' | 'chaos' | 'divine'
+  tradePriceOption:
+    | 'chaos_divine'
+    | 'chaos_equivalent'
+    | 'chaos'
+    | 'divine'
+    | 'exalted_divine'
+    | 'exalted_equivalent'
+    | 'exalted'
+  tradePriceOptionPoe1: AppSettings['tradePriceOption']
+  tradePriceOptionPoe2: AppSettings['tradePriceOption']
   /** Default "Listed" time for price-check searches. Empty string = any time. */
   tradeDefaultListedTime?:
     | ''

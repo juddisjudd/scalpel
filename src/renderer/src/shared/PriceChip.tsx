@@ -1,4 +1,5 @@
-import { chaosIcon, divineIcon } from './icons'
+import { getCurrencyIcons } from './icons'
+import { usePoeVersion } from './poe-version-context'
 import ninjaIcon from '../assets/other/poe-ninja.png'
 import { formatPrice } from './utils'
 
@@ -42,6 +43,7 @@ export function PriceChip({
   showNinja,
   size = 'md',
 }: PriceChipProps): JSX.Element {
+  const icons = getCurrencyIcons(usePoeVersion())
   const useDivine =
     divineValue != null
       ? divineValue >= 1
@@ -49,7 +51,7 @@ export function PriceChip({
   const displayValue = useDivine
     ? formatPrice(divineValue != null && divineValue >= 1 ? divineValue : chaosValue / chaosPerDivine!)
     : formatPrice(chaosValue)
-  const currencyIcon = useDivine ? divineIcon : chaosIcon
+  const currencyIcon = useDivine ? icons.divine : icons.baseline
 
   return (
     <InfoChip icon={showNinja ? ninjaIcon : undefined} label={label} size={size}>

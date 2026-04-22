@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AppSettings, OverlayData, PoeItem } from '../../../shared/types'
 import { getGameFeatures } from '../../../shared/game-features'
+import { PoeVersionProvider } from '../shared/poe-version-context'
 import { FilterPanel } from '../components/FilterPanel'
 import { SettingsPanel } from '../components/SettingsPanel'
 import { SocketRecolor } from '../components/SocketRecolor'
@@ -510,7 +511,7 @@ export default function App(): JSX.Element {
   })()
 
   return (
-    <>
+    <PoeVersionProvider version={poeVersion}>
       {view === 'item' && tierSisterOpen && tierSisterData && tierSisterData.baseTypes.length > 0 && !isHidden && (
         <TierItemsSister
           ref={tierSisterRef}
@@ -737,6 +738,7 @@ export default function App(): JSX.Element {
                     priceInfo={priceCheckData.priceInfo}
                     statFilters={priceCheckData.statFilters}
                     league={priceCheckData.league}
+                    poeVersion={poeVersion ?? 1}
                     chaosPerDivine={priceCheckData.chaosPerDivine}
                     unidCandidates={priceCheckData.unidCandidates}
                     onClose={close}
@@ -772,7 +774,7 @@ export default function App(): JSX.Element {
           </div>
         </div>
       </div>
-    </>
+    </PoeVersionProvider>
   )
 }
 

@@ -1,5 +1,7 @@
 import type { PriceInfo } from '../../../../shared/types'
-import { chaosIcon, divineIcon, formatPrice } from './constants'
+import { formatPrice } from './constants'
+import { getCurrencyIcons } from '../../shared/icons'
+import { usePoeVersion } from '../../shared/poe-version-context'
 import { IconGlow } from '../../shared/IconGlow'
 import { PriceChip, InfoChip } from '../../shared/PriceChip'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
@@ -31,6 +33,7 @@ export function ItemHeader({
   areaLevel?: number
   heistJob?: { skill: string; level: number }
 }): JSX.Element {
+  const icons = getCurrencyIcons(usePoeVersion())
   return (
     <div className="bg-bg-card border-b border-border px-[14px] py-[10px] flex gap-[10px] items-center">
       {heroIcon && (
@@ -97,11 +100,11 @@ export function ItemHeader({
         {/* Exchange rate chip */}
         {chaosPerDivine != null && chaosPerDivine > 0 && (
           <div className="exchange-rate-chip flex items-center gap-[3px] bg-black/30 rounded-full px-2 py-[3px] text-[11px] font-[inherit] relative cursor-default">
-            <img src={chaosIcon} alt="" className="w-3 h-3" />
+            <img src={icons.baseline} alt="" className="w-3 h-3" />
             <span className="font-semibold">{Math.round(chaosPerDivine)}</span>
             <span className="text-text-dim">=</span>
             <span className="font-semibold">1</span>
-            <img src={divineIcon} alt="" className="w-3 h-3" />
+            <img src={icons.divine} alt="" className="w-3 h-3" />
             <div
               className="exchange-rate-tooltip"
               style={{
@@ -133,12 +136,12 @@ export function ItemHeader({
                     style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'space-between' }}
                   >
                     <span style={{ color: 'var(--text-dim)', minWidth: 28, textAlign: 'right' }}>{div.toFixed(1)}</span>
-                    <img src={divineIcon} alt="" style={{ width: 10, height: 10 }} />
+                    <img src={icons.divine} alt="" style={{ width: 10, height: 10 }} />
                     <span style={{ color: 'var(--text-dim)', margin: '0 2px' }}>=</span>
                     <span style={{ color: 'var(--text)', fontWeight: 600, minWidth: 24, textAlign: 'right' }}>
                       {chaos}
                     </span>
-                    <img src={chaosIcon} alt="" style={{ width: 10, height: 10 }} />
+                    <img src={icons.baseline} alt="" style={{ width: 10, height: 10 }} />
                   </div>
                 )
               })}

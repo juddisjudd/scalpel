@@ -10,7 +10,8 @@ import {
 } from '../trade/trade'
 import type { StatFilter, TradeResult, BulkExchangeResult } from '../trade/trade'
 import type { AppSettings } from '../../shared/types'
-import { POE_WEBSITE } from '../../shared/endpoints'
+import { POE_WEBSITE, getTradeUrls } from '../../shared/endpoints'
+import { poeVersion } from '../game-state'
 
 async function clickTradeButton(
   queryId: string,
@@ -18,7 +19,7 @@ async function clickTradeButton(
   league: string,
   buttonType: 'direct' | 'whisper',
 ): Promise<string> {
-  const tradeUrl = `${POE_WEBSITE}/trade/search/${encodeURIComponent(league)}/${queryId}`
+  const tradeUrl = getTradeUrls(poeVersion).webSearch(league, queryId)
 
   // Use a separate session partition but copy the POESESSID cookie from the default session
   const tradeSession = session.fromPartition('trade-headless', { cache: false })

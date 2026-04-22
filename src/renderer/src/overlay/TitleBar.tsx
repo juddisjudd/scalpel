@@ -1,7 +1,7 @@
 import { Setting, CloseSmall, ChartHistogram, Flask, Buy } from '@icon-park/react'
 import type { OverlayData } from '../../../shared/types'
 import type { GameFeatures } from '../../../shared/game-features'
-import { chaosIcon } from '../shared/icons'
+import { getCurrencyIcons } from '../shared/icons'
 import { divCardArtMap, iconMap, IP } from '../shared/constants'
 import dustIconAsset from '../assets/currency/thaumaturgic-dust.png'
 import appIcon from '../../../../resources/icon.png'
@@ -43,6 +43,7 @@ export function TitleBar({
   onSetAuditBlockIndex,
   onMouseDown,
 }: TitleBarProps): JSX.Element {
+  const fallbackIcon = getCurrencyIcons(poeVersion ?? 1).baseline
   return (
     <div
       className="flex items-center justify-between px-3.5 py-2.5 border-b border-border cursor-grab"
@@ -89,8 +90,8 @@ export function TitleBar({
             const src = divArt
               ? `https://web.poecdn.com/image/divination-card/${divArt}.png`
               : overlayData
-                ? (iconMap[overlayData.item.name] ?? iconMap[overlayData.item.baseType] ?? chaosIcon)
-                : chaosIcon
+                ? (iconMap[overlayData.item.name] ?? iconMap[overlayData.item.baseType] ?? fallbackIcon)
+                : fallbackIcon
             return (
               <img
                 src={src}

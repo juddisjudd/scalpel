@@ -88,6 +88,8 @@ const store = new Store<AppSettings>({
     updateChannel: 'stable',
     tradeStatus: 'any',
     tradePriceOption: 'chaos_divine',
+    tradePriceOptionPoe1: 'chaos_divine',
+    tradePriceOptionPoe2: 'exalted_divine',
     priceCheckDefaultPercent: 90,
     tradeDefaultToBase: false,
     chatCommands: [],
@@ -126,27 +128,23 @@ if (!store.get('filterDir') && store.get('filterPath')) {
 }
 
 // Migrate: seed per-version fields from the pre-existing flat values. Before this
-// change everyone had a single league/filter -- treat that as their PoE1 setup.
-// Guarded by empty-check so we only migrate once.
+// change everyone had a single league/filter/price-option -- treat that as their
+// PoE1 setup. Guarded by empty-check so we only migrate once.
 if (!store.get('leaguePoe1')) store.set('leaguePoe1', store.get('league'))
 if (!store.get('filterPathPoe1')) store.set('filterPathPoe1', store.get('filterPath'))
 if (!store.get('filterDirPoe1')) store.set('filterDirPoe1', store.get('filterDir'))
+if (!store.get('tradePriceOptionPoe1')) store.set('tradePriceOptionPoe1', store.get('tradePriceOption'))
 
 // On startup, sync the flat active fields to match whichever version is current.
 // The relaunch-on-game-switch flow (ensureCorrectGameForHotkey) means this runs
 // with the right version after the user confirms a switch in the modal. Writes
 // from the settings UI mirror in the other direction -- see handlers/settings.ts.
 {
-  const v = store.get('poeVersion')
-  if (v === 2) {
-    store.set('league', store.get('leaguePoe2'))
-    store.set('filterPath', store.get('filterPathPoe2'))
-    store.set('filterDir', store.get('filterDirPoe2'))
-  } else {
-    store.set('league', store.get('leaguePoe1'))
-    store.set('filterPath', store.get('filterPathPoe1'))
-    store.set('filterDir', store.get('filterDirPoe1'))
-  }
+  const suffix: 'Poe1' | 'Poe2' = store.get('poeVersion') === 2 ? 'Poe2' : 'Poe1'
+  store.set('league', store.get(`league${suffix}`))
+  store.set('filterPath', store.get(`filterPath${suffix}`))
+  store.set('filterDir', store.get(`filterDir${suffix}`))
+  store.set('tradePriceOption', store.get(`tradePriceOption${suffix}`))
 }
 
 // ---- Register IPC handlers -------------------------------------------------

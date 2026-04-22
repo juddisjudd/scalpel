@@ -1,6 +1,7 @@
 import { net } from 'electron'
 import type { AdvancedMod } from '../../shared/types'
-import { POE_TRADE_API } from '../../shared/endpoints'
+import { getTradeUrls } from '../../shared/endpoints'
+import { poeVersion } from '../game-state'
 import { ATZOATL_ROOMS, ATZOATL_KEY_ROOMS } from '../../shared/data/trade/atzoatl'
 import { BENEFICIAL_NEGATIVE_KEYWORDS } from '../../shared/data/trade/beneficial-negatives'
 import { STAT_ID_REMAPS } from './stat-exceptions'
@@ -112,7 +113,7 @@ async function fetchStats(): Promise<void> {
   try {
     const data = await new Promise<string>((resolve, reject) => {
       const request = net.request({
-        url: `${POE_TRADE_API}/data/stats`,
+        url: getTradeUrls(poeVersion).stats,
         method: 'GET',
       })
       request.setHeader('Content-Type', 'application/json')

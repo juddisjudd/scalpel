@@ -1,9 +1,48 @@
 import { net } from 'electron'
-import { POE_TRADE_API } from '../../shared/endpoints'
+import { getTradeUrls } from '../../shared/endpoints'
+import { poeVersion } from '../game-state'
 import { TRANSFIGURED_GEM_DISC } from '../../shared/data/trade/transfigured-gems'
 
 // Re-export stat-matcher functions so existing importers don't need to change
 export { ensureStatsLoaded, matchModToStat, matchItemMods, ITEM_CLASS_TO_CATEGORY } from './stat-matcher'
+
+// ─── Version-specific trade dialect ──────────────────────────────────────────
+//
+// The PoE2 trade API diverges from PoE1 in a handful of small ways -- filter
+// group names, baseline-currency option values, etc. Rather than sprinkling
+// `poeVersion === 2 ?` ternaries through the query builders, collect every
+// version-specific knob here. When PoE2 grows additional overrides (new filter
+// groups, PoE2-only fields, different item-class routing), extend this table
+// instead of adding more branches at call sites.
+
+interface TradeDialect {
+  /** Filter group name for defensive stats (AR/EV/ES/ward/block). PoE2 merges
+   *  these with weapon DPS into one group; PoE1 keeps them separate. */
+  defenceFilterGroup: 'armour_filters' | 'equipment_filters'
+  /** Filter group name for weapon DPS stats (pdps/edps/aps/crit). */
+  weaponFilterGroup: 'weapon_filters' | 'equipment_filters'
+  /** The "baseline or divine" option value -- chaos_divine (PoE1) or
+   *  exalted_divine (PoE2). Sent as-is to the API. */
+  priceDivinePair: 'chaos_divine' | 'exalted_divine'
+  /** The client-side "equivalent" option. Not a valid API value; when selected
+   *  we omit the price filter entirely and the consumer does the math locally. */
+  priceEquivalent: 'chaos_equivalent' | 'exalted_equivalent'
+}
+
+const TRADE_DIALECTS: Record<1 | 2, TradeDialect> = {
+  1: {
+    defenceFilterGroup: 'armour_filters',
+    weaponFilterGroup: 'weapon_filters',
+    priceDivinePair: 'chaos_divine',
+    priceEquivalent: 'chaos_equivalent',
+  },
+  2: {
+    defenceFilterGroup: 'equipment_filters',
+    weaponFilterGroup: 'equipment_filters',
+    priceDivinePair: 'exalted_divine',
+    priceEquivalent: 'exalted_equivalent',
+  },
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,7 +222,16 @@ async function fetchJson(url: string, options?: { method?: string; body?: string
           })
           response.on('end', () => {
             try {
-              resolve(JSON.parse(data))
+              const parsed = JSON.parse(data)
+              // Surface trade-API error bodies (e.g. invalid stat ID, bad category) so
+              // they don't silently appear as "0 results". Leave rate limits (429) to
+              // the dedicated branch above.
+              if (response.statusCode && response.statusCode >= 400) {
+                console.error(`[trade] ${response.statusCode} from ${url}:`, data.slice(0, 500))
+              } else if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+                console.error(`[trade] API error from ${url}:`, data.slice(0, 500))
+              }
+              resolve(parsed)
             } catch (e) {
               reject(e)
             }
@@ -231,11 +279,13 @@ export async function searchTrade(
   },
   statFilters: StatFilter[],
   tradeStatus: string = 'any',
-  tradePriceOption: string = 'chaos_divine',
+  tradePriceOption?: string,
   listedTime?: string,
 ): Promise<TradeResult> {
   await _ensureStatsLoaded()
   await throttle()
+  const dialect = TRADE_DIALECTS[poeVersion]
+  const priceOption = tradePriceOption ?? dialect.priceDivinePair
 
   // Build query - div cards always use 'available' (most listings aren't instant buyout)
   const isDivCard = item.itemClass === 'Divination Cards'
@@ -311,7 +361,12 @@ export async function searchTrade(
         armourFilters[key] = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
     }
     const existing = (query.filters as Record<string, unknown>) ?? {}
-    query.filters = { ...existing, armour_filters: { disabled: false, filters: armourFilters } }
+    const existingGroup = (existing[dialect.defenceFilterGroup] as { filters?: Record<string, unknown> } | undefined)
+      ?.filters
+    query.filters = {
+      ...existing,
+      [dialect.defenceFilterGroup]: { disabled: false, filters: { ...(existingGroup ?? {}), ...armourFilters } },
+    }
   }
 
   // Add weapon DPS filters
@@ -331,7 +386,12 @@ export async function searchTrade(
       if (key) weaponQuery[key] = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
     }
     const existing = (query.filters as Record<string, unknown>) ?? {}
-    query.filters = { ...existing, weapon_filters: { disabled: false, filters: weaponQuery } }
+    const existingGroup = (existing[dialect.weaponFilterGroup] as { filters?: Record<string, unknown> } | undefined)
+      ?.filters
+    query.filters = {
+      ...existing,
+      [dialect.weaponFilterGroup]: { disabled: false, filters: { ...(existingGroup ?? {}), ...weaponQuery } },
+    }
   }
 
   // Add socket filters
@@ -556,15 +616,15 @@ export async function searchTrade(
   query.stats = statGroups.length > 0 ? statGroups : [{ type: 'and', filters: [] }]
 
   // Add trade filters: collapse by account, price currency option, optional listed-time.
-  // "chaos_equivalent" isn't a valid API value for trade_filters.price.option -- sending it
-  // causes the server to drop the whole filter block and return broken results. APT's
-  // working query for the same mode omits the price filter entirely, so we do the same.
+  // The "equivalent" pseudo-option isn't valid for trade_filters.price.option -- sending
+  // it drops the whole filter block and returns broken results. APT/EE2 omit the price
+  // filter entirely in that mode and do the equivalence math client-side; same here.
   const existing = (query.filters as Record<string, unknown>) ?? {}
   const tradeFiltersInner: Record<string, unknown> = {
     collapse: { option: 'true' },
   }
-  if (tradePriceOption && tradePriceOption !== 'chaos_equivalent') {
-    tradeFiltersInner.price = { min: null, max: null, option: tradePriceOption }
+  if (priceOption !== dialect.priceEquivalent) {
+    tradeFiltersInner.price = { min: null, max: null, option: priceOption }
   }
   if (listedTime) tradeFiltersInner.indexed = { option: listedTime }
   query.filters = {
@@ -577,7 +637,8 @@ export async function searchTrade(
     sort: { price: 'asc' },
   })
 
-  const searchResult = (await fetchJson(`${POE_TRADE_API}/search/${encodeURIComponent(league)}`, {
+  const urls = getTradeUrls(poeVersion)
+  const searchResult = (await fetchJson(urls.search(league), {
     method: 'POST',
     body,
   })) as TradeSearchResult
@@ -589,7 +650,7 @@ export async function searchTrade(
   // Fetch first 10 results
   await throttle()
   const ids = searchResult.result.slice(0, 10).join(',')
-  const fetchResult = (await fetchJson(`${POE_TRADE_API}/fetch/${ids}?query=${searchResult.id}`)) as {
+  const fetchResult = (await fetchJson(urls.fetch(ids, searchResult.id ?? ''))) as {
     result: Array<{
       id: string
       listing: {
@@ -867,7 +928,7 @@ export async function searchBulkExchange(
     sort: { have: 'asc' },
   })
 
-  const result = (await fetchJson(`${POE_TRADE_API}/exchange/${encodeURIComponent(league)}`, {
+  const result = (await fetchJson(getTradeUrls(poeVersion).exchange(league), {
     method: 'POST',
     body,
   })) as {
@@ -924,7 +985,7 @@ export async function searchBulkExchange(
 
 async function fetchAndMapListings(ids: string[], queryId: string): Promise<TradeListing[]> {
   await throttle()
-  const fetchResult = (await fetchJson(`${POE_TRADE_API}/fetch/${ids.join(',')}?query=${queryId}`)) as {
+  const fetchResult = (await fetchJson(getTradeUrls(poeVersion).fetch(ids.join(','), queryId))) as {
     result: Array<{
       id: string
       listing: {
@@ -1001,6 +1062,7 @@ export async function searchMapsByRegex(
 ): Promise<TradeResult> {
   await _ensureStatsLoaded()
   await throttle()
+  const dialect = TRADE_DIALECTS[poeVersion]
 
   // poe.re text -> trade API text overrides for mods with different wording
   const modTextOverrides: Record<string, string> = {
@@ -1108,7 +1170,9 @@ export async function searchMapsByRegex(
       trade_filters: {
         disabled: false,
         filters: {
-          ...(tradePriceOption === 'chaos_divine' ? { price: { min: null, max: null, option: tradePriceOption } } : {}),
+          ...(tradePriceOption === dialect.priceDivinePair
+            ? { price: { min: null, max: null, option: tradePriceOption } }
+            : {}),
           collapse: { option: 'true' },
         },
       },
@@ -1117,7 +1181,7 @@ export async function searchMapsByRegex(
 
   const body = JSON.stringify({ query, sort: { price: 'asc' } })
 
-  const searchResult = (await fetchJson(`${POE_TRADE_API}/search/${encodeURIComponent(league)}`, {
+  const searchResult = (await fetchJson(getTradeUrls(poeVersion).search(league), {
     method: 'POST',
     body,
   })) as TradeSearchResult

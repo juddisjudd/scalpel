@@ -2,8 +2,7 @@ import { BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { OverlayController, OVERLAY_WINDOW_OPTS } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
-
-export let poeVersion: 1 | 2 = 1
+import { poeVersion, setPoeVersion } from './game-state'
 
 let overlayWindow: BrowserWindow | null = null
 let overlayVisible = false
@@ -166,7 +165,7 @@ const POE_WINDOW_TITLES: Record<1 | 2, string> = {
 }
 
 export function createOverlayWindow(version: 1 | 2 = 1): BrowserWindow {
-  poeVersion = version
+  setPoeVersion(version)
   overlayWindow = new BrowserWindow({
     ...OVERLAY_WINDOW_OPTS,
     show: false,

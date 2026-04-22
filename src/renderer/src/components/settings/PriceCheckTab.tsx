@@ -5,7 +5,7 @@ import { Toggle } from '../Toggle'
 import { keyEventToAccelerator, prettyHotkey } from './utils'
 import {
   LISTED_TIME_OPTIONS,
-  PRICE_OPTIONS,
+  getPriceOptions,
   RESULTS_VIEW_OPTIONS,
   STATUS_OPTIONS,
 } from '../price-check/search-settings'
@@ -96,8 +96,8 @@ export function PriceCheckTab({ settings, update, tryHotkey }: Props): JSX.Eleme
         />
         <SettingSelectBox
           label="Buyout currency"
-          value={settings.tradePriceOption ?? 'chaos_divine'}
-          options={PRICE_OPTIONS}
+          value={settings.tradePriceOption ?? (settings.poeVersion === 2 ? 'exalted_divine' : 'chaos_divine')}
+          options={getPriceOptions(settings.poeVersion ?? 1)}
           onChange={(v) => update('tradePriceOption', v)}
         />
         <SettingSelectBox

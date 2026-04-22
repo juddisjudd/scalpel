@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import type { PriceCheckProps, StatFilter, Listing, BulkListing } from './types'
+import { getTradeUrls } from '../../../../shared/endpoints'
+import { getCurrencyIcons } from '../../shared/icons'
 import {
   RARITY_COLORS,
   INFLUENCE_ICONS,
   iconMap,
-  chaosIcon,
   getItemIcon,
   formatPrice,
   getItemSize,
@@ -22,7 +23,7 @@ import { ListingRowsSkeleton } from './PriceCheckSkeleton'
 import { RateLimitBar } from './RateLimitBar'
 import { BASE_DEFAULT_ITEM_CLASSES, applyBaseModeToFilters, shouldIncludeImplicitsInBase } from './base-mode'
 import type { ListedTime, PriceOption, ResultsView, StatusOption } from './search-settings'
-import { LISTED_TIME_OPTIONS, PRICE_OPTIONS, STATUS_OPTIONS } from './search-settings'
+import { LISTED_TIME_OPTIONS, getPriceOptions, STATUS_OPTIONS } from './search-settings'
 import { SearchSettingDropdown } from './SearchSettingDropdown'
 
 export function PriceCheck({
@@ -30,10 +31,13 @@ export function PriceCheck({
   priceInfo,
   statFilters: initialFilters,
   league,
+  poeVersion,
   chaosPerDivine,
   unidCandidates,
   onClose: _onClose,
 }: PriceCheckProps): JSX.Element {
+  const tradeUrls = getTradeUrls(poeVersion)
+  const currencyIcons = getCurrencyIcons(poeVersion)
   const isDivCard = item.itemClass === 'Divination Cards'
   const [selectedUnique, setSelectedUnique] = useState<string | null>(null)
   const color = selectedUnique ? RARITY_COLORS['Unique'] : (RARITY_COLORS[item.rarity] ?? '#c8c8c8')
@@ -345,7 +349,7 @@ export function PriceCheck({
                   {c.chaosValue > 0 && (
                     <span className="relative flex items-center gap-[2px] text-[9px] font-[inherit] text-text-dim">
                       {formatPrice(c.chaosValue)}
-                      <img src={chaosIcon} alt="" className="w-[10px] h-[10px]" />
+                      <img src={currencyIcons.baseline} alt="" className="w-[10px] h-[10px]" />
                     </span>
                   )}
                 </div>
@@ -532,7 +536,11 @@ export function PriceCheck({
         {showSettings && !isBulk && (
           <div className="grid grid-cols-3 gap-[6px]">
             <SearchSettingDropdown value={listedTime} options={LISTED_TIME_OPTIONS} onChange={setListedTime} />
-            <SearchSettingDropdown value={priceOption} options={PRICE_OPTIONS} onChange={setPriceOption} />
+            <SearchSettingDropdown
+              value={priceOption}
+              options={getPriceOptions(poeVersion)}
+              onChange={setPriceOption}
+            />
             <SearchSettingDropdown value={statusOption} options={STATUS_OPTIONS} onChange={setStatusOption} />
           </div>
         )}
@@ -555,9 +563,7 @@ export function PriceCheck({
             <button
               onClick={() =>
                 window.api.openExternal(
-                  isBulk === true
-                    ? `https://www.pathofexile.com/trade/exchange/${encodeURIComponent(league)}/${queryId}`
-                    : `https://www.pathofexile.com/trade/search/${encodeURIComponent(league)}/${queryId}`,
+                  isBulk === true ? tradeUrls.webExchange(league, queryId) : tradeUrls.webSearch(league, queryId),
                 )
               }
               className="px-3 py-2 text-[11px] font-semibold bg-white/[0.08] text-text border-none rounded cursor-pointer whitespace-nowrap"

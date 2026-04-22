@@ -1,10 +1,60 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// trade.ts imports electron's `net` at module scope; mock it out so we can import the
-// pure helpers without instantiating the real request stack.
-vi.mock('electron', () => ({ net: { request: vi.fn() } }))
+// Capture per-request state for the searchTrade assertions below. trade.ts imports
+// electron's `net` at module scope, so the mock has to be installed before `./trade`
+// is loaded. Tests that don't care about captured requests (e.g. buildGemTypeField)
+// still work -- they just never call into a path that invokes net.request.
+const capturedRequests: Array<{ url: string; method: string; body?: string }> = []
 
-import { buildGemTypeField } from './trade'
+vi.mock('electron', () => ({
+  net: {
+    request: vi.fn((opts: { url: string; method: string }) => {
+      const entry = { url: opts.url, method: opts.method } as {
+        url: string
+        method: string
+        body?: string
+      }
+      capturedRequests.push(entry)
+      let responseCb: ((resp: unknown) => void) | null = null
+      return {
+        on: (event: string, cb: unknown) => {
+          if (event === 'response') responseCb = cb as typeof responseCb
+        },
+        setHeader: vi.fn(),
+        write: vi.fn((body: string) => {
+          entry.body = body
+        }),
+        end: vi.fn(() => {
+          queueMicrotask(() => {
+            if (!responseCb) return
+            let dataCb: ((chunk: unknown) => void) | null = null
+            let endCb: (() => void) | null = null
+            responseCb({
+              statusCode: 200,
+              headers: {},
+              on: (event: string, cb: unknown) => {
+                if (event === 'data') dataCb = cb as typeof dataCb
+                if (event === 'end') endCb = cb as typeof endCb
+              },
+            })
+            dataCb?.('{"result":[],"total":0,"id":"q"}')
+            endCb?.()
+          })
+        }),
+      }
+    }),
+  },
+}))
+
+// Skip the real stats fetch (would hang on the mocked net). Everything else from
+// stat-matcher (ITEM_CLASS_TO_CATEGORY, etc.) comes through unchanged.
+vi.mock('./stat-matcher', async (orig) => {
+  const actual = (await orig()) as Record<string, unknown>
+  return { ...actual, ensureStatsLoaded: vi.fn().mockResolvedValue(undefined) }
+})
+
+import { buildGemTypeField, searchTrade, type StatFilter } from './trade'
+import { setPoeVersion } from '../game-state'
 
 describe('buildGemTypeField', () => {
   it('returns baseType as a plain string for a regular gem', () => {
@@ -35,5 +85,73 @@ describe('buildGemTypeField', () => {
 
   it('does not double-prepend "Vaal " when baseType already starts with it', () => {
     expect(buildGemTypeField('Vaal Fireball', true)).toBe('Vaal Fireball')
+  })
+})
+
+// Catches the exact regression that broke PoE2 search on first ship: PoE1 used
+// `armour_filters` / `weapon_filters` but the PoE2 API returns 400 "Unknown filter
+// group" and demands everything under `equipment_filters`. Anyone who edits
+// TRADE_DIALECTS or the defence/weapon filter branches has this test as a guard.
+describe('searchTrade filter-group dispatch', () => {
+  const bodyArmourItem = {
+    name: '',
+    baseType: "Falconer's Jacket",
+    itemClass: 'Body Armours',
+    rarity: 'Rare',
+    evasion: 542,
+    energyShield: 203,
+  }
+
+  const defenceFilters: StatFilter[] = [
+    {
+      id: 'defence.evasion',
+      text: '',
+      type: 'defence',
+      enabled: true,
+      value: 542,
+      min: 487,
+      max: null,
+    },
+    {
+      id: 'defence.energy_shield',
+      text: '',
+      type: 'defence',
+      enabled: true,
+      value: 203,
+      min: 182,
+      max: null,
+    },
+  ]
+
+  beforeEach(() => {
+    capturedRequests.length = 0
+  })
+
+  it('PoE1 rare body armour uses armour_filters, never equipment_filters', async () => {
+    setPoeVersion(1)
+    await searchTrade('Mirage', bodyArmourItem, defenceFilters, 'any', 'chaos_divine')
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    expect(req).toBeDefined()
+    expect(req!.url).toContain('/api/trade/search/')
+    const body = JSON.parse(req!.body!)
+    expect(body.query.filters.armour_filters).toBeDefined()
+    expect(body.query.filters.armour_filters.filters.ev.min).toBe(487)
+    expect(body.query.filters.equipment_filters).toBeUndefined()
+  })
+
+  it('PoE2 rare body armour uses equipment_filters, never armour_filters or weapon_filters', async () => {
+    setPoeVersion(2)
+    await searchTrade('Fate of the Vaal', bodyArmourItem, defenceFilters, 'any', 'exalted_divine')
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    expect(req).toBeDefined()
+    expect(req!.url).toContain('/api/trade2/search/')
+    // Realm segment belongs in the browser URL only, not the API URL (per EE2).
+    expect(req!.url).not.toContain('/poe2/')
+    const body = JSON.parse(req!.body!)
+    expect(body.query.filters.equipment_filters).toBeDefined()
+    expect(body.query.filters.equipment_filters.filters.ev.min).toBe(487)
+    expect(body.query.filters.equipment_filters.filters.es.min).toBe(182)
+    expect(body.query.filters.armour_filters).toBeUndefined()
+    expect(body.query.filters.weapon_filters).toBeUndefined()
   })
 })

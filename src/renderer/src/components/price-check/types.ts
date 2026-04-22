@@ -72,6 +72,7 @@ export interface PriceCheckProps {
   priceInfo?: PriceInfo
   statFilters: StatFilter[]
   league: string
+  poeVersion: 1 | 2
   chaosPerDivine?: number
   unidCandidates?: Array<{ name: string; chaosValue: number }>
   onClose: () => void

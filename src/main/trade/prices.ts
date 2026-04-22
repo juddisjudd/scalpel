@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import type { PriceInfo } from '../../shared/types'
 import { POE_NINJA_API, POE_NINJA_POE2_EXCHANGE } from '../../shared/endpoints'
-import { poeVersion } from '../overlay'
+import { poeVersion } from '../game-state'
 import uniqueInfoData from '../../shared/data/items/unique-info.json'
 const staticUniquesByBase = uniqueInfoData as Record<string, string[]>
 
@@ -244,12 +244,14 @@ const POE2_EXCHANGE_TYPES = [
 ] as const
 
 function processPoe2ExchangeResponse(resp: Poe2ExchangeResponse): void {
-  // rates.X is "units of X per 1 primary" (e.g. primary=divine, rates.chaos=22.79
-  // means 1 divine = 22.79 chaos). primaryValue on each line is already denominated
-  // in the primary currency, so divineValue = primaryValue and chaosValue is the
-  // primary->chaos conversion. Keeping chaos as our stored unit lets the existing
-  // UI consumers (which were built against PoE1 chaos-as-base) work unchanged.
-  const chaosPerPrimary = resp.core.rates?.chaos ?? 0
+  // Exalted orb is PoE2's economy baseline (the role chaos plays in PoE1). Our
+  // PriceInfo.chaosValue field is named for PoE1 history but semantically holds
+  // "baseline currency count" -- so in PoE2 we store exalted-equivalents there.
+  // divineValue is the high-tier currency in both games. Ninja's response reports
+  // primary=divine and rates.X = "units of X per 1 divine", so:
+  //   divineValue = primaryValue
+  //   chaosValue  = primaryValue * rates.exalted (i.e. exalted-equivalent)
+  const exaltedPerPrimary = resp.core.rates?.exalted ?? 0
   const nameById = new Map<string, string>()
   for (const item of [...(resp.core.items ?? []), ...(resp.items ?? [])]) {
     if (item.id && item.name) nameById.set(item.id, item.name)
@@ -258,7 +260,7 @@ function processPoe2ExchangeResponse(resp: Poe2ExchangeResponse): void {
   // Seed the core currencies (divine is always worth 1 primary by definition).
   for (const item of resp.core.items ?? []) {
     const divineValue = item.id === resp.core.primary ? 1 : 1 / (resp.core.rates?.[item.id] ?? 0)
-    const chaosValue = divineValue * chaosPerPrimary
+    const chaosValue = divineValue * exaltedPerPrimary
     if (!isFinite(chaosValue) || chaosValue <= 0) continue
     priceMap.set(item.name.toLowerCase(), { chaosValue, divineValue })
   }
@@ -268,7 +270,7 @@ function processPoe2ExchangeResponse(resp: Poe2ExchangeResponse): void {
     const primary = line.primaryValue
     if (!name || primary == null || primary <= 0) continue
     priceMap.set(name.toLowerCase(), {
-      chaosValue: primary * chaosPerPrimary,
+      chaosValue: primary * exaltedPerPrimary,
       divineValue: primary,
     })
   }

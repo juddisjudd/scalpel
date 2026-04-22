@@ -1,10 +1,35 @@
 //All external URLs that Scalpel connects to.
 
-/** Path of Exile official trade API */
-export const POE_TRADE_API = 'https://www.pathofexile.com/api/trade'
-
 /** Path of Exile website (login, trade search pages) */
 export const POE_WEBSITE = 'https://www.pathofexile.com'
+
+/** Version-aware trade URLs. PoE2 uses the /trade2 path prefix for both API and
+ *  browser, but only the browser URLs take a `poe2/` realm segment between
+ *  search/exchange and the league -- API paths omit it. This matches Exiled
+ *  Exchange 2's wiring, cross-checked against live requests from the PoE2 trade
+ *  site. /fetch and /data/stats differ only in the prefix. */
+export function getTradeUrls(version: 1 | 2): {
+  search: (league: string) => string
+  exchange: (league: string) => string
+  fetch: (ids: string, queryId: string) => string
+  stats: string
+  webSearch: (league: string, queryId: string) => string
+  webExchange: (league: string, queryId: string) => string
+} {
+  const prefix = version === 2 ? 'trade2' : 'trade'
+  const webRealm = version === 2 ? 'poe2/' : ''
+  const apiBase = `${POE_WEBSITE}/api/${prefix}`
+  const webBase = `${POE_WEBSITE}/${prefix}`
+  const enc = encodeURIComponent
+  return {
+    search: (l) => `${apiBase}/search/${enc(l)}`,
+    exchange: (l) => `${apiBase}/exchange/${enc(l)}`,
+    fetch: (ids, qid) => `${apiBase}/fetch/${ids}?query=${qid}`,
+    stats: `${apiBase}/data/stats`,
+    webSearch: (l, id) => `${webBase}/search/${webRealm}${enc(l)}/${id}`,
+    webExchange: (l, id) => `${webBase}/exchange/${webRealm}${enc(l)}/${id}`,
+  }
+}
 
 /** Path of Exile CDN for item artwork */
 export const POE_CDN = 'https://web.poecdn.com'
