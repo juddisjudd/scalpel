@@ -11,6 +11,8 @@ import {
   getUniquesByBase,
   getGemNames,
 } from '../trade/prices'
+import { loadIconCache } from '../trade/icon-cache'
+import { poeVersion } from '../game-state'
 import type { AppSettings, FilterBlock, FilterFile, PoeItem, SearchableItem } from '../../shared/types'
 import { defaultPoeItem } from '../../shared/poe-item'
 import uniqueInfoData from '../../shared/data/items/unique-info.json'
@@ -294,6 +296,10 @@ export async function primeSearchableItemsCache(store: Store<AppSettings>): Prom
 }
 
 export function register(store: Store<AppSettings>): void {
+  // Serve the current version's runtime icon cache to the renderer on startup;
+  // filled over time by harvestIcons() in trade.ts.
+  ipcMain.handle('get-icon-cache', () => loadIconCache(poeVersion))
+
   ipcMain.handle(
     'lookup-base-type',
     async (

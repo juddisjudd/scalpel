@@ -32,4 +32,13 @@ export function initIconMap(version: 1 | 2): void {
   Object.assign(iconMap, ICONS_BY_VERSION[version])
 }
 
+/** Merge runtime-harvested icons (from main's icon-cache) into the shared
+ *  iconMap. Called after initIconMap so bundled entries win -- cache entries
+ *  only fill keys we didn't ship icons for. */
+export function mergeIconCache(cache: Record<string, string>): void {
+  for (const [k, v] of Object.entries(cache)) {
+    if (!iconMap[k]) iconMap[k] = v
+  }
+}
+
 export const divCardArtMap = new Map((divCardsData as Array<{ name: string; art: string }>).map((c) => [c.name, c.art]))

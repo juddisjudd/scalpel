@@ -1,7 +1,9 @@
 import { Down, Up } from '@icon-park/react'
 import type { Listing } from './types'
 import { ExpandedListing } from './ExpandedListing'
-import { CURRENCY_ICONS, SOCKET_IMGS, formatTimeAgo, socketLink, socketWhite } from './constants'
+import { getCurrencyIconMap, SOCKET_IMGS, formatTimeAgo, socketLink, socketWhite } from './constants'
+import { RuneSocketOverlayPoe2 } from '../sockets/RuneSocketOverlay.poe2'
+import { usePoeVersion } from '../../shared/poe-version-context'
 import type { ResultsView } from './search-settings'
 
 export function TradeListings({
@@ -39,6 +41,8 @@ export function TradeListings({
   loadingMore?: boolean
   resultsView?: ResultsView
 }): JSX.Element {
+  const poeVersion = usePoeVersion()
+  const currencyIcons = getCurrencyIconMap(poeVersion)
   const openAll = resultsView === 'open-all'
   const compact = resultsView === 'shrinkydink'
   return (
@@ -95,10 +99,23 @@ export function TradeListings({
                       {(() => {
                         const sockets = l.itemData!.sockets!
                         const n = sockets.length
-                        const is1Wide =
-                          n <= 3 && !['Helmets', 'Body Armours', 'Gloves', 'Boots', 'Shields'].includes(itemClass)
                         const sz = 12,
                           gap = 3
+
+                        if (poeVersion === 2) {
+                          return (
+                            <RuneSocketOverlayPoe2
+                              count={n}
+                              itemClass={itemClass}
+                              itemName={itemName}
+                              sz={sz}
+                              gap={gap}
+                            />
+                          )
+                        }
+
+                        const is1Wide =
+                          n <= 3 && !['Helmets', 'Body Armours', 'Gloves', 'Boots', 'Shields'].includes(itemClass)
 
                         if (is1Wide || n <= 1) {
                           return sockets.map((s, si) => {
@@ -225,8 +242,8 @@ export function TradeListings({
                   style={{ minWidth: priceChipMinWidth }}
                 >
                   {l.price.amount}
-                  {CURRENCY_ICONS[l.price.currency] ? (
-                    <img src={CURRENCY_ICONS[l.price.currency]} alt={l.price.currency} className="w-[18px] h-[18px]" />
+                  {currencyIcons[l.price.currency] ? (
+                    <img src={currencyIcons[l.price.currency]} alt={l.price.currency} className="w-[18px] h-[18px]" />
                   ) : (
                     <span className="text-[10px] text-text-dim">{l.price.currency}</span>
                   )}

@@ -135,6 +135,12 @@ export const api = {
     poeVersion: 1 | 2
     gameBounds: { gameWidth: number; gameHeight: number; sidebarWidth: number } | null
   }> => ipcRenderer.invoke('get-overlay-state'),
+  getIconCache: (): Promise<Record<string, string>> => ipcRenderer.invoke('get-icon-cache'),
+  onIconCacheUpdated: (cb: (added: Record<string, string>) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, added: Record<string, string>): void => cb(added)
+    ipcRenderer.on('icon-cache-updated', handler)
+    return () => ipcRenderer.removeListener('icon-cache-updated', handler)
+  },
   reportPanelRect: (
     rects:
       | { left: number; top: number; width: number; height: number }

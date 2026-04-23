@@ -10,6 +10,9 @@ import socketRed from '../assets/sockets/socket-red.png'
 import socketGreen from '../assets/sockets/socket-green.png'
 import socketBlue from '../assets/sockets/socket-blue.png'
 import socketWhite from '../assets/sockets/socket-white.png'
+import { RuneSocketChipPoe2 } from './sockets/RuneSocketChip.poe2'
+import { usePoeVersion } from '../shared/poe-version-context'
+import { getGameFeatures } from '../../../shared/game-features'
 import divCardsData from '../../../shared/data/economy/div-cards.json'
 import baseToUniques from '../../../shared/data/items/unique-info.json'
 import itemClassesData from '../../../shared/data/items/item-classes.json'
@@ -104,6 +107,7 @@ export function ItemSummary({
   hideSockets,
   flush,
 }: Props): JSX.Element {
+  const features = getGameFeatures(usePoeVersion())
   const color = RARITY_COLORS[item.rarity] ?? '#c8c8c8'
   const iconUrl = getItemIcon(item)
   const isDivCard = item.itemClass === 'Divination Cards'
@@ -204,7 +208,7 @@ export function ItemSummary({
           })()}
 
         {(() => {
-          const dustInfo = getDustInfo(item)
+          const dustInfo = features.dustExplorer ? getDustInfo(item) : null
           const hasPrice = priceInfo && priceInfo.chaosValue > 0
           if (!hasPrice && !dustInfo) return null
           return (
@@ -380,6 +384,13 @@ const LINK_WIDTH = 10
 const LINK_OVERLAP = 1
 
 function SocketDisplay({ sockets, onRecolor }: { sockets: string; onRecolor?: () => void }): JSX.Element {
+  const poeVersion = usePoeVersion()
+  if (poeVersion === 2) {
+    // PoE2 items use rune sockets only: no colors, no links. The clipboard parser
+    // emits each rune socket as "S" (e.g. "S S" for two).
+    const runeCount = (sockets.match(/S/g) ?? []).length
+    return <>{<RuneSocketChipPoe2 count={runeCount} size={SOCKET_SIZE} />}</>
+  }
   const groups = sockets.split(' ').filter(Boolean)
 
   return (

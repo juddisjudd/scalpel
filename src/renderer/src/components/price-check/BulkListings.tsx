@@ -1,5 +1,6 @@
 import type { BulkListing } from './types'
-import { CURRENCY_ICONS } from './constants'
+import { getCurrencyIconMap } from './constants'
+import { usePoeVersion } from '../../shared/poe-version-context'
 
 export function BulkListings({
   bulkListings,
@@ -8,6 +9,7 @@ export function BulkListings({
   bulkListings: BulkListing[]
   total: number | null
 }): JSX.Element {
+  const currencyIcons = getCurrencyIconMap(usePoeVersion())
   return (
     <div
       className="bg-black/20 overflow-hidden flex-1 min-h-0 overflow-y-auto rounded-none"
@@ -22,8 +24,8 @@ export function BulkListings({
           {/* Ratio */}
           <span className="flex items-center justify-center gap-1 font-bold text-sm shrink-0 bg-black/30 rounded-full px-[10px] py-[3px]">
             {l.ratio < 1 ? l.ratio.toFixed(3) : l.ratio.toFixed(1)}
-            {CURRENCY_ICONS[l.pay.currency] ? (
-              <img src={CURRENCY_ICONS[l.pay.currency]} alt={l.pay.currency} className="w-[18px] h-[18px]" />
+            {currencyIcons[l.pay.currency] ? (
+              <img src={currencyIcons[l.pay.currency]} alt={l.pay.currency} className="w-[18px] h-[18px]" />
             ) : (
               <span className="text-[10px] text-text-dim">{l.pay.currency}</span>
             )}

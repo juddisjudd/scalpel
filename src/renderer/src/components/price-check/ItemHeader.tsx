@@ -1,6 +1,7 @@
 import type { PriceInfo } from '../../../../shared/types'
 import { formatPrice } from './constants'
 import { getCurrencyIcons } from '../../shared/icons'
+import { getGameFeatures } from '../../../../shared/game-features'
 import { usePoeVersion } from '../../shared/poe-version-context'
 import { IconGlow } from '../../shared/IconGlow'
 import { PriceChip, InfoChip } from '../../shared/PriceChip'
@@ -33,7 +34,11 @@ export function ItemHeader({
   areaLevel?: number
   heistJob?: { skill: string; level: number }
 }): JSX.Element {
-  const icons = getCurrencyIcons(usePoeVersion())
+  const version = usePoeVersion()
+  const icons = getCurrencyIcons(version)
+  const features = getGameFeatures(version)
+  const showDust = features.dustExplorer && dustInfo
+
   return (
     <div className="bg-bg-card border-b border-border px-[14px] py-[10px] flex gap-[10px] items-center">
       {heroIcon && (
@@ -67,12 +72,12 @@ export function ItemHeader({
       </div>
       <div className="flex flex-col gap-1 items-end shrink-0">
         {/* Dust + Ninja price + stack pricing chips */}
-        {((priceInfo && priceInfo.chaosValue > 0) || dustInfo) && (
+        {((priceInfo && priceInfo.chaosValue > 0) || showDust) && (
           <div className="flex items-center gap-1 flex-wrap justify-end">
-            {dustInfo && (
+            {showDust && (
               <InfoChip icon={dustIcon}>
                 <span className="text-white font-semibold">
-                  {dustInfo.upTo ? `~${dustInfo.value.toLocaleString()}` : dustInfo.value.toLocaleString()}
+                  {dustInfo!.upTo ? `~${dustInfo!.value.toLocaleString()}` : dustInfo!.value.toLocaleString()}
                 </span>
               </InfoChip>
             )}

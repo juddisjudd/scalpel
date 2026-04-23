@@ -1,7 +1,18 @@
 import { net } from 'electron'
 import { getTradeUrls } from '../../shared/endpoints'
 import { poeVersion } from '../game-state'
+import { harvestIcons } from './icon-cache'
+import { getOverlayWindow } from '../overlay'
 import { TRANSFIGURED_GEM_DISC } from '../../shared/data/trade/transfigured-gems'
+
+/** Forward any newly-harvested name->icon pairs to the overlay so it can merge
+ *  them into the in-session iconMap. Without this the renderer would only pick
+ *  up new icons on next launch (when it re-reads the on-disk cache at boot). */
+function broadcastNewIcons(added: Record<string, string>): void {
+  if (Object.keys(added).length === 0) return
+  const win = getOverlayWindow()
+  if (win && !win.isDestroyed()) win.webContents.send('icon-cache-updated', added)
+}
 
 // Re-export stat-matcher functions so existing importers don't need to change
 export { ensureStatsLoaded, matchModToStat, matchItemMods, ITEM_CLASS_TO_CATEGORY } from './stat-matcher'
@@ -27,6 +38,16 @@ interface TradeDialect {
   /** The client-side "equivalent" option. Not a valid API value; when selected
    *  we omit the price filter entirely and the consumer does the math locally. */
   priceEquivalent: 'chaos_equivalent' | 'exalted_equivalent'
+}
+
+/** PoE2 trade-fetch responses return mod text with localization tokens like
+ *  `[Attributes|Attribute]` and `[Spirit]` embedded in the string. Trade-site UI
+ *  resolves these via its i18n layer; we don't have that, so rewrite the tokens
+ *  into their display form: `[a|b]` -> `b`, `[a]` -> `a`. No-op on PoE1 strings
+ *  (which never contain these brackets) so it runs unconditionally. Mirrors EE2's
+ *  parseAffixStrings helper. */
+export function stripTradeTokens(s: string): string {
+  return s.replace(/\[([^\]|]+)\|?([^\]]*)\]/g, (_, a: string, b: string) => b || a)
 }
 
 const TRADE_DIALECTS: Record<1 | 2, TradeDialect> = {
@@ -398,6 +419,8 @@ export async function searchTrade(
   const socketFilters = statFilters.filter((f) => (f.type === 'socket' || f.id === 'socket.white_sockets') && f.enabled)
   if (socketFilters.length > 0) {
     const socketQuery: Record<string, Record<string, number>> = {}
+    // PoE2's rune_sockets filter lives under equipment_filters (same group as AR/EV/ES).
+    const runeSocketRange: { min?: number; max?: number } = {}
     for (const f of socketFilters) {
       if (f.id === 'socket.white_sockets') {
         // White sockets: value = white count, min = total sockets
@@ -410,10 +433,27 @@ export async function searchTrade(
         socketQuery.sockets = socketsFilter
       } else if (f.id === 'socket.links') {
         socketQuery.links = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
+      } else if (f.id === 'socket.rune_sockets') {
+        if (f.min != null) runeSocketRange.min = f.min
+        if (f.max != null) runeSocketRange.max = f.max
       }
     }
     const existing = (query.filters as Record<string, unknown>) ?? {}
-    query.filters = { ...existing, socket_filters: { filters: socketQuery } }
+    if (Object.keys(socketQuery).length > 0) {
+      query.filters = { ...existing, socket_filters: { filters: socketQuery } }
+    }
+    if (Object.keys(runeSocketRange).length > 0) {
+      const filtersObj = (query.filters as Record<string, unknown>) ?? existing
+      const group = (filtersObj[dialect.defenceFilterGroup] as { filters?: Record<string, unknown> } | undefined)
+        ?.filters
+      query.filters = {
+        ...filtersObj,
+        [dialect.defenceFilterGroup]: {
+          disabled: false,
+          filters: { ...(group ?? {}), rune_sockets: runeSocketRange },
+        },
+      }
+    }
   }
 
   // Add heist filters (wings revealed)
@@ -702,6 +742,18 @@ export async function searchTrade(
     }>
   }
 
+  broadcastNewIcons(
+    harvestIcons(
+      poeVersion,
+      (fetchResult.result ?? []).map((r) => ({
+        name: r.item?.name,
+        baseType: r.item?.baseType,
+        rarity: ['Normal', 'Magic', 'Rare', 'Unique'][r.item?.frameType ?? 0],
+        icon: r.item?.icon,
+      })),
+    ),
+  )
+
   const listings: TradeListing[] = (fetchResult.result ?? []).map((r) => ({
     id: r.id,
     price: r.listing.price ?? null,
@@ -716,126 +768,132 @@ export async function searchTrade(
     icon: r.item?.icon,
     indexed: r.listing.indexed,
     itemData: r.item
-      ? {
-          name: r.item.name,
-          baseType: r.item.baseType,
-          rarity: ['Normal', 'Magic', 'Rare', 'Unique'][r.item.frameType ?? 0] ?? 'Normal',
-          explicitMods: [
-            ...(r.item.fracturedMods ?? []),
-            ...(r.item.explicitMods ?? []),
-            ...(r.item.craftedMods ?? []),
-            ...(r.item.mutatedMods ?? []),
-          ],
-          implicitMods: r.item.implicitMods,
-          enchantMods: r.item.enchantMods,
-          fracturedMods: r.item.fracturedMods,
-          craftedMods: r.item.craftedMods,
-          foulbornMods: r.item.mutatedMods,
-          ilvl: r.item.ilvl,
-          sockets: r.item.sockets,
-          gemLevel: r.item.properties?.find((p) => p.name === 'Level')?.values?.[0]?.[0]
-            ? parseInt(r.item.properties.find((p) => p.name === 'Level')!.values[0][0])
-            : undefined,
-          quality: r.item.properties?.find((p) => p.name === 'Quality')?.values?.[0]?.[0]
-            ? parseInt(r.item.properties.find((p) => p.name === 'Quality')!.values[0][0].replace(/[+%]/g, ''))
-            : undefined,
-          storedExperience: r.item.properties?.find((p) => p.name.startsWith('Stored Experience'))?.values?.[0]?.[0]
-            ? parseInt(r.item.properties.find((p) => p.name.startsWith('Stored Experience'))!.values[0][0])
-            : undefined,
-          areaLevel: r.item.properties?.find((p) => p.name === 'Area Level')?.values?.[0]?.[0]
-            ? parseInt(r.item.properties.find((p) => p.name === 'Area Level')!.values[0][0])
-            : undefined,
-          heistJob: (() => {
-            const prop = r.item!.properties?.find((p) => p.type === 46)
-            if (!prop?.values?.[0]?.[0] && !prop?.values?.[1]?.[0]) return undefined
-            return { skill: prop!.values[1]?.[0] as string, level: parseInt(prop!.values[0]?.[0] as string) }
-          })(),
-          corrupted: r.item.corrupted,
-          mirrored: r.item.duplicated,
-          identified: r.item.identified,
-          ...(() => {
-            const ap = r.item!.additionalProperties
-            if (!ap) return {}
-            const open: string[] = []
-            const obstructed: string[] = []
-            let target = open
-            for (const p of ap) {
-              if (p.name === 'Open Rooms:') {
-                target = open
-                continue
+      ? (() => {
+          const clean = (arr?: string[]): string[] | undefined => arr?.map(stripTradeTokens)
+          const explicit = clean(r.item.explicitMods)
+          const implicit = clean(r.item.implicitMods)
+          const enchant = clean(r.item.enchantMods)
+          const fractured = clean(r.item.fracturedMods)
+          const crafted = clean(r.item.craftedMods)
+          const foulborn = clean(r.item.mutatedMods)
+          return {
+            name: r.item.name,
+            baseType: r.item.baseType,
+            rarity: ['Normal', 'Magic', 'Rare', 'Unique'][r.item.frameType ?? 0] ?? 'Normal',
+            explicitMods: [...(fractured ?? []), ...(explicit ?? []), ...(crafted ?? []), ...(foulborn ?? [])],
+            implicitMods: implicit,
+            enchantMods: enchant,
+            fracturedMods: fractured,
+            craftedMods: crafted,
+            foulbornMods: foulborn,
+            ilvl: r.item.ilvl,
+            sockets: r.item.sockets,
+            gemLevel: r.item.properties?.find((p) => p.name === 'Level')?.values?.[0]?.[0]
+              ? parseInt(r.item.properties.find((p) => p.name === 'Level')!.values[0][0])
+              : undefined,
+            quality: r.item.properties?.find((p) => p.name === 'Quality')?.values?.[0]?.[0]
+              ? parseInt(r.item.properties.find((p) => p.name === 'Quality')!.values[0][0].replace(/[+%]/g, ''))
+              : undefined,
+            storedExperience: r.item.properties?.find((p) => p.name.startsWith('Stored Experience'))?.values?.[0]?.[0]
+              ? parseInt(r.item.properties.find((p) => p.name.startsWith('Stored Experience'))!.values[0][0])
+              : undefined,
+            areaLevel: r.item.properties?.find((p) => p.name === 'Area Level')?.values?.[0]?.[0]
+              ? parseInt(r.item.properties.find((p) => p.name === 'Area Level')!.values[0][0])
+              : undefined,
+            heistJob: (() => {
+              const prop = r.item!.properties?.find((p) => p.type === 46)
+              if (!prop?.values?.[0]?.[0] && !prop?.values?.[1]?.[0]) return undefined
+              return { skill: prop!.values[1]?.[0] as string, level: parseInt(prop!.values[0]?.[0] as string) }
+            })(),
+            corrupted: r.item.corrupted,
+            mirrored: r.item.duplicated,
+            identified: r.item.identified,
+            ...(() => {
+              const ap = r.item!.additionalProperties
+              if (!ap) return {}
+              const open: string[] = []
+              const obstructed: string[] = []
+              let target = open
+              for (const p of ap) {
+                if (p.name === 'Open Rooms:') {
+                  target = open
+                  continue
+                }
+                if (p.name === 'Obstructed Rooms:') {
+                  target = obstructed
+                  continue
+                }
+                if (p.type === 49 && p.values?.[0]?.[0]) {
+                  target.push(p.values[0][0].replace(/\s*\(Tier \d+\)/, ''))
+                }
               }
-              if (p.name === 'Obstructed Rooms:') {
-                target = obstructed
-                continue
-              }
-              if (p.type === 49 && p.values?.[0]?.[0]) {
-                target.push(p.values[0][0].replace(/\s*\(Tier \d+\)/, ''))
-              }
-            }
-            if (open.length === 0 && obstructed.length === 0) return {}
-            return { templeOpenRooms: open, templeObstructedRooms: obstructed }
-          })(),
-          modTiers: (() => {
-            const mods = r.item!.extended?.mods
-            const hashes = r.item!.extended?.hashes
-            if (!mods || !hashes) return undefined
+              if (open.length === 0 && obstructed.length === 0) return {}
+              return { templeOpenRooms: open, templeObstructedRooms: obstructed }
+            })(),
+            modTiers: (() => {
+              const mods = r.item!.extended?.mods
+              const hashes = r.item!.extended?.hashes
+              if (!mods || !hashes) return undefined
 
-            // Detect implicit magnitude multipliers (e.g. "25% increased Suffix Modifier magnitudes")
-            let prefixMult = 1
-            let suffixMult = 1
-            for (const imp of r.item!.implicitMods ?? []) {
-              const mm = imp.match(/(\d+)% increased (Prefix|Suffix) Modifier magnitudes/)
-              if (mm) {
-                if (mm[2] === 'Prefix') prefixMult += parseInt(mm[1]) / 100
-                if (mm[2] === 'Suffix') suffixMult += parseInt(mm[1]) / 100
+              // Detect implicit magnitude multipliers (e.g. "25% increased Suffix Modifier magnitudes")
+              let prefixMult = 1
+              let suffixMult = 1
+              for (const imp of r.item!.implicitMods ?? []) {
+                const mm = imp.match(/(\d+)% increased (Prefix|Suffix) Modifier magnitudes/)
+                if (mm) {
+                  if (mm[2] === 'Prefix') prefixMult += parseInt(mm[1]) / 100
+                  if (mm[2] === 'Suffix') suffixMult += parseInt(mm[1]) / 100
+                }
               }
-            }
 
-            const result: Record<string, { tier: string; name: string; ranges: string }> = {}
-            const categories: Array<{ key: string; texts?: string[] }> = [
-              { key: 'explicit', texts: r.item!.explicitMods },
-              { key: 'implicit', texts: r.item!.implicitMods },
-              { key: 'fractured', texts: r.item!.fracturedMods },
-              { key: 'crafted', texts: r.item!.craftedMods },
-              { key: 'enchant', texts: r.item!.enchantMods },
-            ]
-            for (const { key, texts } of categories) {
-              const modEntries = mods[key]
-              const hashEntries = hashes[key]
-              if (!modEntries || !hashEntries || !texts) continue
-              for (let i = 0; i < hashEntries.length && i < texts.length; i++) {
-                if (!hashEntries[i]?.[1]?.[0] && hashEntries[i]?.[1]?.[0] !== 0) continue
-                const modIdx = hashEntries[i][1][0]
-                const m = modEntries[modIdx]
-                if (!m) continue
-                // Apply implicit multiplier to prefix/suffix ranges
-                const isAffixCategory = key === 'explicit' || key === 'fractured' || key === 'crafted'
-                const mult = isAffixCategory
-                  ? m.tier.startsWith('P')
-                    ? prefixMult
-                    : m.tier.startsWith('S')
-                      ? suffixMult
-                      : 1
-                  : 1
-                const ranges = m.magnitudes
-                  .map((mag) => {
-                    const min = Math.trunc(parseFloat(mag.min) * mult)
-                    const max = Math.trunc(parseFloat(mag.max) * mult)
-                    return min === max ? String(min) : `${min}-${max}`
-                  })
-                  .join(', ')
-                result[texts[i]] = { tier: m.tier, name: m.name, ranges }
+              const result: Record<string, { tier: string; name: string; ranges: string }> = {}
+              const categories: Array<{ key: string; texts?: string[] }> = [
+                { key: 'explicit', texts: r.item!.explicitMods },
+                { key: 'implicit', texts: r.item!.implicitMods },
+                { key: 'fractured', texts: r.item!.fracturedMods },
+                { key: 'crafted', texts: r.item!.craftedMods },
+                { key: 'enchant', texts: r.item!.enchantMods },
+              ]
+              for (const { key, texts } of categories) {
+                const modEntries = mods[key]
+                const hashEntries = hashes[key]
+                if (!modEntries || !hashEntries || !texts) continue
+                for (let i = 0; i < hashEntries.length && i < texts.length; i++) {
+                  if (!hashEntries[i]?.[1]?.[0] && hashEntries[i]?.[1]?.[0] !== 0) continue
+                  const modIdx = hashEntries[i][1][0]
+                  const m = modEntries[modIdx]
+                  if (!m) continue
+                  // Apply implicit multiplier to prefix/suffix ranges
+                  const isAffixCategory = key === 'explicit' || key === 'fractured' || key === 'crafted'
+                  const mult = isAffixCategory
+                    ? m.tier.startsWith('P')
+                      ? prefixMult
+                      : m.tier.startsWith('S')
+                        ? suffixMult
+                        : 1
+                    : 1
+                  const ranges = m.magnitudes
+                    .map((mag) => {
+                      const min = Math.trunc(parseFloat(mag.min) * mult)
+                      const max = Math.trunc(parseFloat(mag.max) * mult)
+                      return min === max ? String(min) : `${min}-${max}`
+                    })
+                    .join(', ')
+                  // Strip tokens to match the stripped mod text used as display key
+                  // in the explicit/implicit/fractured/crafted arrays above.
+                  result[stripTradeTokens(texts[i])] = { tier: m.tier, name: m.name, ranges }
+                }
               }
-            }
-            return Object.keys(result).length > 0 ? result : undefined
-          })(),
-          armour: r.item.extended?.ar,
-          evasion: r.item.extended?.ev,
-          energyShield: r.item.extended?.es,
-          pdps: r.item.extended?.pdps,
-          edps: r.item.extended?.edps,
-          dps: r.item.extended?.dps,
-        }
+              return Object.keys(result).length > 0 ? result : undefined
+            })(),
+            armour: r.item.extended?.ar,
+            evasion: r.item.extended?.ev,
+            energyShield: r.item.extended?.es,
+            pdps: r.item.extended?.pdps,
+            edps: r.item.extended?.edps,
+            dps: r.item.extended?.dps,
+          }
+        })()
       : undefined,
   }))
 
@@ -1014,6 +1072,18 @@ async function fetchAndMapListings(ids: string[], queryId: string): Promise<Trad
     }>
   }
 
+  broadcastNewIcons(
+    harvestIcons(
+      poeVersion,
+      (fetchResult.result ?? []).map((r) => ({
+        name: r.item?.name,
+        baseType: r.item?.baseType ?? r.item?.typeLine,
+        rarity: ['Normal', 'Magic', 'Rare', 'Unique'][r.item?.frameType ?? 0],
+        icon: r.item?.icon,
+      })),
+    ),
+  )
+
   return (fetchResult.result ?? []).map((r) => ({
     id: r.id,
     price: r.listing.price ? { amount: r.listing.price.amount, currency: r.listing.price.currency } : null,
@@ -1028,8 +1098,8 @@ async function fetchAndMapListings(ids: string[], queryId: string): Promise<Trad
           name: r.item.name,
           baseType: r.item.baseType ?? r.item.typeLine,
           rarity: ['Normal', 'Magic', 'Rare', 'Unique'][r.item.frameType ?? 0] ?? 'Normal',
-          explicitMods: r.item.explicitMods ?? [],
-          implicitMods: r.item.implicitMods,
+          explicitMods: (r.item.explicitMods ?? []).map(stripTradeTokens),
+          implicitMods: r.item.implicitMods?.map(stripTradeTokens),
           ilvl: r.item.ilvl,
           // ExpandedListing surfaces these flags as status chips (Corrupted, Mirrored,
           // Unidentified); the regular trade path includes them, so map-regex listings

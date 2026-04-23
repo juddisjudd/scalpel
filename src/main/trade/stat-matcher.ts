@@ -975,7 +975,23 @@ export function matchItemMods(
     const b = (socketStr.match(/B/g) ?? []).length
     const w = (socketStr.match(/W/g) ?? []).length
     const a = (socketStr.match(/A/g) ?? []).length
+    const s = (socketStr.match(/S/g) ?? []).length // PoE2 rune sockets
     const totalSockets = r + g + b + w + a
+
+    // PoE2 rune sockets: one chip per item with min = current count. Rune-socket count
+    // is load-bearing for PoE2 (2-socket body armours trade at a premium); enabled by
+    // default so searches narrow to "at least this many" unless the user turns it off.
+    if (s > 0) {
+      miscFilters.push({
+        id: 'socket.rune_sockets',
+        text: `${s} Rune Socket${s === 1 ? '' : 's'}`,
+        value: s,
+        min: s,
+        max: null,
+        enabled: true,
+        type: 'socket',
+      })
+    }
 
     // Only show sockets chip for: white sockets, 6 sockets, or abyssal sockets
     if (w > 0) {

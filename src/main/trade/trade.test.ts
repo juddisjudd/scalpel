@@ -7,6 +7,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const capturedRequests: Array<{ url: string; method: string; body?: string }> = []
 
 vi.mock('electron', () => ({
+  // overlay.ts (pulled in transitively via trade.ts -> icon-cache.ts) registers
+  // an ipcMain listener at module scope, so the mock has to expose ipcMain even
+  // though these tests never exercise it.
+  ipcMain: { on: vi.fn(), handle: vi.fn(), removeListener: vi.fn() },
   net: {
     request: vi.fn((opts: { url: string; method: string }) => {
       const entry = { url: opts.url, method: opts.method } as {
@@ -53,7 +57,7 @@ vi.mock('./stat-matcher', async (orig) => {
   return { ...actual, ensureStatsLoaded: vi.fn().mockResolvedValue(undefined) }
 })
 
-import { buildGemTypeField, searchTrade, type StatFilter } from './trade'
+import { buildGemTypeField, searchTrade, stripTradeTokens, type StatFilter } from './trade'
 import { setPoeVersion } from '../game-state'
 
 describe('buildGemTypeField', () => {
@@ -85,6 +89,28 @@ describe('buildGemTypeField', () => {
 
   it('does not double-prepend "Vaal " when baseType already starts with it', () => {
     expect(buildGemTypeField('Vaal Fireball', true)).toBe('Vaal Fireball')
+  })
+})
+
+describe('stripTradeTokens', () => {
+  it('replaces [key|display] with display', () => {
+    expect(stripTradeTokens('30% reduced [Attributes|Attribute] Requirements')).toBe(
+      '30% reduced Attribute Requirements',
+    )
+  })
+
+  it('replaces [key] with key when no pipe', () => {
+    expect(stripTradeTokens('+48 to [Spirit]')).toBe('+48 to Spirit')
+  })
+
+  it('handles multiple tokens in one line', () => {
+    expect(stripTradeTokens('85% increased [Evasion] and [EnergyShield|Energy Shield]')).toBe(
+      '85% increased Evasion and Energy Shield',
+    )
+  })
+
+  it('leaves PoE1 strings unchanged (no brackets to match)', () => {
+    expect(stripTradeTokens('+186 to maximum Life')).toBe('+186 to maximum Life')
   })
 })
 
@@ -153,5 +179,19 @@ describe('searchTrade filter-group dispatch', () => {
     expect(body.query.filters.equipment_filters.filters.es.min).toBe(182)
     expect(body.query.filters.armour_filters).toBeUndefined()
     expect(body.query.filters.weapon_filters).toBeUndefined()
+  })
+
+  it('PoE2 rune_sockets filter lands under equipment_filters alongside defence stats', async () => {
+    setPoeVersion(2)
+    const withRunes: StatFilter[] = [
+      ...defenceFilters,
+      { id: 'socket.rune_sockets', text: '2 Rune Sockets', type: 'socket', enabled: true, value: 2, min: 2, max: null },
+    ]
+    await searchTrade('Fate of the Vaal', bodyArmourItem, withRunes, 'any', 'exalted_divine')
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    const body = JSON.parse(req!.body!)
+    expect(body.query.filters.equipment_filters.filters.rune_sockets).toEqual({ min: 2 })
+    expect(body.query.filters.equipment_filters.filters.ev.min).toBe(487)
+    expect(body.query.filters.socket_filters).toBeUndefined()
   })
 })

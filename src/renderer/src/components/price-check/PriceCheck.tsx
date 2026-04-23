@@ -14,6 +14,7 @@ import {
 import { FilterChip } from './FilterChip'
 import { PriceChip } from '../../shared/PriceChip'
 import { FaustusBanner } from './FaustusBanner'
+import { AngeBanner } from './AngeBanner'
 import { ItemHeader } from './ItemHeader'
 import { getDustInfo } from '../../shared/dust'
 import { StatFilterRow } from './StatFilterRow'
@@ -573,7 +574,11 @@ export function PriceCheck({
           )}
         </div>
 
-        <FaustusBanner item={item} priceInfo={priceInfo} chaosPerDivine={chaosPerDivine} />
+        {poeVersion === 2 ? (
+          <AngeBanner item={item} priceInfo={priceInfo} chaosPerDivine={chaosPerDivine} />
+        ) : (
+          <FaustusBanner item={item} priceInfo={priceInfo} chaosPerDivine={chaosPerDivine} />
+        )}
 
         {/* Error */}
         {error && <div className="text-[10px] text-[#ef5350] px-1">{error}</div>}

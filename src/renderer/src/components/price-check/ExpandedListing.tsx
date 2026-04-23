@@ -3,6 +3,8 @@ import type { Listing } from './types'
 import { ATZOATL_KEY_ROOMS } from '../../../../shared/data/trade/atzoatl'
 import { ModLine } from './ModLine'
 import { SOCKET_IMGS, RARITY_COLORS, MOD_COLORS, getItemSize, socketLink, socketWhite } from './constants'
+import { RuneSocketOverlayPoe2 } from '../sockets/RuneSocketOverlay.poe2'
+import { usePoeVersion } from '../../shared/poe-version-context'
 
 const MOD_SEPARATOR = {
   backgroundImage: 'linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent)',
@@ -74,7 +76,7 @@ export function ExpandedListing({ listing: l, itemClass, itemName, itemRarity }:
             <img src={l.icon} alt="" className="relative object-contain" style={{ width: artW, height: artH }} />
             {d.sockets && d.sockets.length > 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <SocketOverlay sockets={d.sockets} itemClass={itemClass} />
+                <SocketOverlay sockets={d.sockets} itemClass={itemClass} itemName={d.name || itemName} />
               </div>
             )}
           </div>
@@ -297,14 +299,22 @@ export function ExpandedListing({ listing: l, itemClass, itemName, itemRarity }:
 function SocketOverlay({
   sockets,
   itemClass,
+  itemName,
 }: {
   sockets: Array<{ group: number; sColour: string }>
   itemClass: string
+  itemName: string
 }): JSX.Element {
+  const poeVersion = usePoeVersion()
   const n = sockets.length
-  const is1Wide = n <= 3 && !['Helmets', 'Body Armours', 'Gloves', 'Boots', 'Shields'].includes(itemClass)
   const sz = 20,
     gap = 5
+
+  if (poeVersion === 2) {
+    return <RuneSocketOverlayPoe2 count={n} itemClass={itemClass} itemName={itemName} sz={sz} gap={gap} />
+  }
+
+  const is1Wide = n <= 3 && !['Helmets', 'Body Armours', 'Gloves', 'Boots', 'Shields'].includes(itemClass)
 
   if (is1Wide || n <= 1) {
     return (
