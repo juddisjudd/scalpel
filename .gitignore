@@ -25,6 +25,7 @@ docs/
 # Local state
 .wrangler/
 test-maps.md
+scripts/local/
 
 # OS
 .DS_Store
