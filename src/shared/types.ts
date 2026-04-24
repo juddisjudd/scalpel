@@ -363,8 +363,12 @@ export interface SearchableItem {
   baseType: string
   itemClass: string
   rarity: 'Unique' | 'Currency' | 'Gem'
-  /** Minimal filter-block info the renderer reuses for `<LootLabel />` styling. */
-  block: { visibility: 'Show' | 'Hide'; actions: FilterAction[] } | null
+  /** Minimal filter-block info the renderer reuses for `<LootLabel />` styling.
+   *  The array is the full Continue chain that matches this item in filter order:
+   *  zero or more Continue decorators first, ending with the primary non-Continue
+   *  match. Renderer composes them so Continue overlays are reflected in the
+   *  label preview. `null` when no block matches. */
+  blocks: Array<{ visibility: 'Show' | 'Hide'; actions: FilterAction[]; continue: boolean }> | null
   /** Div-card reward text -- searchable and shown inline when the match came via reward. */
   reward?: string
   /** Explicit icon-map key when the display name doesn't match the iconMap key (e.g.

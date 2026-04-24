@@ -10,9 +10,15 @@ interface Props {
   baseType: string
   item: PoeItem
   onMoved: (newTier: string) => void
+  /** Continue blocks that match this item earlier in the filter, in file order.
+   *  Passed to the label preview so sibling tiers show the same decorator overlays
+   *  the game would actually paint. Siblings between Continue blocks are an edge
+   *  case we approximate: the preamble from the current primary match is reused
+   *  for every sibling in the dropdown. */
+  continuePreamble?: FilterBlock[]
 }
 
-export function TierNavigator({ group, baseType, item, onMoved }: Props): JSX.Element {
+export function TierNavigator({ group, baseType, item, onMoved, continuePreamble = [] }: Props): JSX.Element {
   const [moving, setMoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
@@ -106,7 +112,7 @@ export function TierNavigator({ group, baseType, item, onMoved }: Props): JSX.El
               <HiddenLootLabel label={item.baseType} />
             ) : (
               <LootLabel
-                block={currentSib.block}
+                blocks={[...continuePreamble, currentSib.block]}
                 label={item.baseType}
                 showStack={hasStackSize ? { min: getStackMin(currentSib.block) ?? 1 } : undefined}
               />
@@ -177,7 +183,7 @@ export function TierNavigator({ group, baseType, item, onMoved }: Props): JSX.El
                       <HiddenLootLabel label={item.baseType} />
                     ) : (
                       <LootLabel
-                        block={sib.block}
+                        blocks={[...continuePreamble, sib.block]}
                         label={item.baseType}
                         showStack={hasStackSize ? { min: getStackMin(sib.block) ?? 1 } : undefined}
                       />

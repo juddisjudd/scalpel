@@ -59,8 +59,10 @@ describe('buildSearchableRow', () => {
     expect(row.name).toBe('Chaos Orb')
     expect(row.baseType).toBe('Chaos Orb')
     // Matched blocks give a visibility + actions payload; unmatched rows get null.
-    expect(row.block).not.toBeNull()
-    expect(row.block?.visibility).toMatch(/Show|Hide/)
+    // The chain is an array; the primary (last) block is what drives visibility.
+    expect(row.blocks).not.toBeNull()
+    expect(row.blocks!.length).toBeGreaterThan(0)
+    expect(row.blocks![row.blocks!.length - 1].visibility).toMatch(/Show|Hide/)
   })
 
   it('returns a null block when no filter rule matches the synthetic', () => {
@@ -80,9 +82,9 @@ describe('buildSearchableRow', () => {
       },
     )
     // Either no match at all, or the catch-all -- but for unknown classes with no
-    // catch-all in the fixture, block should be null.
-    if (row.block !== null) {
-      expect(row.block.visibility).toMatch(/Show|Hide/)
+    // catch-all in the fixture, blocks should be null.
+    if (row.blocks !== null) {
+      expect(row.blocks[row.blocks.length - 1].visibility).toMatch(/Show|Hide/)
     }
   })
 

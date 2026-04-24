@@ -160,7 +160,11 @@ export function ItemSearchCombobox({ onPicked }: { onPicked?: () => void }): JSX
             }}
           >
             {results.map(({ item, rewardMatch }, i) => {
-              const isHidden = item.block?.visibility === 'Hide'
+              // The primary match is the last entry in the chain (Continue decorators
+              // come first in file order, the non-Continue match terminates it), so its
+              // visibility drives whether the row renders as hidden.
+              const primary = item.blocks?.[item.blocks.length - 1]
+              const isHidden = primary?.visibility === 'Hide'
               return (
                 <div
                   key={`${item.rarity}-${item.name}-${i}`}
@@ -176,11 +180,11 @@ export function ItemSearchCombobox({ onPicked }: { onPicked?: () => void }): JSX
                     <div className="w-[22px] h-[22px] shrink-0" />
                   )}
                   <div className="flex-1 min-w-0 flex items-center gap-[6px] flex-wrap">
-                    {item.block ? (
+                    {item.blocks ? (
                       isHidden ? (
                         <HiddenLootLabel label={item.name} />
                       ) : (
-                        <LootLabel block={item.block} label={item.name} />
+                        <LootLabel blocks={item.blocks} label={item.name} />
                       )
                     ) : (
                       <span className="text-[11px] text-text-dim">{item.name}</span>

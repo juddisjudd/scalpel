@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FilterAction, FilterBlock } from '../../../../shared/types'
 import { invalidateColorFreqCache } from './color-freq-cache'
 import { ConditionRow } from './ConditionRow'
@@ -8,12 +8,14 @@ import { formatTierLabel } from '../price-audit/constants'
 import { SettingConfig, MenuUnfold, MenuFold, ChartHistogram } from '@icon-park/react'
 import { IP } from '../../shared/constants'
 import { InfoChip } from '../../shared/PriceChip'
+import { composeLabelStyle } from '../../shared/LootLabel'
 import { TierActionCard } from './TierActionCard'
 import { TierIconStrip } from './TierIconStrip'
 import type { FilterBlockEditorProps } from './types'
 
 export function FilterBlockEditor({
   match,
+  chain,
   itemClass,
   item,
   onClose: _onClose,
@@ -26,55 +28,114 @@ export function FilterBlockEditor({
   tierSisterSide,
 }: FilterBlockEditorProps): JSX.Element {
   const { block, blockIndex } = match
-  const [editing, setEditing] = useState<FilterBlock>(structuredClone(block))
+  // Resolve the full chain once. Without one, we behave exactly like the old
+  // single-block editor (the primary match is its own chain). With one, color
+  // edits route to whichever block in the chain currently owns each action.
+  const chainMatches = useMemo(() => chain ?? [match], [chain, match])
+  const originals = useMemo(() => {
+    const by: Record<number, FilterBlock> = {}
+    for (const m of chainMatches) by[m.blockIndex] = m.block
+    return by
+  }, [chainMatches])
+
+  // Per-block edit buffers, keyed by blockIndex. Lazily populated: a block is
+  // only cloned into `edits` once the user actually changes something on it.
+  // Everything non-color still edits the primary; color edits route by action
+  // owner (see `findColorOwner`).
+  const [edits, setEdits] = useState<Record<number, FilterBlock>>(() => ({ [blockIndex]: structuredClone(block) }))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isDirty = JSON.stringify(editing) !== JSON.stringify(block)
+  /** Read the current editing state of any chain block, cloning on demand. */
+  const blockAt = useCallback((idx: number): FilterBlock => edits[idx] ?? originals[idx], [edits, originals])
 
-  const editingRef = useRef(editing)
-  editingRef.current = editing
+  /** The primary (non-Continue) match -- everything outside color slots still
+   *  edits this single block. */
+  const editing = blockAt(blockIndex)
+
+  const isDirty = Object.entries(edits).some(
+    ([idxStr, b]) => JSON.stringify(b) !== JSON.stringify(originals[Number(idxStr)]),
+  )
+
+  const editsRef = useRef(edits)
+  editsRef.current = edits
+  const originalsRef = useRef(originals)
+  originalsRef.current = originals
 
   const save = useCallback(async (): Promise<void> => {
     setSaving(true)
     setError(null)
-    const result = await window.api.saveBlockEdit(
-      blockIndex,
-      editingRef.current,
-      item ? JSON.stringify(item) : undefined,
+    const itemJson = item ? JSON.stringify(item) : undefined
+    // Save every dirty block in the chain. Serial (not Promise.all) so the
+    // main process mutates `currentFilter` for block N before handling block
+    // M -- both targets are in the same file and both calls rewrite it. Stops
+    // at the first failure so a mid-chain error doesn't leave partial edits.
+    const dirtyEntries = Object.entries(editsRef.current).filter(
+      ([idxStr, b]) => JSON.stringify(b) !== JSON.stringify(originalsRef.current[Number(idxStr)]),
     )
+    let failure: string | null = null
+    for (const [idxStr, b] of dirtyEntries) {
+      const result = await window.api.saveBlockEdit(Number(idxStr), b, itemJson)
+      if (!result.ok) {
+        failure = result.error ?? 'Unknown error'
+        break
+      }
+    }
     setSaving(false)
-    if (result.ok) {
+    if (failure) {
+      setError(failure)
+    } else {
       invalidateColorFreqCache()
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } else {
-      setError(result.error ?? 'Unknown error')
     }
-  }, [blockIndex, item])
+  }, [item])
 
   // Report save state to parent
   useEffect(() => {
     onSaveStateChange?.({ isDirty, saving, saved, error, save })
   }, [isDirty, saving, saved, error, save])
 
-  const updateVisibility = (v: FilterBlock['visibility']): void => setEditing((prev) => ({ ...prev, visibility: v }))
-
-  const updateAction = (idx: number, updated: FilterAction): void =>
-    setEditing((prev) => {
-      const actions = [...prev.actions]
-      actions[idx] = updated
-      return { ...prev, actions }
+  const updateVisibility = (v: FilterBlock['visibility']): void =>
+    setEdits((prev) => {
+      const current = prev[blockIndex] ?? structuredClone(originals[blockIndex])
+      return { ...prev, [blockIndex]: { ...current, visibility: v } }
     })
 
-  const addAction = (action: FilterAction): number => {
+  const updateActionOn = (targetIdx: number, actionIdx: number, updated: FilterAction): void =>
+    setEdits((prev) => {
+      const current = prev[targetIdx] ?? structuredClone(originals[targetIdx])
+      const actions = [...current.actions]
+      actions[actionIdx] = updated
+      return { ...prev, [targetIdx]: { ...current, actions } }
+    })
+
+  const addActionOn = (targetIdx: number, action: FilterAction): number => {
     let newIndex = -1
-    setEditing((prev) => {
-      newIndex = prev.actions.length
-      return { ...prev, actions: [...prev.actions, action] }
+    setEdits((prev) => {
+      const current = prev[targetIdx] ?? structuredClone(originals[targetIdx])
+      newIndex = current.actions.length
+      return { ...prev, [targetIdx]: { ...current, actions: [...current.actions, action] } }
     })
     return newIndex
+  }
+
+  // Everything outside color editing still targets the primary block.
+  const updateAction = (idx: number, updated: FilterAction): void => updateActionOn(blockIndex, idx, updated)
+  const addAction = (action: FilterAction): number => addActionOn(blockIndex, action)
+
+  /** Which chain block currently owns an action of the given type? Game
+   *  semantics: later blocks in the chain override earlier ones, so we walk
+   *  bottom-up. Returns null when nobody in the chain has authored it. */
+  const findColorOwner = (type: string): { blockIndex: number; actionIndex: number } | null => {
+    for (let i = chainMatches.length - 1; i >= 0; i--) {
+      const idx = chainMatches[i].blockIndex
+      const actions = blockAt(idx).actions
+      const actIdx = actions.findIndex((a) => a.type === type)
+      if (actIdx >= 0) return { blockIndex: idx, actionIndex: actIdx }
+    }
+    return null
   }
 
   const rawTierHeading = block.tierTag ? formatTierLabel(block.tierTag.tier) : `Block #${blockIndex + 1}`
@@ -218,20 +279,42 @@ export function FilterBlockEditor({
           const fontSizeType = 'SetFontSize'
           const skipTypes = new Set([...colorTypes, ...soundTypes, ...effectTypes, ...iconTypes, fontSizeType])
 
-          // Ensure all three color types are always editable.
-          // Missing colors get a placeholder index of -1 and are added on first edit.
+          // Ensure all three color types are always editable. Each slot tracks
+          // which chain block currently owns its value (may be a Continue
+          // decorator upstream of the primary match) so edits route there
+          // rather than materializing a new action on the primary block and
+          // silently overriding the Continue source. Slots with no owner get
+          // a placeholder; first edit creates the action on the primary block.
           const colorDefaults: Record<string, string[]> = {
             SetTextColor: ['200', '200', '200', '255'],
             SetBorderColor: ['200', '200', '200', '255'],
             SetBackgroundColor: ['0', '0', '0', '240'],
           }
-          const existingColorActions = editing.actions
-            .map((a, i) => ({ action: a, index: i }))
-            .filter(({ action }) => colorTypes.has(action.type))
-          const colorActions = ['SetTextColor', 'SetBorderColor', 'SetBackgroundColor'].map((type) => {
-            const existing = existingColorActions.find(({ action }) => action.type === type)
-            if (existing) return existing
-            return { action: { type, values: colorDefaults[type] } as FilterAction, index: -1 }
+          type ColorSlot = {
+            action: FilterAction
+            /** Block that authored the action, or the primary block when unset (add-target). */
+            targetIndex: number
+            /** Action index within that block, or -1 when unset. */
+            actionIndex: number
+            /** True when no chain block has authored this color -- rendered as `(NONE)`. */
+            unset: boolean
+          }
+          const colorSlots: ColorSlot[] = ['SetTextColor', 'SetBorderColor', 'SetBackgroundColor'].map((type) => {
+            const owner = findColorOwner(type)
+            if (owner) {
+              return {
+                action: blockAt(owner.blockIndex).actions[owner.actionIndex],
+                targetIndex: owner.blockIndex,
+                actionIndex: owner.actionIndex,
+                unset: false,
+              }
+            }
+            return {
+              action: { type, values: colorDefaults[type] } as FilterAction,
+              targetIndex: blockIndex,
+              actionIndex: -1,
+              unset: true,
+            }
           })
           const soundAction = editing.actions
             .map((a, i) => ({ action: a, index: i }))
@@ -249,22 +332,21 @@ export function FilterBlockEditor({
             .map((a, i) => ({ action: a, index: i }))
             .filter(({ action }) => !skipTypes.has(action.type))
 
-          // Extract current style values for the label preview
-          const getColorRgba = (type: string): string | undefined => {
-            const a = colorActions.find(({ action }) => action.type === type)
-            if (!a) return undefined
-            const [r, g, b, alpha] = a.action.values.map(Number)
-            return `rgba(${r ?? 0},${g ?? 0},${b ?? 0},${(alpha ?? 255) / 255})`
-          }
-          const textColorCss = getColorRgba('SetTextColor')
-          const bgColorCss = getColorRgba('SetBackgroundColor')
-          const borderColorCss = getColorRgba('SetBorderColor')
-          const fontSize = fontSizeAction ? Number(fontSizeAction.action.values[0]) || 32 : 32
+          // Compose the effective label style across the whole match chain so the
+          // preview reflects what the game would actually render -- Continue
+          // decorators upstream plus overrides from the primary block. Font size
+          // falls back to the primary's SetFontSize when the chain doesn't set
+          // one because that's what the slider edits.
+          const composed = composeLabelStyle(chainMatches.map((m) => blockAt(m.blockIndex)))
+          const textColorCss = composed.textColor
+          const bgColorCss = composed.bgColor
+          const borderColorCss = composed.borderColor !== 'transparent' ? composed.borderColor : undefined
+          const fontSize = fontSizeAction ? Number(fontSizeAction.action.values[0]) || 32 : composed.fontSize
 
           return (
             <div className="flex flex-col gap-2">
               {/* Appearance: label preview + colors + font size */}
-              {(colorActions.length > 0 || fontSizeAction) && (
+              {(colorSlots.length > 0 || fontSizeAction) && (
                 <div className="bg-black/25 rounded overflow-hidden">
                   <div className="text-[10px] font-bold text-text-dim uppercase tracking-[0.5px] px-3 pt-[8px] pb-[2px]">
                     Tier Label
@@ -275,7 +357,7 @@ export function FilterBlockEditor({
                       <div
                         className="inline-flex items-center justify-center px-[6px] py-px rounded-sm origin-center"
                         style={{
-                          background: bgColorCss ?? 'transparent',
+                          background: bgColorCss,
                           border: borderColorCss
                             ? `${Math.max(0.25, 7.5 / (fontSize * 0.48))}px solid ${borderColorCss}`
                             : '0.5px solid transparent',
@@ -315,18 +397,21 @@ export function FilterBlockEditor({
                     )}
                   </div>
 
-                  {/* Color editors */}
-                  {colorActions.length > 0 && (
+                  {/* Color editors -- each slot routes its edit to whichever block
+                      in the Continue chain currently owns that action type, so
+                      changes to a Continue decorator land on the decorator. */}
+                  {colorSlots.length > 0 && (
                     <div className="flex gap-2 px-[10px] py-2">
-                      {colorActions.map(({ action, index }) => (
+                      {colorSlots.map(({ action, targetIndex, actionIndex, unset }) => (
                         <ColorActionEditor
                           key={action.type}
                           action={action}
+                          unset={unset}
                           onChange={(updated) => {
-                            if (index === -1) {
-                              addAction(updated)
+                            if (actionIndex === -1) {
+                              addActionOn(targetIndex, updated)
                             } else {
-                              updateAction(index, updated)
+                              updateActionOn(targetIndex, actionIndex, updated)
                             }
                           }}
                         />

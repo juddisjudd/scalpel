@@ -95,6 +95,18 @@ export function FilterPanel({
     selectedStrandBpIndex,
   )
 
+  // Continue chain for the active primary: every matching block up to and
+  // including the primary, in file order. `undefined` when the primary isn't
+  // in `data.matches` (e.g. a breakpoint override picked a match out of band)
+  // -- downstream callers fall back to single-block behavior in that case.
+  const activeChain = ((): typeof data.matches | undefined => {
+    if (!displayMatch) return undefined
+    const idx = data.matches.findIndex((m) => m.blockIndex === displayMatch.blockIndex)
+    if (idx < 0) return undefined
+    return data.matches.slice(0, idx + 1)
+  })()
+  const continuePreamble = activeChain?.slice(0, -1).map((m) => m.block) ?? []
+
   // Label text reserved for future tooltip/aria -- kept inline since it's UI copy,
   // not domain logic. See getActiveMatch for the match/tierGroup itself.
   let displayLabel: string | null = null
@@ -156,6 +168,7 @@ export function FilterPanel({
               baseType={item.baseType}
               item={item}
               onMoved={() => {}}
+              continuePreamble={continuePreamble}
             />
           )}
           {!activeTierGroup && (
@@ -231,6 +244,7 @@ export function FilterPanel({
               <FilterBlockEditor
                 key={`${item.name}-${item.baseType}-${displayMatch.blockIndex}-${selectedBpIndex}`}
                 match={displayMatch}
+                chain={activeChain && activeChain.length > 1 ? activeChain : undefined}
                 itemClass={item.itemClass}
                 item={item}
                 onClose={onClose}

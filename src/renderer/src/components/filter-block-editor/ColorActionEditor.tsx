@@ -84,9 +84,15 @@ function ColorInputs({
 export function ColorActionEditor({
   action,
   onChange,
+  unset,
 }: {
   action: FilterAction
   onChange: (a: FilterAction) => void
+  /** True when the action isn't actually on the block yet -- the parent is
+   *  using this as a blank editing slot. Swatch renders as dark grey with
+   *  "(NONE)" appended to the label so users can tell the difference between
+   *  an authored color and a placeholder that'll be materialized on first edit. */
+  unset?: boolean
 }): JSX.Element {
   const [r, g, b, a] = action.values.map(Number)
   const rgba: RgbaColor = { r: r ?? 0, g: g ?? 0, b: b ?? 0, a: a ?? 255 }
@@ -121,14 +127,17 @@ export function ColorActionEditor({
     SetBackgroundColor: 'Background',
   }
 
-  // Perceived brightness accounting for alpha blending on dark bg
+  // Perceived brightness accounting for alpha blending on dark bg. When the
+  // slot is unset we render a uniform dark-grey placeholder instead of the
+  // pending RGBA, so the luminance math would be misleading -- force the
+  // dark-variant text colors directly.
   const blended = {
     r: rgba.r * (rgba.a / 255),
     g: rgba.g * (rgba.a / 255),
     b: rgba.b * (rgba.a / 255),
   }
   const luminance = (blended.r * 299 + blended.g * 587 + blended.b * 114) / 1000
-  const isDark = luminance < 128
+  const isDark = unset || luminance < 128
   const textColor = isDark ? '#fff' : 'rgba(0,0,0,0.85)'
   const shadowColor = isDark ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.35)'
 
@@ -149,7 +158,9 @@ export function ColorActionEditor({
       <div onClick={() => setOpen((o) => !o)} className="flex items-center gap-[6px] cursor-pointer rounded">
         <div
           className="w-full h-7 rounded-[3px] border border-white/[0.08] flex items-center justify-between px-[6px]"
-          style={{ background: `rgba(${rgba.r},${rgba.g},${rgba.b},${rgba.a / 255})` }}
+          style={{
+            background: unset ? 'rgba(255, 255, 255, 0.04)' : `rgba(${rgba.r},${rgba.g},${rgba.b},${rgba.a / 255})`,
+          }}
         >
           <span
             className="text-[10px] font-bold uppercase tracking-[0.5px]"
@@ -158,7 +169,7 @@ export function ColorActionEditor({
               textShadow: `0 1px 2px ${shadowColor}`,
             }}
           >
-            {label[action.type] ?? action.type}
+            {(label[action.type] ?? action.type) + (unset ? ' (none)' : '')}
           </span>
           <svg
             width="12"

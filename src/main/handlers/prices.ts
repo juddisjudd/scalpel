@@ -106,32 +106,39 @@ function findItemClassInFilter(baseType: string): string {
 const SEARCHABLE_CACHE_TTL = 6 * 60 * 60 * 1000
 let searchableCache: { filter: FilterFile; items: SearchableItem[]; computedAt: number } | null = null
 
-/** Evaluate a synthetic item against the filter and return the block the user should
- *  see styling for: the first non-Continue match if any, else the last Continue-chain
- *  match (still shown as informational). */
-function resolveActiveMatch(
-  filter: FilterFile,
-  item: PoeItem,
-): ReturnType<typeof findMatchingBlocks>[number] | undefined {
+/** Evaluate a synthetic item against the filter and return the full Continue
+ *  chain in file order, ending with the primary non-Continue match. When no
+ *  non-Continue match is found, falls back to the last Continue-chain entry
+ *  (still shown as informational). */
+function resolveMatchChain(filter: FilterFile, item: PoeItem): FilterBlock[] {
   const matches = findMatchingBlocks(filter, item)
-  return matches.find((m) => m.isFirstMatch) ?? matches[matches.length - 1]
+  if (matches.length === 0) return []
+  const primaryIdx = matches.findIndex((m) => m.isFirstMatch)
+  const chain = primaryIdx >= 0 ? matches.slice(0, primaryIdx + 1) : matches
+  return chain.map((m) => m.block)
 }
 
-/** Minimal subset of FilterBlock the renderer uses to reuse <LootLabel /> styling. */
-function toLabel(block: FilterBlock): SearchableItem['block'] {
-  return { visibility: block.visibility, actions: block.actions }
+/** Minimal LootLabel-consumable view of a FilterBlock. Drops everything the
+ *  renderer doesn't need so the IPC payload stays lean. `Minimal` visibility
+ *  collapses to `Show` because the renderer only distinguishes show vs. hide. */
+function toLabelBlock(block: FilterBlock): NonNullable<SearchableItem['blocks']>[number] {
+  return {
+    visibility: block.visibility === 'Hide' ? 'Hide' : 'Show',
+    actions: block.actions,
+    continue: block.continue,
+  }
 }
 
 /** Build a searchable row by synthesizing a PoeItem, evaluating it against the filter,
- *  and attaching the matched block's label. Used by uniques / maps / gems so every
- *  category shares the same "synthesize -> find active match -> package" shape. */
+ *  and attaching the matched Continue chain's label info. Used by uniques / maps /
+ *  gems so every category shares the same "synthesize -> find chain -> package" shape. */
 export function buildSearchableRow(
   filter: FilterFile,
-  base: Omit<SearchableItem, 'block'>,
+  base: Omit<SearchableItem, 'blocks'>,
   syntheticOverrides: Partial<PoeItem>,
 ): SearchableItem {
-  const match = resolveActiveMatch(filter, defaultPoeItem(syntheticOverrides))
-  return { ...base, block: match ? toLabel(match.block) : null }
+  const chain = resolveMatchChain(filter, defaultPoeItem(syntheticOverrides, poeVersion))
+  return { ...base, blocks: chain.length > 0 ? chain.map(toLabelBlock) : null }
 }
 
 /** All gem names that should surface in search for the given filter. */
@@ -221,12 +228,16 @@ function collectStackables(filter: FilterFile): SearchableItem[] {
       }
     }
   }
+  // Stackable rows skip the full synthesize-and-match pass the other collectors
+  // use -- they just take the first block that lists each base. That means no
+  // Continue chain is computed here; the label preview for a stackable row
+  // reflects that single block's styling only.
   return [...seenBase.entries()].map(([baseType, { itemClass, block }]) => ({
     name: baseType,
     baseType,
     itemClass,
     rarity: 'Currency',
-    block: toLabel(block),
+    blocks: [toLabelBlock(block)],
     reward: itemClass === 'Divination Cards' ? DIV_CARD_REWARDS[baseType] : undefined,
   }))
 }
@@ -321,10 +332,13 @@ export function register(store: Store<AppSettings>): void {
       }
 
       const resolvedRarity = (rarity as PoeItem['rarity']) || 'Normal'
-      const synthetic = defaultPoeItem({
-        ...clickSyntheticOverrides(baseType, itemClass, resolvedRarity, flags),
-        name: uniqueName || baseType,
-      })
+      const synthetic = defaultPoeItem(
+        {
+          ...clickSyntheticOverrides(baseType, itemClass, resolvedRarity, flags),
+          name: uniqueName || baseType,
+        },
+        poeVersion,
+      )
       evaluateAndSend(synthetic)
       // Preload the price check too so switching to the Price tab lands on populated
       // results, matching the clipboard-hotkey behavior.
@@ -381,14 +395,17 @@ export function register(store: Store<AppSettings>): void {
       // paths so the stat-matcher omits the ilvl chip (we don't know the actual ilvl here).
       const gemDefaults =
         rarity === 'Gem' ? { gemLevel: 20, quality: 20, transfigured: baseType in TRANSFIGURED_GEM_DISC } : {}
-      const synthetic = defaultPoeItem({
-        itemClass,
-        rarity,
-        name: isUnique ? ref.name : baseType,
-        baseType,
-        itemLevel: 0,
-        ...gemDefaults,
-      })
+      const synthetic = defaultPoeItem(
+        {
+          itemClass,
+          rarity,
+          name: isUnique ? ref.name : baseType,
+          baseType,
+          itemLevel: 0,
+          ...gemDefaults,
+        },
+        poeVersion,
+      )
       await runPriceCheck(synthetic, store)
     },
   )

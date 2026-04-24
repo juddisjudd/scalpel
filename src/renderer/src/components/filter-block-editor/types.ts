@@ -7,6 +7,12 @@ export type SaveState = { isDirty: boolean; saving: boolean; saved: boolean; err
 
 export interface FilterBlockEditorProps {
   match: MatchResult
+  /** Full Continue chain for this item in filter order, ending with `match`.
+   *  When absent, the editor treats the chain as just `[match]` (pre-Continue
+   *  behavior). Supplying the chain lets the preview render Continue decorators
+   *  and routes color edits to whichever block in the chain currently owns
+   *  each action. */
+  chain?: MatchResult[]
   itemClass: string
   item?: PoeItem
   onClose: () => void

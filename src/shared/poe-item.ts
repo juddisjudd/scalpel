@@ -2,8 +2,15 @@ import type { PoeItem } from './types'
 
 /** Build a synthetic `PoeItem` with sensible defaults. Used by any code path that needs
  *  to evaluate a filter or run a trade lookup without a real clipboard-parsed item --
- *  e.g. the item-search combobox, sister-overlay click-throughs, tier previews. */
-export function defaultPoeItem(overrides: Partial<PoeItem> = {}): PoeItem {
+ *  e.g. the item-search combobox, sister-overlay click-throughs, tier previews.
+ *
+ *  `version` hints the game so area-level-sensitive defaults land on the right side of
+ *  each game's endgame threshold. PoE1 FilterBlade splits campaign vs endgame at
+ *  AreaLevel 68 and our baseline tier-16 map is area 83, so we pretend 83. PoE2 uses
+ *  65 as the endgame split and the top waystone tier caps around 80, so we pretend 80
+ *  for PoE2 synthetics -- clearing every endgame-gated block without overshooting into
+ *  pinnacle-boss-only zones that add niche extra rules. */
+export function defaultPoeItem(overrides: Partial<PoeItem> = {}, version: 1 | 2 = 1): PoeItem {
   return {
     itemClass: '',
     rarity: 'Normal',
@@ -37,7 +44,7 @@ export function defaultPoeItem(overrides: Partial<PoeItem> = {}): PoeItem {
     influence: [],
     explicits: [],
     implicits: [],
-    areaLevel: 83,
+    areaLevel: version === 2 ? 80 : 83,
     ...overrides,
   } as PoeItem
 }
