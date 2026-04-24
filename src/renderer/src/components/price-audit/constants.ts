@@ -1,7 +1,8 @@
 import { iconMap, divCardArtMap } from '../../shared/constants'
-// Price audit is a PoE1-only feature (gated via features.dustExplorer). mirrorIcon
-// below is a module-load-time constant, so pull it straight from the PoE1 sheet
-// rather than through iconMap (which isn't initialized yet at import time).
+// Mirror icon is a module-load-time constant so we pull it straight from the
+// PoE1 sheet rather than through iconMap (which isn't populated until
+// initIconMap fires at runtime). PoE2 has a Mirror of Kalandra too and
+// reuses art close enough that the PoE1 asset is fine for both games.
 import itemIcons from '../../../../shared/data/items/item-icons-poe1.json'
 import { formatDust, formatPrice } from '../../shared/utils'
 import dustValues from '../../../../shared/data/economy/dust-values.json'

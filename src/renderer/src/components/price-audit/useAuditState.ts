@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FilterBlock, TierGroup, TierSibling, PoeItem } from '../../../../shared/types'
+import { usePoeVersion } from '../../shared/poe-version-context'
 import {
   AuditItem,
   calcMaxDust,
@@ -75,6 +76,13 @@ export interface AuditState {
 }
 
 export function useAuditState({ block, blockIndex, tierGroup, item }: UseAuditStateArgs): AuditState {
+  // Dust is a PoE1-only economy mechanic (Thaumaturgic Dust comes from Reverie
+  // league / Kingsmarch). PoE2 items happen to share a handful of base-type
+  // names with PoE1 so calcMaxDust would return non-null for them -- gate the
+  // whole dust path on version to keep the audit view price-only in PoE2.
+  const poeVersion = usePoeVersion()
+  const supportsDust = poeVersion === 1
+
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<AuditItem[]>([])
   const saved = savedSliderState.get(blockIndex)
@@ -161,7 +169,7 @@ export function useAuditState({ block, blockIndex, tierGroup, item }: UseAuditSt
         name,
         chaosValue: prices[name]?.chaosValue ?? null,
         divineValue: prices[name]?.divineValue ?? undefined,
-        dustValue: isUnique ? (calcMaxDust(name) ?? null) : null,
+        dustValue: supportsDust && isUnique ? (calcMaxDust(name) ?? null) : null,
         iconUrl: iconMap[name] ?? null,
       }))
 

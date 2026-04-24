@@ -256,9 +256,9 @@ describe('parseItemText', () => {
 
     it('parses a PoE2 Uncut Skill Gem with level in the name', () => {
       // PoE2 pastes report the gem level inline on the name line ("Uncut Skill
-      // Gem (Level 20)") rather than in a body "Level:" line. The parser has
-      // to both extract the level (so GemLevel-gated blocks match) and strip
-      // the suffix (so BaseType matches "Uncut Skill Gem" exactly / cleanly).
+      // Gem (Level 20)") rather than in a body "Level:" line. `name` keeps the
+      // leveled suffix so bulk-exchange ID lookups can use it; `baseType` is
+      // stripped so filter `BaseType "Uncut Skill Gem"` still matches.
       const text = [
         'Item Class: Uncut Skill Gems',
         'Rarity: Currency',
@@ -270,7 +270,7 @@ describe('parseItemText', () => {
       ].join('\n')
 
       const item = parseItemText(text)!
-      expect(item.name).toBe('Uncut Skill Gem')
+      expect(item.name).toBe('Uncut Skill Gem (Level 20)')
       expect(item.baseType).toBe('Uncut Skill Gem')
       expect(item.gemLevel).toBe(20)
     })

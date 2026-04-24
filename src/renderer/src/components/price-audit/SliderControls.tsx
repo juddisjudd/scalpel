@@ -1,4 +1,5 @@
-import { chaosIcon, divineIcon } from '../../shared/icons'
+import { getCurrencyIcons } from '../../shared/icons'
+import { usePoeVersion } from '../../shared/poe-version-context'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
 import { formatDust, logPos, logScale, mirrorIcon, setLastMovedAbove, setLastMovedBelow } from './constants'
 
@@ -69,6 +70,11 @@ export function PriceSlider({
   setMovedBelow,
   setMovedAbove,
 }: PriceSliderProps): JSX.Element {
+  // Slider icons flip per game (chaos/divine in PoE1, exalted/divine in PoE2).
+  // Background glow + default foreground icon share the baseline, switching to
+  // divine / mirror once the threshold climbs past their conversion rate.
+  const poeVersion = usePoeVersion()
+  const { baseline: baselineIcon, divine: divineIcon } = getCurrencyIcons(poeVersion)
   const thresholdInMir = mirrorRate > 0 ? threshold / mirrorRate : 0
   const thresholdInDiv = divineRate > 0 ? threshold / divineRate : 0
   const showMir = thresholdInMir >= 1
@@ -80,13 +86,13 @@ export function PriceSlider({
   return (
     <div className="flex-1 flex items-center gap-[6px] bg-black/30 rounded-full pl-[6px] pr-[10px] py-1 relative overflow-hidden">
       <img
-        src={chaosIcon}
+        src={baselineIcon}
         alt=""
         className="absolute -left-[10px] top-1/2 -translate-y-1/2 w-[60px] h-[60px] object-contain opacity-40 pointer-events-none"
         style={{ filter: 'blur(12px) saturate(2.5)' }}
       />
       <img
-        src={showMir ? mirrorIcon : showDiv ? divineIcon : chaosIcon}
+        src={showMir ? mirrorIcon : showDiv ? divineIcon : baselineIcon}
         alt=""
         className="w-3.5 h-3.5 shrink-0 relative z-[1]"
       />

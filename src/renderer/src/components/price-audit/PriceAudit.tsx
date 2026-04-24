@@ -27,9 +27,13 @@ export function AuditTierControls({ state }: AuditTierControlsProps): JSX.Elemen
     minDust,
     setMovedBelow,
     setMovedAbove,
+    pricedItems,
   } = state
 
-  if (isEmpty || loading || items.length === 0) return null
+  // Hide the sliders when the whole list came back unpriced -- they'd all
+  // map to 0 and dragging wouldn't affect anything. Empty-state message in
+  // the main audit surface takes over instead.
+  if (isEmpty || loading || items.length === 0 || pricedItems.length === 0) return null
 
   return (
     <div className="flex flex-col gap-2 border-t border-border" style={{ padding: '10px 12px' }}>
@@ -130,7 +134,16 @@ export function PriceAudit({ state, itemClass, onSelectItem }: PriceAuditProps):
         </div>
       )}
 
-      {!isEmpty && !loading && items.length > 0 && (
+      {!isEmpty && !loading && items.length > 0 && pricedItems.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-1 p-6 text-center">
+          <div className="text-[12px] text-text">Auditing currently unavailable for this tier</div>
+          <div className="text-[10px] text-text-dim leading-[1.4] max-w-[260px]">
+            Scalpel relies on poe.ninja prices for auditing, which is not currently available for this item category.
+          </div>
+        </div>
+      )}
+
+      {!isEmpty && !loading && items.length > 0 && pricedItems.length > 0 && (
         <div className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto flex flex-col">
             {pricedItems.map((it, i) => {

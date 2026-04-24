@@ -161,7 +161,12 @@ export function PriceCheck({
     setError(null)
     setSearched(true)
     try {
-      const payWith = priceInfo?.divineValue != null && priceInfo.divineValue >= 1 ? 'divine' : 'chaos'
+      // Baseline currency flips per game -- chaos for PoE1, exalted for PoE2.
+      // The `chaosValue` on PriceInfo keeps its PoE1 name but semantically
+      // means "baseline currency count" (exalted in PoE2), so the currency we
+      // pay with follows suit.
+      const baseline = poeVersion === 2 ? 'exalted' : 'chaos'
+      const payWith = priceInfo?.divineValue != null && priceInfo.divineValue >= 1 ? 'divine' : baseline
       const result = await window.api.bulkExchange(item.name, item.baseType, payWith)
       setBulkListings(result.listings)
       setTotal(result.total)

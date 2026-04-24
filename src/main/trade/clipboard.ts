@@ -78,16 +78,18 @@ export function parseItemText(text: string): PoeItem | null {
 
   // Name and base type follow rarity
   const afterRarity = headerLines.slice(headerLines.indexOf(rarityLine) + 1)
-  const rawName = afterRarity[0] ?? ''
+  const name = afterRarity[0] ?? ''
   // PoE2 uncut gems inline the gem level in the name: "Uncut Skill Gem (Level 20)".
-  // Strip the suffix so name/baseType match what filters list (plain "Uncut Skill
-  // Gem"), and remember the parsed level for use when the body has no "Level:" line.
-  const nameLevelMatch = rawName.match(/\s*\(Level (\d+)\)\s*$/)
+  // Keep the suffix on `name` (bulk-exchange IDs are per-level, so we need the
+  // leveled key to hit the exchange map), but strip it from the derived base
+  // type so filter `BaseType` conditions and the sister panel's current-base
+  // highlight see the plain "Uncut Skill Gem" the filter lists.
+  const nameLevelMatch = name.match(/\s*\(Level (\d+)\)\s*$/)
   const nameGemLevel = nameLevelMatch ? parseInt(nameLevelMatch[1]) : 0
-  const name = nameLevelMatch ? rawName.slice(0, nameLevelMatch.index).trim() : rawName
+  const nameStripped = nameLevelMatch ? name.slice(0, nameLevelMatch.index).trim() : name
   // For Normal/Magic items, name IS the base type; for Rare/Unique, line 2 is base type
   // Unidentified Rare/Unique items only have one line (the base type), no separate name
-  const rawBaseType = rarity === 'Rare' || rarity === 'Unique' ? (afterRarity[1] ?? name) : name
+  const rawBaseType = rarity === 'Rare' || rarity === 'Unique' ? (afterRarity[1] ?? nameStripped) : nameStripped
   // Strip modifier prefixes -- filters treat these as separate conditions, not part of the base type
   // Keep Blighted/Blight-ravaged for maps and incubators since it's part of the actual base type name
   const keepBlight = itemClass === 'Maps' || itemClass === 'Incubators'

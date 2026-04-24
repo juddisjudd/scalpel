@@ -11,6 +11,7 @@ import { InfoChip } from '../../shared/PriceChip'
 import { composeLabelStyle } from '../../shared/LootLabel'
 import { TierActionCard } from './TierActionCard'
 import { TierIconStrip } from './TierIconStrip'
+import { useAuditPricePreview } from './useAuditPricePreview'
 import type { FilterBlockEditorProps } from './types'
 
 export function FilterBlockEditor({
@@ -142,6 +143,18 @@ export function FilterBlockEditor({
   const tierHeading = rawTierHeading.replace(/\b\w/g, (c) => c.toUpperCase())
   const typePathLabel = block.tierTag?.typePath?.replace(/->/g, ' > ')
 
+  // PoE2's poe.ninja coverage is a patchwork -- whole item classes (Waystones,
+  // Relics, Talismans, Fishing Rods, half the rare equipment slots) have no
+  // price data at all, which would land the audit view on a wall of "No price"
+  // rows with no sliders to play with. `auditHasNoPrices` is the preview check:
+  // true when the IPC came back confirming zero priced items for this tier's
+  // base list. Undefined while we're still waiting, so the button stays
+  // enabled during the short pre-flight rather than flickering disabled.
+  const auditHasNoPrices = useAuditPricePreview(
+    editing.conditions.filter((c) => c.type === 'BaseType').flatMap((c) => c.values),
+    editing.conditions.some((c) => c.type === 'Rarity' && c.values.includes('Unique')),
+  )
+
   return (
     <div>
       {/* Tier title -- scopes the whole block section so Show/Hide + conditions read as
@@ -201,7 +214,6 @@ export function FilterBlockEditor({
             (/^(ex\d*|exhide|exshow|2x\d*)$/.test(block.tierTag.tier) || block.tierTag.tier.startsWith('exotic'))
           const showAuditButton = !!onOpenAudit && baseTypeConds.some((c) => c.values.length > 0) && !isExTier
           const hasItemsPanel = baseTypeConds.length > 0 || showAuditButton
-
           const baseTypeCount = baseTypeConds.reduce((sum, c) => sum + c.values.length, 0)
 
           return (
@@ -234,13 +246,16 @@ export function FilterBlockEditor({
                     )}
                     {showAuditButton && (
                       <TierActionCard
-                        buttonLabel="Run Economy Audit"
+                        buttonLabel={auditHasNoPrices ? 'Audit Unavailable' : 'Run Economy Audit'}
                         leadingIcon={<ChartHistogram size={18} {...IP} />}
                         onClick={onOpenAudit}
-                        primary
+                        disabled={auditHasNoPrices === true}
+                        primary={!auditHasNoPrices}
                       >
                         <div className="text-[10px] text-text-dim leading-[1.3]">
-                          Make bulk changes to this tier based on the current economy.
+                          {auditHasNoPrices
+                            ? 'No bulk retiering in this category yet.'
+                            : 'Make bulk changes to this tier based on the current economy.'}
                         </div>
                       </TierActionCard>
                     )}

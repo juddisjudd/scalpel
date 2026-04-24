@@ -7,10 +7,15 @@ export const ANGE_CLASSES = new Set([
   'Stackable Currency',
   'Essences',
   'Runes',
-  'Soul Cores',
+  'Augment',
   'Idols',
-  'Lineage Support Gems',
+  'Support Gems',
+  'Uncut Skill Gems',
+  'Uncut Spirit Gems',
+  'Uncut Support Gems',
   'Map Fragments',
+  'Pinnacle Keys',
+  'Vault Keys',
   'Omens',
 ])
 

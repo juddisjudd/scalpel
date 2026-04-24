@@ -1,7 +1,8 @@
-import { chaosIcon, divineIcon } from '../../shared/icons'
+import { getCurrencyIcons } from '../../shared/icons'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
 import type { FilterBlock } from '../../../../shared/types'
 import { AuditItem, formatDust, formatTierLabel, mirrorIcon, retierSelectStyle } from './constants'
+import { usePoeVersion } from '../../shared/poe-version-context'
 
 interface TierSibling {
   tier: string
@@ -65,6 +66,11 @@ export function ThresholdBars({
 }: ThresholdBarsProps): JSX.Element | null {
   if (pricedItems.length === 0) return null
 
+  // Threshold chips display in whichever currency the number rounds nicely
+  // into: mirror > divine > baseline (chaos in PoE1, exalted in PoE2).
+  const poeVersion = usePoeVersion()
+  const { baseline: baselineIcon, divine: divineIcon } = getCurrencyIcons(poeVersion)
+
   const thresholdInMir = mirrorRate > 0 ? threshold / mirrorRate : 0
   const thresholdInDiv = divineRate > 0 ? threshold / divineRate : 0
   const showMir = thresholdInMir >= 1
@@ -81,7 +87,7 @@ export function ThresholdBars({
       : threshold < 10
         ? `${threshold.toFixed(1)}`
         : String(threshold)
-  const priceIcon = showMir ? mirrorIcon : showDiv ? divineIcon : chaosIcon
+  const priceIcon = showMir ? mirrorIcon : showDiv ? divineIcon : baselineIcon
 
   const priceChipContent = (prefix: string) => (
     <span className="flex items-center gap-[3px]">

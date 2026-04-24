@@ -1,8 +1,9 @@
-import { chaosIcon, divineIcon } from '../../shared/icons'
+import { getCurrencyIcons } from '../../shared/icons'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
 import { AuditItem, calcMaxDust, divCardArtMap, formatDust, mirrorIcon } from './constants'
 import { IconGlow } from '../../shared/IconGlow'
 import { CurrencyChip } from '../../shared/CurrencyChip'
+import { usePoeVersion } from '../../shared/poe-version-context'
 
 interface AuditRowProps {
   item: AuditItem
@@ -21,6 +22,12 @@ export function AuditRow({
   itemClass,
   onSelectItem,
 }: AuditRowProps): JSX.Element {
+  // Price chip currency icons flip per game: PoE1 shows chaos/divine, PoE2
+  // shows exalted/divine. `PriceInfo.chaosValue` is named for PoE1 history
+  // but its semantic meaning is "baseline currency count" -- exalted in PoE2.
+  const poeVersion = usePoeVersion()
+  const { baseline: baselineIcon, divine: divineIcon } = getCurrencyIcons(poeVersion)
+  const isPoe1 = poeVersion === 1
   const isDivCard = itemClass === 'Divination Cards'
   const divArt = isDivCard ? divCardArtMap.get(item.name) : undefined
   const divCardUrl = divArt ? `https://web.poecdn.com/image/divination-card/${divArt}.png` : undefined
@@ -90,7 +97,7 @@ export function AuditRow({
           return (
             <CurrencyChip
               value={item.chaosValue}
-              icon={chaosIcon}
+              icon={baselineIcon}
               iconSize={14}
               iconPosition="after"
               className={chipClass}
@@ -103,8 +110,12 @@ export function AuditRow({
         </span>
       )}
 
-      {/* Dust chip */}
-      {upTo &&
+      {/* Dust chip -- PoE1 only, since dust is a Reverie / Kingsmarch mechanic
+          that doesn't exist in PoE2 (some base names overlap between games, so
+          calcMaxDust would return a value even for PoE2 uniques without the
+          version guard). */}
+      {isPoe1 &&
+        upTo &&
         (() => {
           const dust = calcMaxDust(item.name)
           if (!dust) return null

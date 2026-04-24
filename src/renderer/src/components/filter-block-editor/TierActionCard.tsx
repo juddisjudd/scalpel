@@ -34,8 +34,15 @@ export function TierActionCard({
         disabled={disabled}
         className={`w-full text-[11px] px-3 py-1.5 relative flex items-center justify-center ${primary ? 'primary' : ''}`}
       >
-        {leadingIcon && <span className="absolute left-3 flex items-center pointer-events-none">{leadingIcon}</span>}
-        <span>{buttonLabel}</span>
+        {/* Fade the icon + label to 50% when disabled so the "can't click this"
+         *  signal reads at a glance without relying on the browser's default
+         *  disabled treatment (which varies between `primary` and unstyled). */}
+        {leadingIcon && (
+          <span className={`absolute left-3 flex items-center pointer-events-none ${disabled ? 'opacity-50' : ''}`}>
+            {leadingIcon}
+          </span>
+        )}
+        <span className={disabled ? 'opacity-50' : ''}>{buttonLabel}</span>
       </button>
     </div>
   )

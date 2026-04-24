@@ -1022,9 +1022,8 @@ export async function searchTrade(
 
 // ─── Bulk Exchange ──────────────────────────────────────────────────────────
 
-import bulkExchangeIds from '../../shared/data/trade/bulk-exchange-ids.json'
-
-const bulkIdMap = bulkExchangeIds as Record<string, string>
+import { getBulkExchangeIdMap } from '../../shared/data/trade/bulk-exchange-ids'
+import { isAngeItem } from '../../shared/data/trade/ange-items.poe2'
 
 /** Build the `type` field of a gem trade query. Returns the discriminator shape for
  *  transfigured gems (with "Vaal " prepended to the base when the gem has a Vaal alt),
@@ -1044,8 +1043,10 @@ export function buildGemTypeField(
 
 /** Look up the bulk exchange ID for an item by its name or base type */
 export function getBulkExchangeId(name: string, baseType: string): string | null {
-  // Try exact name first (e.g. "Divine Orb"), then base type
-  // Filter out "sep" entries (separators in the static data, not real IDs)
+  // Try exact name first (e.g. "Divine Orb", "Uncut Skill Gem (Level 20)"),
+  // then base type. Map is picked per game: PoE1 uses the hand-maintained
+  // legacy list, PoE2 uses EE2-sourced IDs.
+  const bulkIdMap = getBulkExchangeIdMap(poeVersion)
   let id = bulkIdMap[name] ?? bulkIdMap[baseType] ?? null
   if (!id || id === 'sep') return null
   // Fix legacy zana- prefixed map IDs to current format
@@ -1070,6 +1071,11 @@ export function isBulkExchangeItem(itemClass: string, name: string, baseType: st
   if (baseType === "Facetor's Lens") return false
   // Beasts are "Stackable Currency" but have rarity Rare/Unique and need regular trade
   if (itemClass === 'Stackable Currency' && (_rarity === 'Rare' || _rarity === 'Unique')) return false
+
+  // PoE2 routing: anything sold at Ange's exchange goes through bulk, and the
+  // final check below catches the rest via exchange-ID presence. Ange coverage
+  // is the user-facing source of truth for "what you'd trade in bulk" here.
+  if (poeVersion === 2 && isAngeItem(itemClass, baseType, _rarity)) return true
 
   const bulkClasses = new Set([
     'Currency',
