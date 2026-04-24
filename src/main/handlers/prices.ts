@@ -16,7 +16,7 @@ import { poeVersion } from '../game-state'
 import type { AppSettings, FilterBlock, FilterFile, PoeItem, SearchableItem } from '../../shared/types'
 import { defaultPoeItem } from '../../shared/poe-item'
 import uniqueInfoData from '../../shared/data/items/unique-info.json'
-import itemClassesData from '../../shared/data/items/item-classes.json'
+import { ITEM_CLASSES_ALL } from '../../shared/data/items/item-classes'
 import divCardsData from '../../shared/data/economy/div-cards.json'
 import { TRANSFIGURED_GEM_DISC } from '../../shared/data/trade/transfigured-gems'
 
@@ -42,8 +42,7 @@ const STACKABLE_CLASSES = new Set([
 /** Reverse map: base type -> item class, built once from static item-classes data. */
 const BASE_TO_CLASS: Record<string, string> = (() => {
   const map: Record<string, string> = {}
-  const classes = itemClassesData as unknown as Record<string, { bases: string[] }>
-  for (const [cls, { bases }] of Object.entries(classes)) {
+  for (const [cls, { bases }] of Object.entries(ITEM_CLASSES_ALL)) {
     for (const b of bases) map[b] = cls
   }
   return map

@@ -117,6 +117,14 @@ export interface PoeItem {
   enchants: string[]
   imbues: string[]
   memoryStrands?: number
+  /** PoE2: flag on uniques that require a Vaal Orb to drop (vaal-unique variants). */
+  isVaalUnique?: boolean
+  /** PoE2: item has at least one Vaal-specific explicit mod. */
+  hasVaalUniqueMod?: boolean
+  /** PoE2: item has been corrupted twice (two Vaal Orb applications). */
+  twiceCorrupted?: boolean
+  /** PoE2: unidentified item implicit tier (rough rarity signal on unid drops). */
+  unidentifiedItemTier?: number
   areaLevel?: number
   advancedMods?: AdvancedMod[]
   mapQuantity?: number

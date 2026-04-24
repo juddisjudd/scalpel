@@ -1,6 +1,7 @@
 import { createHash } from 'crypto'
 import type { FilterBlock, FilterCondition, FilterAction, FilterFile } from '../../shared/types'
 import { parseFilterFile } from './parser'
+import { NUMERIC_CONDITION_TYPES } from './condition-types'
 
 // ─── Block Fingerprinting ─────────────────────────────────────────────────────
 
@@ -266,22 +267,7 @@ function serializeBlock(block: FilterBlock, indent: string): string[] {
   lines.push(block.visibility + commentSuffix)
 
   for (const cond of block.conditions) {
-    const numericConditions = new Set([
-      'ItemLevel',
-      'AreaLevel',
-      'DropLevel',
-      'Quality',
-      'Sockets',
-      'LinkedSockets',
-      'GemLevel',
-      'StackSize',
-      'WaystoneTier',
-      'BaseArmour',
-      'BaseEvasion',
-      'BaseEnergyShield',
-      'BaseWard',
-    ])
-    const emitOperator = numericConditions.has(cond.type) || cond.explicitOperator
+    const emitOperator = NUMERIC_CONDITION_TYPES.has(cond.type) || cond.explicitOperator
     const valStr = cond.values.map((v) => (v.includes(' ') || v === '' ? `"${v}"` : v)).join(' ')
     if (emitOperator) {
       lines.push(`${indent}${cond.type} ${cond.operator} ${valStr}`)

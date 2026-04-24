@@ -6,7 +6,7 @@ import socketGreen from '../assets/sockets/socket-green.png'
 import socketBlue from '../assets/sockets/socket-blue.png'
 import socketWhite from '../assets/sockets/socket-white.png'
 import socketLink from '../assets/sockets/socket-link.png'
-import itemClassesData from '../../../shared/data/items/item-classes.json'
+import { getItemClasses } from '../../../shared/data/items/item-classes'
 import { chaosIcon } from '../shared/icons'
 // Socket recolor is a PoE1-only feature (gated via features.socketRecolor), so we
 // pull its icons directly from the PoE1 sheet rather than going through the shared
@@ -20,7 +20,10 @@ const fusIcon = icons['Orb of Fusing']
 
 const SOCKET_IMG: Record<string, string> = { R: socketRed, G: socketGreen, B: socketBlue, W: socketWhite }
 const CYCLE: Record<string, string> = { R: 'G', G: 'B', B: 'R', W: 'R' }
-const _itemClasses = itemClassesData as unknown as Record<string, { bases: string[]; size: [number, number] }>
+// Pin to the PoE1 class map -- this whole component is PoE1-only (see comment
+// above on the icon sheet). Pulling the shared union would leak PoE2 classes
+// into the sizing lookup for no benefit.
+const _itemClasses = getItemClasses(1)
 const classSizes: Record<string, [number, number]> = Object.fromEntries(
   Object.entries(_itemClasses).map(([k, v]) => [k, v.size]),
 )

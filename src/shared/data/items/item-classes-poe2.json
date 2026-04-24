@@ -1,0 +1,34 @@
+{
+  "Waystones": {
+    "bases": [],
+    "size": [1, 1]
+  },
+  "Uncut Skill Gem": {
+    "bases": ["Uncut Skill Gem"],
+    "size": [1, 1]
+  },
+  "Uncut Spirit Gem": {
+    "bases": ["Uncut Spirit Gem"],
+    "size": [1, 1]
+  },
+  "Uncut Support Gem": {
+    "bases": ["Uncut Support Gem"],
+    "size": [1, 1]
+  },
+  "Charms": {
+    "bases": [],
+    "size": [1, 2]
+  },
+  "Relics": {
+    "bases": [],
+    "size": [2, 2]
+  },
+  "Talismans": {
+    "bases": [],
+    "size": [1, 1]
+  },
+  "Socketables": {
+    "bases": [],
+    "size": [1, 1]
+  }
+}

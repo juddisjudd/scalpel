@@ -1,11 +1,10 @@
 import { clipboard } from 'electron'
 import type { PoeItem, ItemRarity, AdvancedMod } from '../../shared/types'
-import itemClassesData from '../../shared/data/items/item-classes.json'
+import { ITEM_CLASSES_ALL } from '../../shared/data/items/item-classes'
 
-const itemClasses = itemClassesData as unknown as Record<string, { bases: string[]; size: [number, number] }>
-const knownBaseTypes = new Set(Object.values(itemClasses).flatMap((c) => c.bases))
+const knownBaseTypes = new Set(Object.values(ITEM_CLASSES_ALL).flatMap((c) => c.bases))
 const ITEM_SIZES: Record<string, [number, number]> = Object.fromEntries(
-  Object.entries(itemClasses).map(([k, v]) => [k, v.size]),
+  Object.entries(ITEM_CLASSES_ALL).map(([k, v]) => [k, v.size]),
 )
 
 /** Add base types extracted from the loaded filter */
@@ -34,7 +33,7 @@ function cleanBaseType(rawBase: string, rarity: ItemRarity, itemClass?: string):
   if (rarity === 'Magic') {
     // First try bases specific to this item class (avoids false matches)
     if (itemClass) {
-      const classBases = itemClasses[itemClass]?.bases
+      const classBases = ITEM_CLASSES_ALL[itemClass]?.bases
       if (classBases?.length) {
         const match = findBaseInName(clean, classBases)
         if (match) return match

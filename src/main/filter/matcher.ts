@@ -7,10 +7,11 @@ import type {
   EvaluatedCondition,
   StackSizeBreakpoint,
 } from '../../shared/types'
+import { evaluatePoe2Condition } from './matcher.poe2'
 
 // ─── Condition evaluators ─────────────────────────────────────────────────────
 
-function compareNum(actual: number, op: string, target: number): boolean {
+export function compareNum(actual: number, op: string, target: number): boolean {
   switch (op) {
     case '>':
       return actual > target
@@ -99,6 +100,12 @@ function evaluateCondition(cond: FilterCondition, item: PoeItem): ConditionResul
     case 'Synthesised':
     case 'SynthesisedItem':
       return boolMatch(item.synthesised, values[0]) ? 'pass' : 'fail'
+
+    case 'TransfiguredGem':
+      // Not PoE2-specific -- transfigured gems began as PoE1 league content
+      // and went permanent, and filters still gate on this. The clipboard
+      // parser already sets `item.transfigured` for both games, so read it.
+      return boolMatch(item.transfigured, values[0]) ? 'pass' : 'fail'
 
     case 'Fractured':
     case 'FracturedItem':
@@ -191,7 +198,6 @@ function evaluateCondition(cond: FilterCondition, item: PoeItem): ConditionResul
     case 'HasSearingExarchImplicit':
     case 'HasEaterImplicit':
     case 'HasExarchImplicit':
-    case 'TransfiguredGem':
     case 'ElderMap':
     case 'ShapedMap':
       return boolMatch(false, values[0]) ? 'pass' : 'fail'
@@ -213,11 +219,15 @@ function evaluateCondition(cond: FilterCondition, item: PoeItem): ConditionResul
       return 'unknown'
 
     default:
-      return 'unknown'
+      // Unknown to the PoE1 matcher -- try the PoE2 condition set before
+      // falling back to 'unknown'. Keeping PoE2-specific cases in their own
+      // file avoids cross-talk while still letting shared code paths route
+      // everything through the same entry point.
+      return evaluatePoe2Condition(cond, item)
   }
 }
 
-function boolMatch(actual: boolean, filterValue: string): boolean {
+export function boolMatch(actual: boolean, filterValue: string): boolean {
   return filterValue.toLowerCase() === (actual ? 'true' : 'false')
 }
 

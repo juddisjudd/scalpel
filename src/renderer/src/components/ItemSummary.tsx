@@ -15,7 +15,7 @@ import { usePoeVersion } from '../shared/poe-version-context'
 import { getGameFeatures } from '../../../shared/game-features'
 import divCardsData from '../../../shared/data/economy/div-cards.json'
 import baseToUniques from '../../../shared/data/items/unique-info.json'
-import itemClassesData from '../../../shared/data/items/item-classes.json'
+import { ITEM_CLASSES_ALL } from '../../../shared/data/items/item-classes'
 import { ItemChip } from './ItemChip'
 import { IconGlow } from '../shared/IconGlow'
 import mapFrameIcon from '../assets/other/map-frame.png'
@@ -30,9 +30,8 @@ const uniqueToBase: Record<string, string> = {}
 for (const [base, uniques] of Object.entries(_baseToUniques)) {
   for (const name of uniques) uniqueToBase[name] = base
 }
-const itemClasses = itemClassesData as unknown as Record<string, { bases: string[]; size: [number, number] }>
 const classMap: Record<string, string> = {}
-for (const [cls, { bases }] of Object.entries(itemClasses)) {
+for (const [cls, { bases }] of Object.entries(ITEM_CLASSES_ALL)) {
   for (const base of bases) classMap[base] = cls
 }
 
@@ -43,7 +42,7 @@ function getUniqueItemClass(uniqueName: string): string {
 }
 import socketLink from '../assets/sockets/socket-link.png'
 const classSizes: Record<string, [number, number]> = Object.fromEntries(
-  Object.entries(itemClasses).map(([k, v]) => [k, v.size]),
+  Object.entries(ITEM_CLASSES_ALL).map(([k, v]) => [k, v.size]),
 )
 
 // Build dimensions map from item-classes

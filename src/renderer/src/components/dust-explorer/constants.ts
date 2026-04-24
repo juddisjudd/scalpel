@@ -4,7 +4,7 @@ import baseToUniques from '../../../../shared/data/items/unique-info.json'
 // and cachedBaseEntries below are module-load-time, so import the PoE1 sheet
 // directly rather than going through the shared iconMap.
 import itemIcons from '../../../../shared/data/items/item-icons-poe1.json'
-import itemClassesData from '../../../../shared/data/items/item-classes.json'
+import { getItemClasses } from '../../../../shared/data/items/item-classes'
 import { FilterType } from './types'
 
 const dustMap = dustValues as Record<string, number>
@@ -14,7 +14,8 @@ for (const [base, uniques] of Object.entries(_baseToUniques)) {
   for (const name of uniques) uniqueToBase[name] = base
 }
 const iconMap = itemIcons as Record<string, string>
-const _itemClasses = itemClassesData as unknown as Record<string, { bases: string[]; size: [number, number] }>
+// PoE1-only module; pin to the PoE1 class list explicitly.
+const _itemClasses = getItemClasses(1)
 const baseClassMap: Record<string, string> = {}
 const classSizes: Record<string, [number, number]> = {}
 for (const [cls, { bases, size }] of Object.entries(_itemClasses)) {

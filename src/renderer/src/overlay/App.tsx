@@ -512,14 +512,14 @@ export default function App(): JSX.Element {
 
   return (
     <PoeVersionProvider version={poeVersion}>
-      {view === 'item' && tierSisterOpen && tierSisterData && tierSisterData.baseTypes.length > 0 && !isHidden && (
+      {view === 'item' && tierSisterOpen && overlayData && !isHidden && (
         <TierItemsSister
           ref={tierSisterRef}
-          baseTypes={tierSisterData.baseTypes}
-          itemClass={tierSisterData.itemClass}
-          currentBaseType={overlayData?.item.baseType}
+          baseTypes={tierSisterData?.baseTypes ?? []}
+          itemClass={tierSisterData?.itemClass ?? overlayData.item.itemClass}
+          currentBaseType={overlayData.item.baseType}
           league={settings?.league ?? ''}
-          uniqueTier={tierSisterData.uniqueTier}
+          uniqueTier={tierSisterData?.uniqueTier}
           left={sisterLeft}
           top={PANEL_TOP + SISTER_NAV_OFFSET}
           width={SISTER_WIDTH}
@@ -527,7 +527,7 @@ export default function App(): JSX.Element {
           scale={settings?.overlayScale}
           scaleOrigin={cursorSide === 'left' ? 'top right' : 'top left'}
           maxHeight={sisterMaxHeight}
-          animKey={tierSisterData.tier}
+          animKey={tierSisterData?.tier}
         />
       )}
       {view === 'pricecheck' && priceCheckData && !isHidden && (

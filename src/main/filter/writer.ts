@@ -1,5 +1,6 @@
 import { writeFileSync } from 'fs'
 import type { FilterBlock, FilterFile } from '../../shared/types'
+import { NUMERIC_CONDITION_TYPES } from './condition-types'
 
 /** Serialize a single FilterBlock back to .filter text */
 function serializeBlock(block: FilterBlock): string {
@@ -15,24 +16,7 @@ function serializeBlock(block: FilterBlock): string {
   for (const cond of block.conditions) {
     const { type, operator, values } = cond
 
-    // Only emit operator for numeric conditions
-    const numericConditions = new Set([
-      'ItemLevel',
-      'AreaLevel',
-      'DropLevel',
-      'Quality',
-      'Sockets',
-      'LinkedSockets',
-      'GemLevel',
-      'StackSize',
-      'WaystoneTier',
-      'BaseArmour',
-      'BaseEvasion',
-      'BaseEnergyShield',
-      'BaseWard',
-    ])
-
-    const emitOperator = numericConditions.has(type) || cond.explicitOperator
+    const emitOperator = NUMERIC_CONDITION_TYPES.has(type) || cond.explicitOperator
     const valStr = values.map((v) => quoteIfNeeded(v)).join(' ')
 
     if (emitOperator) {

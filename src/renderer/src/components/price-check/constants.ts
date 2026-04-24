@@ -8,7 +8,7 @@ import { formatPrice, getItemIcon } from '../../shared/utils'
 import itemIconsPoe1 from '../../../../shared/data/items/item-icons-poe1.json'
 import itemIconsPoe2 from '../../../../shared/data/items/item-icons-poe2.json'
 import baseToUniques from '../../../../shared/data/items/unique-info.json'
-import itemClassesData from '../../../../shared/data/items/item-classes.json'
+import { ITEM_CLASSES_ALL } from '../../../../shared/data/items/item-classes'
 import elderIcon from '../../assets/influences/Elder-item-symbol.png'
 import shaperIcon from '../../assets/influences/Shaper-item-symbol.png'
 import crusaderIcon from '../../assets/influences/Crusader-item-symbol.png'
@@ -60,7 +60,7 @@ for (const [base, uniques] of Object.entries(_baseToUniques)) {
 
 // PoE inventory slot sizes [width, height] by item class
 export const ITEM_SIZES: Record<string, [number, number]> = Object.fromEntries(
-  Object.entries(itemClassesData as unknown as Record<string, { size: [number, number] }>).map(([k, v]) => [k, v.size]),
+  Object.entries(ITEM_CLASSES_ALL).map(([k, v]) => [k, v.size]),
 )
 
 // Map trade API currency keys to item-icons.json names. PoE1 version keeps its
@@ -130,9 +130,7 @@ export function getItemSize(itemClass: string, name?: string): [number, number] 
     const base = uniqueToBase[name]
     if (base) {
       // Find the item class for this base type
-      for (const [_cls, data] of Object.entries(
-        itemClassesData as unknown as Record<string, { bases: string[]; size: [number, number] }>,
-      )) {
+      for (const [_cls, data] of Object.entries(ITEM_CLASSES_ALL)) {
         if (data.bases.includes(base)) return data.size
       }
     }

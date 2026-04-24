@@ -48,7 +48,7 @@ export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(
     animKey,
   },
   ref,
-): JSX.Element | null {
+): JSX.Element {
   const [prices, setPrices] = useState<PriceMap>({})
 
   useEffect(() => {
@@ -68,8 +68,6 @@ export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(
     return [...baseTypes].sort((a, b) => (prices[b]?.chaosValue ?? -1) - (prices[a]?.chaosValue ?? -1))
   }, [baseTypes.join('|'), prices])
 
-  if (baseTypes.length === 0) return null
-
   return (
     <SisterShell
       ref={ref}
@@ -82,34 +80,46 @@ export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(
       maxHeight={maxHeight}
       animKey={animKey}
     >
-      <div className="flex-1 overflow-y-auto no-scrollbar">
-        {sortedNames.map((name, i) => {
-          const iconUrl = iconMap[name]
-          const price = prices[name]
-          const isCurrent = name === currentBaseType
-          return (
-            <SisterRow
-              key={`${name}-${i}`}
-              isCurrent={isCurrent}
-              zebraEven={i % 2 === 0}
-              onClick={() => window.api.lookupBaseType(name, itemClass)}
-              title={isCurrent ? name : `Switch to ${name}`}
-            >
-              <div className="text-[11px] text-center leading-tight text-text">{name}</div>
-              <div className="flex items-center justify-center gap-2">
-                {iconUrl ? (
-                  <IconGlow src={iconUrl} size={44} blur={14} saturate={2.5} opacity={0.35} />
-                ) : (
-                  <div className="w-[44px] h-[44px] shrink-0" />
-                )}
-                {price && price.chaosValue > 0 && (
-                  <PriceChip chaosValue={price.chaosValue} divineValue={price.divineValue} size="sm" />
-                )}
-              </div>
-            </SisterRow>
-          )
-        })}
-      </div>
+      {baseTypes.length === 0 ? (
+        // Empty state preserves the sister's mount across item switches. Unmounting
+        // here (returning null) would replay the slide-in animation every time the
+        // user swaps to an item whose matched block has a BaseType list and then
+        // back to one that doesn't -- common in PoE2 filters built around class /
+        // rarity-only blocks. Keeping the shell mounted makes the sister feel like
+        // a persistent surface rather than an auto-opening popover.
+        <div className="flex-1 flex items-center justify-center px-4 py-8 text-[10px] text-text-dim text-center leading-snug">
+          No base types listed in the matched block.
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          {sortedNames.map((name, i) => {
+            const iconUrl = iconMap[name]
+            const price = prices[name]
+            const isCurrent = name === currentBaseType
+            return (
+              <SisterRow
+                key={`${name}-${i}`}
+                isCurrent={isCurrent}
+                zebraEven={i % 2 === 0}
+                onClick={() => window.api.lookupBaseType(name, itemClass)}
+                title={isCurrent ? name : `Switch to ${name}`}
+              >
+                <div className="text-[11px] text-center leading-tight text-text">{name}</div>
+                <div className="flex items-center justify-center gap-2">
+                  {iconUrl ? (
+                    <IconGlow src={iconUrl} size={44} blur={14} saturate={2.5} opacity={0.35} />
+                  ) : (
+                    <div className="w-[44px] h-[44px] shrink-0" />
+                  )}
+                  {price && price.chaosValue > 0 && (
+                    <PriceChip chaosValue={price.chaosValue} divineValue={price.divineValue} size="sm" />
+                  )}
+                </div>
+              </SisterRow>
+            )
+          })}
+        </div>
+      )}
     </SisterShell>
   )
 })
