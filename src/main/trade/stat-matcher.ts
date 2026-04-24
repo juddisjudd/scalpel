@@ -853,10 +853,13 @@ export function matchItemMods(
     }
   }
 
-  // Add pseudo stats at the top of the list
+  // Add pseudo stats at the top of the list. Pack the rolled-up total into
+  // the label the same way defense chips do ("Armour: 450") so the user can
+  // see what the accumulator summed to without having to look at the value
+  // chip next to the row.
   const pseudoFilters: StatFilter[] = Object.entries(pseudoAccumulator).map(([id, data]) => ({
     id,
-    text: data.pseudoLabel,
+    text: `${data.pseudoLabel}: ${data.total}`,
     value: data.total,
     min: data.total < 0 ? Math.ceil(data.total * (2 - pct)) : Math.floor(data.total * pct),
     max: null,

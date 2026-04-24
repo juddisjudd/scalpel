@@ -45,7 +45,7 @@ describe('shouldIncludeImplicitsInBase', () => {
 })
 
 describe('applyBaseModeToFilters', () => {
-  it('enables basetype and ilvl', () => {
+  it('enables basetype and ilvl for non-uniques', () => {
     const input = [
       f({ id: 'misc.basetype', type: 'misc', enabled: false }),
       f({ id: 'misc.ilvl', type: 'misc', enabled: false }),
@@ -53,6 +53,18 @@ describe('applyBaseModeToFilters', () => {
     const result = applyBaseModeToFilters(input, 'Rare', false)
     expect(result.find((x) => x.id === 'misc.basetype')!.enabled).toBe(true)
     expect(result.find((x) => x.id === 'misc.ilvl')!.enabled).toBe(true)
+  })
+
+  it('enables basetype but leaves ilvl off for uniques', () => {
+    // Unique roll pools are fixed per item; ilvl just over-constrains the
+    // search and hides valid listings.
+    const input = [
+      f({ id: 'misc.basetype', type: 'misc', enabled: false }),
+      f({ id: 'misc.ilvl', type: 'misc', enabled: false }),
+    ]
+    const result = applyBaseModeToFilters(input, 'Unique', false)
+    expect(result.find((x) => x.id === 'misc.basetype')!.enabled).toBe(true)
+    expect(result.find((x) => x.id === 'misc.ilvl')!.enabled).toBe(false)
   })
 
   it('disables explicit and pseudo filters', () => {

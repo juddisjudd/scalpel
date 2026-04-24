@@ -427,9 +427,15 @@ export function PriceCheck({
               {(() => {
                 if (filters.some((f) => f.id === 'misc.mirrored' && f.enabled)) return null
 
+                // Base mode signature: basetype chip on, no mod-style filters
+                // active. ilvl is expected for non-uniques (rare crafting
+                // bases) but intentionally off for uniques -- whose roll pool
+                // is fixed per item -- so only check it when the rarity calls
+                // for it.
+                const isUnique = item.rarity === 'Unique'
                 const isBaseMode =
                   filters.some((f) => f.id === 'misc.basetype' && f.enabled) &&
-                  filters.some((f) => f.id === 'misc.ilvl' && f.enabled) &&
+                  (isUnique || filters.some((f) => f.id === 'misc.ilvl' && f.enabled)) &&
                   (includeImplicits ||
                     !filters.some((f) => (f.type === 'implicit' || f.type === 'enchant') && f.enabled)) &&
                   filters.filter(

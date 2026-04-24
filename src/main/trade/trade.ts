@@ -1065,6 +1065,7 @@ export function isBulkExchangeItem(itemClass: string, name: string, baseType: st
     'Misc Map Items', // Boss invitations (ilvl, enchants)
     'Expedition Logbook', // Area level, faction, mods
     'Incubators', // ilvl requirements
+    'Wombgifts', // ilvl + Hiveblood requirement vary per drop
   ])
   if (regularTradeClasses.has(itemClass)) return false
   // Specific items with variable properties that need regular trade

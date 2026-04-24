@@ -12,7 +12,10 @@ export function shouldIncludeImplicitsInBase(rarity: string, corrupted: boolean)
 
 /**
  * Transforms a filter list to the "Base" search state:
- *   - basetype + ilvl enabled
+ *   - basetype enabled
+ *   - ilvl enabled for non-uniques (rare crafting bases key on ilvl); for
+ *     uniques the roll pool is fixed per item regardless of drop level, so
+ *     ilvl just over-constrains the search and filters out valid listings
  *   - implicits/enchants enabled only if useful (non-unique or corrupted unique)
  *   - foulborn mods enabled on uniques
  *   - socket/misc/timeless/fractured/currency/heist left unchanged
@@ -20,10 +23,12 @@ export function shouldIncludeImplicitsInBase(rarity: string, corrupted: boolean)
  */
 export function applyBaseModeToFilters(filters: StatFilter[], rarity: string, corrupted: boolean): StatFilter[] {
   const includeImplicits = shouldIncludeImplicitsInBase(rarity, corrupted)
+  const isUnique = rarity === 'Unique'
   return filters.map((f) => {
-    if (f.id === 'misc.basetype' || f.id === 'misc.ilvl') return { ...f, enabled: true }
+    if (f.id === 'misc.basetype') return { ...f, enabled: true }
+    if (f.id === 'misc.ilvl') return { ...f, enabled: !isUnique }
     if (f.type === 'implicit' || f.type === 'enchant') return { ...f, enabled: includeImplicits }
-    if (rarity === 'Unique' && f.foulborn) return { ...f, enabled: true }
+    if (isUnique && f.foulborn) return { ...f, enabled: true }
     if (
       f.type === 'socket' ||
       f.type === 'misc' ||
