@@ -14,7 +14,6 @@ import {
   TERNARY_CHIP_IDS,
 } from './constants'
 import { FilterChip } from './FilterChip'
-import { TernaryFilterChip } from './TernaryFilterChip'
 import { PriceChip } from '../../shared/PriceChip'
 import { FaustusBanner } from './FaustusBanner'
 import { AngeBanner } from './AngeBanner'
@@ -259,6 +258,9 @@ export function PriceCheck({
   const toggleFilter = (idx: number): void => {
     setFilters((prev) => {
       const target = prev[idx]
+      // Ternary chips are driven via chipState through the FilterChip's onChange path;
+      // toggling them via this binary path would silently desync state.
+      if (TERNARY_CHIP_IDS.has(target.id)) return prev
       const toggling = !target.enabled
       return prev.map((f, i) => {
         if (i === idx) {
@@ -492,7 +494,7 @@ export function PriceCheck({
               {/* Ternary chips (corrupted / mirrored / fractured) */}
               {filters.map((f, i) =>
                 TERNARY_CHIP_IDS.has(f.id) ? (
-                  <TernaryFilterChip
+                  <FilterChip
                     key={i}
                     label={f.text}
                     state={f.chipState}

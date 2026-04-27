@@ -1269,7 +1269,7 @@ export function matchItemMods(
         value: null,
         min: null,
         max: null,
-        enabled: true,
+        enabled: false,
         chipState: itemInfo.corrupted ? 'yes' : 'no',
         type: 'misc',
       })
@@ -1280,7 +1280,7 @@ export function matchItemMods(
         value: null,
         min: null,
         max: null,
-        enabled: true,
+        enabled: false,
         chipState: 'yes',
         type: 'misc',
       })
@@ -1304,7 +1304,7 @@ export function matchItemMods(
         value: null,
         min: null,
         max: null,
-        enabled: true,
+        enabled: false,
         chipState: itemInfo.mirrored ? 'yes' : 'no',
         type: 'misc',
       })
@@ -1329,7 +1329,7 @@ export function matchItemMods(
         value: null,
         min: null,
         max: null,
-        enabled: true,
+        enabled: false,
         chipState: hasFracturedMod ? 'yes' : undefined,
         type: 'misc',
       })

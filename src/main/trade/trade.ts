@@ -158,6 +158,8 @@ export interface StatFilter {
   chipState?: 'yes' | 'no'
 }
 
+const ynToOption = (s: 'yes' | 'no'): 'true' | 'false' => (s === 'yes' ? 'true' : 'false')
+
 // ─── Rate Limiter ─────────────────────────────────────────────────────────────
 
 // Rate limit state broadcast
@@ -621,10 +623,8 @@ export async function searchTrade(
     if (f.id === 'misc.gem_level' && f.enabled)
       miscQuery.gem_level = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
     if (f.id === 'misc.gem_transfigured') miscQuery.gem_transfigured = { option: f.enabled ? 'true' : 'false' }
-    if (f.id === 'misc.corrupted' && f.chipState)
-      miscQuery.corrupted = { option: f.chipState === 'yes' ? 'true' : 'false' }
-    if (f.id === 'misc.mirrored' && f.chipState)
-      miscQuery.mirrored = { option: f.chipState === 'yes' ? 'true' : 'false' }
+    if (f.id === 'misc.corrupted' && f.chipState) miscQuery.corrupted = { option: ynToOption(f.chipState) }
+    if (f.id === 'misc.mirrored' && f.chipState) miscQuery.mirrored = { option: ynToOption(f.chipState) }
     if (f.id === 'misc.identified') miscQuery.identified = { option: f.enabled ? 'false' : 'true' }
     if (f.id === 'misc.memory_level' && f.enabled)
       miscQuery.memory_level = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
@@ -654,7 +654,7 @@ export async function searchTrade(
   }
   const fracturedFilter = miscFiltersAll.find((f) => f.id === 'misc.fractured')
   if (fracturedFilter?.chipState) {
-    miscQuery.fractured_item = { option: fracturedFilter.chipState === 'yes' ? 'true' : 'false' }
+    miscQuery.fractured_item = { option: ynToOption(fracturedFilter.chipState) }
   }
   if (Object.keys(miscQuery).length > 0) {
     const existing = (query.filters as Record<string, unknown>) ?? {}

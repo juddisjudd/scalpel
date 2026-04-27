@@ -10,6 +10,7 @@ import {
   STATUS_OPTIONS,
 } from '../price-check/search-settings'
 import { SettingSelectBox } from './SettingSelectBox'
+import { SettingToggleBox } from './SettingToggleBox'
 
 interface Props {
   settings: AppSettings
@@ -111,22 +112,14 @@ export function PriceCheckTab({ settings, update, tryHotkey }: Props): JSX.Eleme
           options={RESULTS_VIEW_OPTIONS}
           onChange={(v) => update('tradeResultsView', v)}
         />
-        <section>
-          <label>Collapse Listings by Account</label>
-          <div
-            className="setting-box mt-[2px] flex items-center justify-between cursor-pointer"
-            onClick={() => update('tradeCollapseListings', !(settings.tradeCollapseListings ?? true))}
-          >
-            <span className="value">{(settings.tradeCollapseListings ?? true) ? 'Yes' : 'No'}</span>
-            <Toggle
-              checked={settings.tradeCollapseListings ?? true}
-              onChange={(val) => update('tradeCollapseListings', val)}
-            />
-          </div>
-        </section>
+        <SettingToggleBox
+          label="Collapse Listings by Account"
+          checked={settings.tradeCollapseListings ?? true}
+          onChange={(val) => update('tradeCollapseListings', val)}
+        />
         <section>
           <label>Default search percentage</label>
-          <div className="setting-box mt-[2px] flex items-center gap-[10px]">
+          <div className="setting-box mt-[2px] min-h-[40px] flex items-center gap-[10px]">
             <input
               type="range"
               min={50}

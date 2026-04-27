@@ -283,7 +283,7 @@ describe('matchItemMods', () => {
       )
       const mirroredChip = filters.find((f) => f.id === 'misc.mirrored')
       expect(mirroredChip).toBeDefined()
-      expect(mirroredChip!.enabled).toBe(true)
+      expect(mirroredChip!.chipState).toBe('yes')
     })
 
     it('generates unidentified chip when item is not identified', () => {
