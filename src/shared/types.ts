@@ -302,6 +302,8 @@ export interface AppSettings {
   /** Maps to PoE trade `trade_filters.collapse.option`. When true, the API groups
    *  multiple listings from the same seller into one row. */
   tradeCollapseListings?: boolean
+  /** Volume (0.0-1.0) for the filter sound preview button. */
+  previewVolume?: number
   tradePriceOption:
     | 'chaos_divine'
     | 'chaos_equivalent'

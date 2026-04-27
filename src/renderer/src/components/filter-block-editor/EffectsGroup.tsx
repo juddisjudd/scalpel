@@ -77,22 +77,26 @@ function AlertSoundEditor({
   // Unified value: built-in sounds use their ID, custom sounds use "custom:filename"
   const currentValue = isNone ? '__none__' : isCustom ? `custom:${action.values[0] ?? ''}` : (action.values[0] ?? '1')
 
-  const playBuiltinSound = (id: string): void => {
+  const getPreviewVolume = async (): Promise<number> => {
+    const s = await window.api.getSettings()
+    return typeof s.previewVolume === 'number' ? s.previewVolume : 0.25
+  }
+
+  const playBuiltinSound = async (id: string): Promise<void> => {
     const paddedId = id.padStart(2, '0')
     const soundUrl = new URL(`../../assets/sounds/AlertSound_${paddedId}.ogg`, import.meta.url).href
     const audio = new Audio(soundUrl)
-    audio.volume = 0.4
+    audio.volume = await getPreviewVolume()
     audio.play().catch(() => {})
   }
 
-  const playCustomSound = (file: string): void => {
+  const playCustomSound = async (file: string): Promise<void> => {
     if (!file || !filterDirRef.current) return
-    window.api.getSoundDataUrl(filterDirRef.current, file).then((url) => {
-      if (!url) return
-      const audio = new Audio(url)
-      audio.volume = 0.4
-      audio.play().catch(() => {})
-    })
+    const url = await window.api.getSoundDataUrl(filterDirRef.current, file)
+    if (!url) return
+    const audio = new Audio(url)
+    audio.volume = await getPreviewVolume()
+    audio.play().catch(() => {})
   }
 
   const handleChange = (val: string): void => {

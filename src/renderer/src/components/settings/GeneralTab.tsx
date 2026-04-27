@@ -164,6 +164,24 @@ export function GeneralTab({ settings, update }: Props): JSX.Element {
         )}
       </section>
 
+      <section>
+        <label>Filter sound preview volume</label>
+        <div className="flex items-center gap-[10px] mt-[2px]">
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round((settings.previewVolume ?? 0.25) * 100)}
+            onChange={(e) => update('previewVolume', parseInt(e.target.value) / 100)}
+            className="flex-1"
+          />
+          <span className="text-[13px] font-semibold text-text min-w-[36px] text-right">
+            {Math.round((settings.previewVolume ?? 0.25) * 100)}%
+          </span>
+        </div>
+      </section>
+
       {import.meta.env.DEV && (
         <section>
           <div className="text-[10px] text-accent tracking-[1.5px] uppercase mt-3 font-bold">Dev Only Stuff</div>
