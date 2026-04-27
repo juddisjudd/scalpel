@@ -90,7 +90,7 @@ export function PriceCheckTab({ settings, update, tryHotkey }: Props): JSX.Eleme
       <div className="flex flex-col gap-[10px]">
         <SettingSelectBox
           label="Trade listings"
-          value={settings.tradeStatus ?? 'any'}
+          value={settings.tradeStatus ?? 'available'}
           options={STATUS_OPTIONS}
           onChange={(v) => update('tradeStatus', v)}
         />

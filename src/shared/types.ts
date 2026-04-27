@@ -298,9 +298,7 @@ export interface AppSettings {
   closeOnClickOutside: boolean
   reloadOnSave: boolean
   updateChannel: 'stable' | 'beta'
-  tradeStatus: 'securable' | 'online' | 'any'
-  // NOTE: 'available' was a legacy value from earlier releases; it's migrated to 'any' on
-  // launch (see main/index.ts). Typed here as its current set, not the legacy union.
+  tradeStatus: 'securable' | 'online' | 'available'
   tradePriceOption:
     | 'chaos_divine'
     | 'chaos_equivalent'

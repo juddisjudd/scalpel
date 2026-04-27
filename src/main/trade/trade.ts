@@ -423,7 +423,7 @@ export async function searchTrade(
     vaalGem?: boolean
   },
   statFilters: StatFilter[],
-  tradeStatus: string = 'any',
+  tradeStatus: string = 'available',
   tradePriceOption?: string,
   listedTime?: string,
 ): Promise<TradeResult> {

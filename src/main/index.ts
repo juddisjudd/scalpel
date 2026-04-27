@@ -86,7 +86,7 @@ const store = new Store<AppSettings>({
     closeOnClickOutside: false,
     reloadOnSave: true,
     updateChannel: 'stable',
-    tradeStatus: 'any',
+    tradeStatus: 'available',
     tradePriceOption: 'chaos_divine',
     tradePriceOptionPoe1: 'chaos_divine',
     tradePriceOptionPoe2: 'exalted_divine',
@@ -104,8 +104,7 @@ const store = new Store<AppSettings>({
 if (store.get('reloadOnSave') === undefined) store.set('reloadOnSave', true)
 if (store.get('stashScrollEnabled') === undefined) store.set('stashScrollEnabled', false)
 if (store.get('openSide') === undefined) store.set('openSide', 'both')
-// Migrate legacy tradeStatus 'available' -> 'any' (renamed to match chip-row options)
-if ((store.get('tradeStatus') as string) === 'available') store.set('tradeStatus', 'any')
+if ((store.get('tradeStatus') as string) === 'any') store.set('tradeStatus', 'available')
 
 // Auto-detect overlay scale on first run (deferred until app ready since screen API requires it)
 app.whenReady().then(() => {

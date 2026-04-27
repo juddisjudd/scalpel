@@ -145,7 +145,7 @@ export function register(store: Store<AppSettings>): void {
       const league = store.get('league')
       // Per-search overrides from the price-check Settings chip take priority over the
       // persisted global settings.
-      const status = searchOptions?.statusOption ?? store.get('tradeStatus') ?? 'any'
+      const status = searchOptions?.statusOption ?? store.get('tradeStatus') ?? 'available'
       const price = searchOptions?.priceOption ?? store.get('tradePriceOption') ?? 'chaos_divine'
       return searchTrade(league, item, statFilters, status, price, searchOptions?.listedTime)
     },
@@ -239,7 +239,7 @@ export function register(store: Store<AppSettings>): void {
       },
     ) => {
       const league = store.get('league')
-      const tradeStatus = store.get('tradeStatus') ?? 'any'
+      const tradeStatus = store.get('tradeStatus') ?? 'available'
       const tradePriceOption = store.get('tradePriceOption') ?? 'chaos_divine'
       const result = await searchMapsByRegex(
         league,

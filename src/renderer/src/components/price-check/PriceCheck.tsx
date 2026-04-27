@@ -110,7 +110,7 @@ export function PriceCheck({
   const [showSettings, setShowSettings] = useState(false)
   const [listedTime, setListedTime] = useState<ListedTime>('')
   const [priceOption, setPriceOption] = useState<PriceOption>('chaos_divine')
-  const [statusOption, setStatusOption] = useState<StatusOption>('any')
+  const [statusOption, setStatusOption] = useState<StatusOption>('available')
   const [resultsView, setResultsView] = useState<ResultsView>('default')
 
   const includeImplicits = shouldIncludeImplicitsInBase(item.rarity, item.corrupted)

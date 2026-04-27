@@ -64,14 +64,14 @@ export function getPriceOptions(version: 1 | 2): Array<{ value: PriceOption; lab
  * Trade-listings mode. Maps to PoE trade `status.option`:
  *  - `securable` -> Instant buyout only
  *  - `online`    -> Priced for in-person trade (all listed, including instant)
- *  - `any`       -> Both
+ *  - `available` -> Both
  */
-export type StatusOption = 'securable' | 'online' | 'any'
+export type StatusOption = 'securable' | 'online' | 'available'
 
 export const STATUS_OPTIONS: Array<{ value: StatusOption; label: string }> = [
   { value: 'securable', label: 'Instant buyout' },
   { value: 'online', label: 'In-person' },
-  { value: 'any', label: 'Both' },
+  { value: 'available', label: 'Both' },
 ]
 
 /** How trade-result rows render. */
