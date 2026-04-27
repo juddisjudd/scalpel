@@ -310,6 +310,10 @@ export function register(store: Store<AppSettings>): void {
   // filled over time by harvestIcons() in trade.ts.
   ipcMain.handle('get-icon-cache', () => loadIconCache(getPoeVersion()))
 
+  ipcMain.handle('get-uniques-for-base', (_event, baseType: string): string[] => {
+    return getUniquesByBase()[baseType] ?? []
+  })
+
   ipcMain.handle(
     'lookup-base-type',
     async (

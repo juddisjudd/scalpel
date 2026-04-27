@@ -100,6 +100,10 @@ export interface PoeItem {
   identified: boolean
   mirrored: boolean
   synthesised: boolean
+  /** True when the item was constructed by Scalpel (e.g. sister-overlay click,
+   *  unique-card click) rather than parsed from a real clipboard paste. UI uses
+   *  this to suppress fields that have no meaning on a placeholder item. */
+  isSynthetic?: boolean
   fractured: boolean
   transfigured: boolean
   vaalGem?: boolean

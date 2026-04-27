@@ -47,6 +47,7 @@ export function IconGlow({
         src={src}
         alt=""
         aria-hidden="true"
+        draggable={false}
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
         style={{
           width: gw,
@@ -59,6 +60,7 @@ export function IconGlow({
       <img
         src={src}
         alt={alt}
+        draggable={false}
         className="relative"
         style={{
           width: sharpW,

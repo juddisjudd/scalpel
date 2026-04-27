@@ -7,6 +7,7 @@ import { getItemIconUrl, RARITY_COLORS } from './filter-panel/constants'
 import { CollapsedHeader } from './filter-panel/CollapsedHeader'
 import { SaveButton } from './filter-panel/SaveButton'
 import { BreakpointEditor } from './filter-panel/BreakpointEditor'
+import { UniquesForBase } from './filter-panel/UniquesForBase'
 import type { FilterPanelProps, PendingThreshold } from './filter-panel/types'
 
 export function FilterPanel({
@@ -196,6 +197,8 @@ export function FilterPanel({
               )}
             </div>
           )}
+
+          <UniquesForBase baseType={item.baseType} itemClass={item.itemClass} />
 
           {hasBreakpoints && (
             <BreakpointEditor

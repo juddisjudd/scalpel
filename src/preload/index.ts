@@ -48,6 +48,7 @@ export const api = {
     uniqueName?: string,
     flags?: { zanaMemory?: boolean },
   ): Promise<void> => ipcRenderer.invoke('lookup-base-type', baseType, itemClass, rarity, uniqueName, flags),
+  getUniquesForBase: (baseType: string): Promise<string[]> => ipcRenderer.invoke('get-uniques-for-base', baseType),
   getSearchableItems: (): Promise<import('../shared/types').SearchableItem[]> =>
     ipcRenderer.invoke('get-searchable-items'),
   getDivCardTiers: (): Promise<{

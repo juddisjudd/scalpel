@@ -1,7 +1,8 @@
 import { ReactSortable } from 'react-sortablejs'
 import { CloseSmall, Drag } from '@icon-park/react'
 import type { RegexPreset } from '../../../../shared/types'
-import { TagSourceIcon, createMomentumScrollHandler, tagChipStyle } from './mapmods-helpers'
+import { TagSourceIcon, tagChipStyle } from './mapmods-helpers'
+import { createMomentumScrollHandler } from '../../shared/momentumScroll'
 
 interface SavedPresetsProps {
   /** All saved presets. The strip renders only the subset whose `generator` matches

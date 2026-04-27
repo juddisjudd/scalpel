@@ -1,7 +1,6 @@
 import { forwardRef, useEffect, useMemo, useState } from 'react'
-import { IconGlow } from '../shared/IconGlow'
-import { PriceChip } from '../shared/PriceChip'
 import { iconMap, RARITY_COLORS } from '../shared/constants'
+import { ItemRowContent } from '../shared/ItemRowContent'
 import { SisterShell } from './SisterShell'
 import { SisterRow } from './SisterRow'
 import type { ItemRarity } from '../../../shared/types'
@@ -108,19 +107,7 @@ export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(
               onClick={() => window.api.lookupBaseType(name, itemClass, synthRarity)}
               title={isCurrent ? name : `Switch to ${name}`}
             >
-              <div className="text-[11px] text-center leading-tight" style={{ color: titleColor }}>
-                {name}
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                {iconUrl ? (
-                  <IconGlow src={iconUrl} size={44} blur={14} saturate={2.5} opacity={0.35} />
-                ) : (
-                  <div className="w-[44px] h-[44px] shrink-0" />
-                )}
-                {price && price.chaosValue > 0 && (
-                  <PriceChip chaosValue={price.chaosValue} divineValue={price.divineValue} size="sm" />
-                )}
-              </div>
+              <ItemRowContent name={name} iconUrl={iconUrl} price={price} nameColor={titleColor} />
             </SisterRow>
           )
         })}

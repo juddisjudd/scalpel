@@ -45,6 +45,7 @@ export function defaultPoeItem(overrides: Partial<PoeItem> = {}, version: 1 | 2 
     explicits: [],
     implicits: [],
     areaLevel: version === 2 ? 80 : 83,
+    isSynthetic: true,
     ...overrides,
   } as PoeItem
 }

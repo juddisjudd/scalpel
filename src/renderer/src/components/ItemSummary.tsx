@@ -282,6 +282,7 @@ export function ItemSummary({
 
         <div className="flex gap-[6px] flex-wrap mt-0.5">
           {item.itemLevel > 0 &&
+            !item.isSynthetic &&
             !item.itemClass.includes('Currency') &&
             item.itemClass !== 'Map Fragments' &&
             item.itemClass !== 'Misc Map Items' &&
