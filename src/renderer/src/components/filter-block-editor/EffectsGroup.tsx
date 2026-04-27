@@ -63,9 +63,11 @@ function AlertSoundEditor({
   const isCustom = action.type === 'CustomAlertSound' || action.type === 'CustomAlertSoundOptional'
   const [soundFiles, setSoundFiles] = useState<string[]>([])
   const filterDirRef = useRef('')
+  const previewVolumeRef = useRef(0.25)
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
+      if (typeof s.previewVolume === 'number') previewVolumeRef.current = s.previewVolume
       if (s.filterDir) {
         filterDirRef.current = s.filterDir
         window.api.scanSoundFiles(s.filterDir).then(setSoundFiles)
@@ -77,26 +79,22 @@ function AlertSoundEditor({
   // Unified value: built-in sounds use their ID, custom sounds use "custom:filename"
   const currentValue = isNone ? '__none__' : isCustom ? `custom:${action.values[0] ?? ''}` : (action.values[0] ?? '1')
 
-  const getPreviewVolume = async (): Promise<number> => {
-    const s = await window.api.getSettings()
-    return typeof s.previewVolume === 'number' ? s.previewVolume : 0.25
-  }
-
-  const playBuiltinSound = async (id: string): Promise<void> => {
+  const playBuiltinSound = (id: string): void => {
     const paddedId = id.padStart(2, '0')
     const soundUrl = new URL(`../../assets/sounds/AlertSound_${paddedId}.ogg`, import.meta.url).href
     const audio = new Audio(soundUrl)
-    audio.volume = await getPreviewVolume()
+    audio.volume = previewVolumeRef.current
     audio.play().catch(() => {})
   }
 
-  const playCustomSound = async (file: string): Promise<void> => {
+  const playCustomSound = (file: string): void => {
     if (!file || !filterDirRef.current) return
-    const url = await window.api.getSoundDataUrl(filterDirRef.current, file)
-    if (!url) return
-    const audio = new Audio(url)
-    audio.volume = await getPreviewVolume()
-    audio.play().catch(() => {})
+    window.api.getSoundDataUrl(filterDirRef.current, file).then((url) => {
+      if (!url) return
+      const audio = new Audio(url)
+      audio.volume = previewVolumeRef.current
+      audio.play().catch(() => {})
+    })
   }
 
   const handleChange = (val: string): void => {
