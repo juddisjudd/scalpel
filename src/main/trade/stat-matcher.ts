@@ -1309,14 +1309,16 @@ export function matchItemMods(
         type: 'misc',
       })
     }
-    if (itemInfo.identified === false) {
+    // Show the chip on uniques regardless of identified state so users can flip
+    // between identified and unid searches; default `enabled` matches the item.
+    if (itemInfo.identified === false || itemInfo.rarity === 'Unique') {
       miscFilters.push({
         id: 'misc.identified',
         text: 'Unidentified',
         value: null,
         min: null,
         max: null,
-        enabled: true,
+        enabled: itemInfo.identified === false,
         type: 'misc',
       })
     }

@@ -707,17 +707,22 @@ export async function searchTrade(
     'pseudo.pseudo_map_more_map_drops',
     'pseudo.pseudo_map_more_card_drops',
   ])
-  const enabledFilters = statFilters.filter(
-    (f) =>
-      f.enabled &&
-      f.type !== 'timeless' &&
-      f.id !== 'misc.memory_level' &&
-      f.id !== 'socket.white_sockets' &&
-      (!['defence', 'weapon', 'socket', 'misc', 'gem', 'map', 'heist', 'currency'].includes(f.type) ||
-        miscPseudoIds.has(f.id) ||
-        mapPseudoIds.has(f.id)),
-  )
-  const timelessFilters = statFilters.filter((f) => f.enabled && f.type === 'timeless')
+  // Unid items have hidden mods, so any explicit/implicit/fractured/crafted/pseudo
+  // filter would never match -- skip the whole mod-stat group when the chip is on.
+  const unidEnabled = statFilters.some((f) => f.id === 'misc.identified' && f.enabled)
+  const enabledFilters = unidEnabled
+    ? []
+    : statFilters.filter(
+        (f) =>
+          f.enabled &&
+          f.type !== 'timeless' &&
+          f.id !== 'misc.memory_level' &&
+          f.id !== 'socket.white_sockets' &&
+          (!['defence', 'weapon', 'socket', 'misc', 'gem', 'map', 'heist', 'currency'].includes(f.type) ||
+            miscPseudoIds.has(f.id) ||
+            mapPseudoIds.has(f.id)),
+      )
+  const timelessFilters = unidEnabled ? [] : statFilters.filter((f) => f.enabled && f.type === 'timeless')
 
   const statGroups: Array<{
     type: string
