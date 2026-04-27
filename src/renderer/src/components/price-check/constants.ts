@@ -162,6 +162,8 @@ export const CHIP_COLORS: Record<string, string> = {
   'misc.identified': '#ffb74d',
 }
 
+export const TERNARY_CHIP_IDS = new Set(['misc.corrupted', 'misc.mirrored', 'misc.fractured'])
+
 export function getChipColor(id: string): string {
   if (CHIP_COLORS[id]) return CHIP_COLORS[id]
   if (id.startsWith('misc.influence_')) return '#c8a2c8'

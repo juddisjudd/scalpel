@@ -1260,7 +1260,6 @@ export function matchItemMods(
       }
     }
 
-    // Equipment and gems: always show corrupted chip (on if item is corrupted, off if not)
     const isEquipment = !!ITEM_CLASS_TO_CATEGORY[itemInfo.itemClass]
     const isMap = itemInfo.itemClass === 'Maps'
     if (isGem || isEquipment || isMap) {
@@ -1270,7 +1269,8 @@ export function matchItemMods(
         value: null,
         min: null,
         max: null,
-        enabled: !!itemInfo.corrupted,
+        enabled: true,
+        chipState: itemInfo.corrupted ? 'yes' : 'no',
         type: 'misc',
       })
     } else if (itemInfo.corrupted && itemInfo.itemClass !== 'Divination Cards') {
@@ -1281,6 +1281,7 @@ export function matchItemMods(
         min: null,
         max: null,
         enabled: true,
+        chipState: 'yes',
         type: 'misc',
       })
     }
@@ -1296,7 +1297,7 @@ export function matchItemMods(
         type: 'misc',
       })
     }
-    if (itemInfo.mirrored) {
+    if (itemInfo.mirrored || (isEquipment && itemInfo.rarity !== 'Unique')) {
       miscFilters.push({
         id: 'misc.mirrored',
         text: 'Mirrored',
@@ -1304,6 +1305,7 @@ export function matchItemMods(
         min: null,
         max: null,
         enabled: true,
+        chipState: itemInfo.mirrored ? 'yes' : 'no',
         type: 'misc',
       })
     }
@@ -1319,17 +1321,16 @@ export function matchItemMods(
       })
     }
 
-    // Fractured chip for equipment: off = exclude fractured, on = include fractured
-    // Auto-enable if any fractured mod filter is enabled
     if (isEquipment && itemInfo.rarity !== 'Unique') {
       const hasFracturedMod = filters.some((f) => f.type === 'fractured' && f.enabled)
       miscFilters.push({
         id: 'misc.fractured',
-        text: 'Include Fractured',
+        text: 'Fractured',
         value: null,
         min: null,
         max: null,
-        enabled: hasFracturedMod,
+        enabled: true,
+        chipState: hasFracturedMod ? 'yes' : undefined,
         type: 'misc',
       })
     }

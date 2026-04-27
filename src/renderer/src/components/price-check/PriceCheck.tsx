@@ -11,8 +11,10 @@ import {
   formatPrice,
   getItemSize,
   getChipColor,
+  TERNARY_CHIP_IDS,
 } from './constants'
 import { FilterChip } from './FilterChip'
+import { TernaryFilterChip } from './TernaryFilterChip'
 import { PriceChip } from '../../shared/PriceChip'
 import { FaustusBanner } from './FaustusBanner'
 import { AngeBanner } from './AngeBanner'
@@ -258,10 +260,6 @@ export function PriceCheck({
     setFilters((prev) => {
       const target = prev[idx]
       const toggling = !target.enabled
-      // Prevent disabling fractured chip while any fractured row is enabled
-      if (!toggling && target.id === 'misc.fractured' && prev.some((f) => f.type === 'fractured' && f.enabled)) {
-        return prev
-      }
       return prev.map((f, i) => {
         if (i === idx) {
           if (toggling && f.type === 'timeless') return { ...f, enabled: true }
@@ -271,9 +269,9 @@ export function PriceCheck({
         if (f.type === 'timeless' && target.type === 'timeless' && toggling) {
           return { ...f, enabled: false }
         }
-        // Auto-enable "Include Fractured" chip when a fractured mod is toggled on
+        // Auto-flip the Fractured chip to "yes" when a fractured-mod row is toggled on
         if (f.id === 'misc.fractured' && target.type === 'fractured' && toggling) {
-          return { ...f, enabled: true }
+          return { ...f, chipState: 'yes' }
         }
         return f
       })
@@ -426,7 +424,7 @@ export function PriceCheck({
               })()}
               {/* Base chip -- non-mirrored */}
               {(() => {
-                if (filters.some((f) => f.id === 'misc.mirrored' && f.enabled)) return null
+                if (filters.some((f) => f.id === 'misc.mirrored' && f.chipState === 'yes')) return null
 
                 // Base mode signature: basetype chip on, no mod-style filters
                 // active. ilvl is expected for non-uniques (rare crafting
@@ -471,9 +469,10 @@ export function PriceCheck({
                   />
                 )
               })()}
-              {/* Filter chips (sockets, quality, ilvl, corrupted, etc.) */}
+              {/* Filter chips (sockets, quality, ilvl, influence, etc.) */}
               {filters.map((f, i) => {
                 if (f.type !== 'socket' && f.type !== 'misc') return null
+                if (TERNARY_CHIP_IDS.has(f.id)) return null
                 return (
                   <FilterChip
                     key={i}
@@ -490,6 +489,19 @@ export function PriceCheck({
                 if (f.type !== 'timeless') return null
                 return <FilterChip key={i} label={f.text} active={f.enabled} onClick={() => toggleFilter(i)} />
               })}
+              {/* Ternary chips (corrupted / mirrored / fractured) */}
+              {filters.map((f, i) =>
+                TERNARY_CHIP_IDS.has(f.id) ? (
+                  <TernaryFilterChip
+                    key={i}
+                    label={f.text}
+                    state={f.chipState}
+                    onChange={(next) =>
+                      setFilters((prev) => prev.map((g, j) => (j === i ? { ...g, chipState: next } : g)))
+                    }
+                  />
+                ) : null,
+              )}
               {/* Per-search Settings chip -- toggles a dropdown row above the search button */}
               {!isBulk && (
                 <FilterChip label="Settings" active={showSettings} onClick={() => setShowSettings((v) => !v)} />

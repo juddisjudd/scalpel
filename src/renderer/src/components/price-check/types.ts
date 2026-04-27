@@ -11,6 +11,8 @@ export interface StatFilter {
   foulborn?: boolean
   modTier?: number
   modRange?: { min: number; max: number }
+  /** Ternary chip state: 'yes' | 'no' | undefined (= any). */
+  chipState?: 'yes' | 'no'
 }
 
 export interface Listing {

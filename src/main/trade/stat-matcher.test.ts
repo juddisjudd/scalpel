@@ -259,10 +259,10 @@ describe('matchItemMods', () => {
       )
       const corruptedChip = filters.find((f) => f.id === 'misc.corrupted')
       expect(corruptedChip).toBeDefined()
-      expect(corruptedChip!.enabled).toBe(true)
+      expect(corruptedChip!.chipState).toBe('yes')
     })
 
-    it('generates corrupted chip disabled when item is not corrupted (equipment)', () => {
+    it('generates corrupted chip in "no" state when item is not corrupted (equipment)', () => {
       const filters = matchItemMods(
         [],
         [],
@@ -271,7 +271,7 @@ describe('matchItemMods', () => {
       )
       const corruptedChip = filters.find((f) => f.id === 'misc.corrupted')
       expect(corruptedChip).toBeDefined()
-      expect(corruptedChip!.enabled).toBe(false)
+      expect(corruptedChip!.chipState).toBe('no')
     })
 
     it('generates mirrored chip when item is mirrored', () => {
@@ -864,7 +864,7 @@ describe('matchItemMods', () => {
   })
 
   describe('fractured chip', () => {
-    it('generates include fractured chip for equipment', () => {
+    it('generates fractured chip for equipment in "any" state when no fractured mods', () => {
       const filters = matchItemMods(
         [],
         [],
@@ -873,9 +873,8 @@ describe('matchItemMods', () => {
       )
       const fracturedChip = filters.find((f) => f.id === 'misc.fractured')
       expect(fracturedChip).toBeDefined()
-      expect(fracturedChip!.text).toBe('Include Fractured')
-      // No fractured mods, so disabled
-      expect(fracturedChip!.enabled).toBe(false)
+      expect(fracturedChip!.text).toBe('Fractured')
+      expect(fracturedChip!.chipState).toBeUndefined()
     })
 
     it('does not generate fractured chip for unique items', () => {

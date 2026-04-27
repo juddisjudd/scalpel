@@ -154,6 +154,8 @@ export interface StatFilter {
   foulborn?: boolean
   modTier?: number // mod tier if known (from advanced mod data)
   modRange?: { min: number; max: number } // possible roll range for this mod
+  /** Ternary chip state: 'yes' | 'no' | undefined (= any). */
+  chipState?: 'yes' | 'no'
 }
 
 // ─── Rate Limiter ─────────────────────────────────────────────────────────────
@@ -618,9 +620,10 @@ export async function searchTrade(
     if (f.id === 'misc.gem_level' && f.enabled)
       miscQuery.gem_level = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
     if (f.id === 'misc.gem_transfigured') miscQuery.gem_transfigured = { option: f.enabled ? 'true' : 'false' }
-    // Corrupted: enabled = search corrupted, disabled = search uncorrupted (for equipment)
-    if (f.id === 'misc.corrupted') miscQuery.corrupted = { option: f.enabled ? 'true' : 'false' }
-    if (f.id === 'misc.mirrored' && f.enabled) miscQuery.mirrored = { option: 'true' }
+    if (f.id === 'misc.corrupted' && f.chipState)
+      miscQuery.corrupted = { option: f.chipState === 'yes' ? 'true' : 'false' }
+    if (f.id === 'misc.mirrored' && f.chipState)
+      miscQuery.mirrored = { option: f.chipState === 'yes' ? 'true' : 'false' }
     if (f.id === 'misc.identified') miscQuery.identified = { option: f.enabled ? 'false' : 'true' }
     if (f.id === 'misc.memory_level' && f.enabled)
       miscQuery.memory_level = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
@@ -648,28 +651,9 @@ export async function searchTrade(
       if (f.id === 'misc.influence_eater_of_worlds') miscQuery.tangled_item = { option: 'true' }
     }
   }
-  // Equipment: default to non-fractured unless chip is enabled
   const fracturedFilter = miscFiltersAll.find((f) => f.id === 'misc.fractured')
-  if (fracturedFilter && !fracturedFilter.enabled) {
-    miscQuery.fractured_item = { option: 'false' }
-  }
-
-  // Equipment: default to unmirrored unless the item itself is mirrored
-  const noMirrorFilter = new Set([
-    'Divination Cards',
-    'Currency',
-    'Stackable Currency',
-    'Map Fragments',
-    'Scarabs',
-    'Gems',
-    'Support Gems',
-    'Skill Gems',
-    'Active Skill Gems',
-    'Support Skill Gems',
-    'Misc Map Items',
-  ])
-  if (item.rarity !== 'Unique' && !noMirrorFilter.has(item.itemClass) && !miscQuery.mirrored) {
-    miscQuery.mirrored = { option: 'false' }
+  if (fracturedFilter?.chipState) {
+    miscQuery.fractured_item = { option: fracturedFilter.chipState === 'yes' ? 'true' : 'false' }
   }
   if (Object.keys(miscQuery).length > 0) {
     const existing = (query.filters as Record<string, unknown>) ?? {}
