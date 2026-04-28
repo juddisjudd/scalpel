@@ -26,7 +26,10 @@ for (const [cls, { bases }] of Object.entries(itemClasses)) {
   for (const base of bases) classMap[base] = cls
 }
 
-export function DustExplorer({ onSelectItem }: { onSelectItem?: () => void } = {}): JSX.Element {
+export function DustExplorer({
+  onSelectItem,
+  onPriceCheckItem,
+}: { onSelectItem?: () => void; onPriceCheckItem?: () => void } = {}): JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>(persistedState.sortKey)
   const [sortDir, setSortDir] = useState<SortDir>(persistedState.sortDir)
   const [prices, setPrices] = useState<Record<string, number>>({})
@@ -297,6 +300,7 @@ export function DustExplorer({ onSelectItem }: { onSelectItem?: () => void } = {
             mirrorRate={mirrorRate}
             classMap={classMap}
             onSelectItem={onSelectItem}
+            onPriceCheckItem={onPriceCheckItem}
           />
         ))}
       </div>

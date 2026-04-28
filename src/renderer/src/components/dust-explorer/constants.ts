@@ -45,10 +45,10 @@ export const cachedBaseEntries = (() => {
   return entries
 })()
 
-export const COL_PRICE = 50
+export const COL_PRICE = 44
 export const COL_DUST = 50
 export const COL_DPC = 72
-export const COL_DPCS = 62
+export const COL_DPCS = 56
 
 export const ALL_FILTER_TYPES: FilterType[] = [
   'name',

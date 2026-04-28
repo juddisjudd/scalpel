@@ -1,3 +1,4 @@
+import { Buy } from '@icon-park/react'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
 import { chaosIcon, divineIcon } from '../../shared/icons'
 import { IconGlow } from '../../shared/IconGlow'
@@ -13,6 +14,7 @@ interface DustEntryRowProps {
   mirrorRate: number
   classMap: Record<string, string>
   onSelectItem?: () => void
+  onPriceCheckItem?: () => void
 }
 
 export function DustEntryRow({
@@ -22,7 +24,17 @@ export function DustEntryRow({
   mirrorRate,
   classMap,
   onSelectItem,
+  onPriceCheckItem,
 }: DustEntryRowProps): JSX.Element {
+  const loadItem = (): void => {
+    window.api.lookupBaseType(entry.baseType, classMap[entry.baseType] || '', 'Unique', entry.name)
+  }
+  const openPriceCheck = (): void => {
+    // Routes through main's runPriceCheck so it fires 'price-check-open', which
+    // sets the priceCheckPending flag in App and prevents onOverlayData from
+    // racing setView('item') over our setView('pricecheck').
+    window.api.sisterOpenPriceCheck({ name: entry.name, baseType: entry.baseType, category: 'unique' })
+  }
   return (
     <div
       className="flex items-center gap-[6px] px-3 py-1"
@@ -38,13 +50,26 @@ export function DustEntryRow({
       {/* Name */}
       <span
         onClick={() => {
-          window.api.lookupBaseType(entry.baseType, classMap[entry.baseType] || '', 'Unique', entry.name)
+          loadItem()
           onSelectItem?.()
         }}
         className="flex-1 text-[11px] text-text overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer hover:text-accent"
       >
         {entry.name}
       </span>
+
+      {/* Price-check shortcut -- jumps straight to the price tab so users browsing
+          the dust list can buy without an extra click. */}
+      <button
+        onClick={() => {
+          openPriceCheck()
+          onPriceCheckItem?.()
+        }}
+        title={`Price check ${entry.name}`}
+        className="inline-flex items-center justify-center rounded bg-white/[0.06] hover:bg-white/[0.12] h-[20px] px-[6px] text-[10px] shrink-0 cursor-pointer box-border"
+      >
+        <Buy size={12} theme="outline" fill="currentColor" />
+      </button>
 
       {/* Price chip */}
       {entry.chaosValue !== null ? (

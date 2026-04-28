@@ -594,6 +594,7 @@ export function matchItemMods(
     atzoatlRooms?: string[]
     atzoatlOpenCount?: number
     storedExperience?: number
+    isSynthetic?: boolean
   },
   advancedMods?: AdvancedMod[],
   defaultPercent = 90,
@@ -1183,7 +1184,7 @@ export function matchItemMods(
         })
       }
     }
-    if (itemInfo.itemLevel > 0) {
+    if (itemInfo.itemLevel > 0 && !itemInfo.isSynthetic) {
       miscFilters.push({
         id: 'misc.ilvl',
         text: `ilvl: ${itemInfo.itemLevel}`,
@@ -1192,6 +1193,19 @@ export function matchItemMods(
         max: null,
         enabled: false,
         type: 'misc',
+      })
+    } else if (itemInfo.isSynthetic) {
+      // Synthetic items have a placeholder ilvl that's meaningless. Render as an
+      // editable row pre-set to 83 (typical T16 map level) so users price-checking
+      // for dust can lift the ilvl floor without first having to enable a chip.
+      miscFilters.push({
+        id: 'misc.ilvl',
+        text: 'Item Level',
+        value: 83,
+        min: 83,
+        max: null,
+        enabled: true,
+        type: 'gem',
       })
     }
     // Open prefix/suffix chips (from advanced mod data, non-uniques only).

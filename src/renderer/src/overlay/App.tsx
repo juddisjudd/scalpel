@@ -767,7 +767,7 @@ export default function App(): JSX.Element {
                 ))}
               {features.dustExplorer && (
                 <div className="flex-col flex-1 min-h-0" style={{ display: view === 'dust' ? 'flex' : 'none' }}>
-                  <DustExplorer onSelectItem={() => setView('item')} />
+                  <DustExplorer onSelectItem={() => setView('item')} onPriceCheckItem={() => setView('pricecheck')} />
                 </div>
               )}
               {features.divCards && (

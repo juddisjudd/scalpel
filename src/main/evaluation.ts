@@ -251,6 +251,7 @@ export async function preloadPriceCheck(item: PoeItem, store: Store<AppSettings>
       atzoatlRooms: item.atzoatlRooms,
       atzoatlOpenCount: item.atzoatlOpenCount,
       storedExperience: item.storedExperience,
+      isSynthetic: item.isSynthetic,
     },
     item.advancedMods,
     store.get('priceCheckDefaultPercent') ?? 90,
