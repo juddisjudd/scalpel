@@ -80,7 +80,7 @@ export function UniquesForBase({ baseType, itemClass }: { baseType: string; item
     // inner padding keeps the first/last cards aligned with the rest of the column.
     <div
       ref={scrollRef}
-      className="flex gap-2 overflow-x-auto no-scrollbar -mx-3"
+      className="flex gap-2 overflow-x-auto overflow-y-hidden no-scrollbar -mx-3"
       style={{ paddingLeft: 12, paddingRight: 12 }}
       onMouseDown={createMomentumScrollHandler()}
       onScroll={(e) => scrollPositionCache.set(baseType, e.currentTarget.scrollLeft)}
@@ -92,7 +92,7 @@ export function UniquesForBase({ baseType, itemClass }: { baseType: string; item
               key={name}
               onClick={() => window.api.lookupBaseType(baseType, itemClass, 'Unique', name)}
               title={`Switch to ${name}`}
-              className="flex flex-col items-center justify-between gap-1 w-[120px] shrink-0 px-2 py-2 rounded cursor-pointer bg-bg-card hover:bg-bg-hover transition-colors"
+              className="unique-card flex flex-col items-center justify-between gap-1 w-[120px] shrink-0 px-2 py-2 rounded cursor-pointer bg-bg-card hover:bg-bg-hover transition-colors"
             >
               <ItemRowContent
                 name={name}

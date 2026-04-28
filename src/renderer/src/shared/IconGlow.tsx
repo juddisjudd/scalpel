@@ -48,13 +48,14 @@ export function IconGlow({
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+        className="icon-glow-blur absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
         style={{
           width: gw,
           height: gh,
           objectFit,
           filter: `blur(${blur}px) saturate(${saturate})`,
           opacity,
+          transition: 'opacity 500ms, transform 500ms',
         }}
       />
       <img
