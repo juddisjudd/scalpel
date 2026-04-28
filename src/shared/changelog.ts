@@ -1,5 +1,24 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.7-rc2',
+    notes: [
+      'Added ternary chips to price checker for corrupted, mirrored, and fractured',
+      'Added additional trade settings',
+      'Added tooltip component with the first tip in regex for macros',
+      "Added volume slider for your sensitive lil' ears",
+      'Added which uniques can come from a base type on filter page, handled uniques better in sister overlay',
+      'Added purchase button to dust explorer',
+      "Added unid chip to all uniques in case that's your bag",
+      'Fixed issue with some base types having incorrect inventory slots and sockets',
+      'Fixed issue where overlay underlay could leave a remnant if you exited mid drag',
+      "Fixed issue where base type didn't enable memory strands in price checker",
+      "Fixed issue where sister overlay persisted even when the tier didn't support it",
+      'Fixed issue where user could collapse thresholds',
+      'Fixed issue with "both" in trade settings sending "any" to trade site',
+      'Fixed issue with numbers based regex not matching poe.re exactly',
+    ],
+  },
+  {
     version: '0.9.7',
     notes: [
       'Added Path of Exile 2 support. Game is detected automatically, however you will need to restart Scalpel when switching games. It will prompt you.',
