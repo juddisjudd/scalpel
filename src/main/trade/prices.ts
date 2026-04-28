@@ -6,8 +6,16 @@ import type { PriceInfo } from '../../shared/types'
 import { POE_NINJA_API } from '../../shared/endpoints'
 import { getPoeVersion } from '../game-state'
 import { fetchAndBuildPoe2PriceMap } from './prices.poe2'
-import uniqueInfoData from '../../shared/data/items/unique-info.json'
-const staticUniquesByBase = uniqueInfoData as Record<string, string[]>
+import uniqueInfoPoe1 from '../../shared/data/items/unique-info.json'
+import uniqueInfoPoe2 from '../../shared/data/items/unique-info-poe2.json'
+const staticUniquesByVersion: Record<1 | 2, Record<string, string[]>> = {
+  1: uniqueInfoPoe1 as Record<string, string[]>,
+  2: uniqueInfoPoe2 as Record<string, string[]>,
+}
+// PoE1's map gets augmented at runtime from the dense endpoint; PoE2 stays
+// static (poe.ninja's PoE2 overviews don't carry base info in the variant
+// string the way PoE1's do, so we trust the bundled poe2db scrape).
+const poe1StaticUniquesByBase = staticUniquesByVersion[1]
 
 // Dynamic map built from poe.ninja data, falls back to cached file, then static file
 let uniqueBaseMap: Record<string, string[]> = loadCachedUniquesByBase()
@@ -25,7 +33,7 @@ function loadCachedUniquesByBase(): Record<string, string[]> {
   } catch {
     /* fall through */
   }
-  return staticUniquesByBase as Record<string, string[]>
+  return poe1StaticUniquesByBase as Record<string, string[]>
 }
 
 function saveCachedUniquesByBase(data: Record<string, string[]>): void {
@@ -148,7 +156,7 @@ function buildUniquesByBaseFromDense(resp: DenseResponse): void {
         for (const part of parts) {
           // Skip common non-base parts
           if (/^\d+L$/.test(part) || part === 'Relic' || part === 'Relics') continue
-          if (staticUniquesByBase[part as keyof typeof staticUniquesByBase]) {
+          if (poe1StaticUniquesByBase[part as keyof typeof poe1StaticUniquesByBase]) {
             if (!dynamicMap[part]) dynamicMap[part] = new Set()
             dynamicMap[part].add(name)
             break
@@ -159,7 +167,7 @@ function buildUniquesByBaseFromDense(resp: DenseResponse): void {
   }
 
   // Merge dynamic data into the base map (dynamic supplements static)
-  const merged = { ...(staticUniquesByBase as Record<string, string[]>) }
+  const merged = { ...(poe1StaticUniquesByBase as Record<string, string[]>) }
   for (const [base, names] of Object.entries(dynamicMap)) {
     const existing = new Set(merged[base] ?? [])
     for (const n of names) existing.add(n)
@@ -267,13 +275,14 @@ export function getGemNames(): Set<string> {
   return gemNames
 }
 
-/** Find the highest-priced unique item that uses a given base type */
+/** Active baseType -> [unique names] map. Returns the PoE1 dense-augmented map
+ *  in PoE1, or the bundled static PoE2 map in PoE2. */
 export function getUniquesByBase(): Record<string, string[]> {
-  return uniqueBaseMap
+  return getPoeVersion() === 2 ? staticUniquesByVersion[2] : uniqueBaseMap
 }
 
 export function lookupBestUniquePrice(baseType: string): PriceInfo | undefined {
-  const names = uniqueBaseMap[baseType]
+  const names = getUniquesByBase()[baseType]
   if (!names) return undefined
   let best: PriceInfo | undefined
   for (const name of names) {

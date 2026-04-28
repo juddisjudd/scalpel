@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useMemo, useState } from 'react'
-import { iconMap, RARITY_COLORS } from '../shared/constants'
+import { iconFor, RARITY_COLORS } from '../shared/constants'
 import { ItemRowContent } from '../shared/ItemRowContent'
 import { SisterShell } from './SisterShell'
 import { SisterRow } from './SisterRow'
@@ -96,7 +96,7 @@ export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(
     >
       <div className="flex-1 overflow-y-auto no-scrollbar">
         {sortedNames.map((name, i) => {
-          const iconUrl = iconMap[name]
+          const iconUrl = iconFor(name)
           const price = prices[name]
           const isCurrent = name === currentBaseType
           return (

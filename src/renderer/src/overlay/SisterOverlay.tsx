@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useMemo, useState } from 'react'
 import type { RelatedRef } from '../shared/related-items'
 import { findRelated } from '../shared/related-items'
 import { ItemRowContent } from '../shared/ItemRowContent'
-import { RARITY_COLORS, iconMap } from '../shared/constants'
+import { RARITY_COLORS, iconFor } from '../shared/constants'
 import { SisterShell } from './SisterShell'
 import { SisterRow } from './SisterRow'
 
@@ -109,7 +109,7 @@ export const SisterOverlay = forwardRef<HTMLDivElement, SisterOverlayProps>(func
       <div className="flex-1 overflow-y-auto no-scrollbar">
         {sortedItems.map((item, i) => {
           const price = prices[item.name]
-          const iconUrl = iconMap[item.name] ?? (item.baseType ? iconMap[item.baseType] : undefined)
+          const iconUrl = iconFor(item.name, item.baseType)
           const isCurrent = item.name === itemName
           return (
             <SisterRow

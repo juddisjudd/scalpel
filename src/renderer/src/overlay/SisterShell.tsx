@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useLayoutEffect, useRef } from 'react'
 
 interface SisterShellProps {
   /** CSS px offsets inside the overlay canvas. */
@@ -28,7 +28,25 @@ export const SisterShell = forwardRef<HTMLDivElement, SisterShellProps>(function
   const dx = dragOffset?.x ?? 0
   const dy = dragOffset?.y ?? 0
   const scalePart = scale && scale !== 1 ? ` scale(${scale})` : ''
-  const slideAnim = scaleOrigin === 'top right' ? 'sister-slide-out-right' : 'sister-slide-out-left'
+
+  // Set the slide animation imperatively rather than via React's inline style
+  // diffing. React re-creates the style object on every render, and even when
+  // the resulting `animation` string is identical to the previous one some
+  // browsers (and React style application paths) treat that as a fresh assign
+  // and replay the keyframes. Writing it once on mount + animKey change keeps
+  // the keyframes fired exactly when we want -- and never on intra-key
+  // re-renders triggered by scaleOrigin/cursorSide flips during a click.
+  const innerRef = useRef<HTMLDivElement>(null)
+  // scaleOrigin is intentionally read fresh inside the effect rather than
+  // tracked as a dep -- a mid-life flip should not replay the slide; the next
+  // genuine re-mount (animKey change) picks up whatever scaleOrigin is current.
+  const scaleOriginRef = useRef(scaleOrigin)
+  scaleOriginRef.current = scaleOrigin
+  useLayoutEffect(() => {
+    if (!innerRef.current) return
+    const dir = scaleOriginRef.current === 'top right' ? 'sister-slide-out-right' : 'sister-slide-out-left'
+    innerRef.current.style.animation = `${dir} 0.25s ease-out both`
+  }, [animKey])
 
   return (
     <div
@@ -44,11 +62,11 @@ export const SisterShell = forwardRef<HTMLDivElement, SisterShellProps>(function
     >
       <div
         key={animKey}
+        ref={innerRef}
         className="bg-bg border border-border rounded-[28px] overflow-hidden flex flex-col"
         style={{
           maxHeight: maxHeight ?? 'calc(100vh - 32px)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
-          animation: `${slideAnim} 0.25s ease-out both`,
         }}
       >
         {children}

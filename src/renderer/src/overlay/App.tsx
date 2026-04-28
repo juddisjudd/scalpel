@@ -22,7 +22,7 @@ import { TierItemsSister } from './TierItemsSister'
 import { getActiveMatch } from '../shared/activeMatch'
 import { ItemSearchCombobox } from '../components/ItemSearchCombobox'
 import { Clipboard } from '@icon-park/react'
-import { IP, initIconMap, mergeIconCache } from '../shared/constants'
+import { IP, initIconMap, initUniquesByBase, mergeIconCache } from '../shared/constants'
 import { prettyHotkey } from '../components/settings'
 
 type View =
@@ -91,6 +91,7 @@ export default function App(): JSX.Element {
   useEffect(() => {
     if (!poeVersion) return
     initIconMap(poeVersion)
+    initUniquesByBase(poeVersion)
     window.api.getIconCache().then(mergeIconCache)
   }, [poeVersion])
 
@@ -530,7 +531,7 @@ export default function App(): JSX.Element {
 
   // Compute baseTypes for the tier sister on the filter page. Uses the shared
   // getActiveMatch so the sister's items match whatever tier FilterPanel is showing.
-  const tierSisterData = ((): {
+  const liveTierSisterData = ((): {
     baseTypes: string[]
     itemClass: string
     tier: string
@@ -548,6 +549,25 @@ export default function App(): JSX.Element {
       uniqueTier,
     }
   })()
+
+  // Freeze the tier sister's data to whatever was active the moment it opened.
+  // Sister clicks fire a new overlay-data event with a synthesised item that
+  // can fail conditions on the original tier block (especially in PoE2 -- the
+  // synth lacks itemLevel/areaLevel/sockets context), so re-deriving from the
+  // live overlay here would briefly land in a fallthrough block, empty out
+  // baseTypes, and visually drop the sister. Capturing on open + clearing on
+  // close keeps the displayed bases stable through drill-down clicks; the
+  // user's "current" base for highlighting still comes from live overlayData.
+  const frozenTierSisterDataRef = useRef<typeof liveTierSisterData>(null)
+  const wasTierSisterOpenRef = useRef(false)
+  if (tierSisterOpen && !wasTierSisterOpenRef.current && liveTierSisterData) {
+    frozenTierSisterDataRef.current = liveTierSisterData
+  }
+  if (!tierSisterOpen) {
+    frozenTierSisterDataRef.current = null
+  }
+  wasTierSisterOpenRef.current = tierSisterOpen
+  const tierSisterData = frozenTierSisterDataRef.current ?? liveTierSisterData
 
   return (
     <PoeVersionProvider version={poeVersion}>
@@ -567,7 +587,6 @@ export default function App(): JSX.Element {
           scale={settings?.overlayScale}
           scaleOrigin={cursorSide === 'left' ? 'top right' : 'top left'}
           maxHeight={sisterMaxHeight}
-          animKey={tierSisterData?.tier}
         />
       )}
       {view === 'pricecheck' && priceCheckData && !isHidden && (

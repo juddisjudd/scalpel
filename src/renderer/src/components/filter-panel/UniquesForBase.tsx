@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { iconMap, RARITY_COLORS } from '../../shared/constants'
+import { iconFor, RARITY_COLORS } from '../../shared/constants'
 import { ItemRowContent } from '../../shared/ItemRowContent'
 import { Skeleton } from '../../shared/Skeleton'
 import { createMomentumScrollHandler } from '../../shared/momentumScroll'
@@ -49,7 +49,9 @@ export function UniquesForBase({ baseType, itemClass }: { baseType: string; item
     }
   }, [baseType])
 
-  const visible = useMemo(() => (uniques ?? []).filter((name) => iconMap[name]), [uniques])
+  // Show every unique on the base, even ones missing direct art -- iconFor
+  // falls back to the base or a sibling unique's icon so the card isn't blank.
+  const visible = uniques ?? []
 
   useEffect(() => {
     if (visible.length === 0 || !league) return
@@ -96,7 +98,7 @@ export function UniquesForBase({ baseType, itemClass }: { baseType: string; item
             >
               <ItemRowContent
                 name={name}
-                iconUrl={iconMap[name]}
+                iconUrl={iconFor(name, baseType)}
                 price={prices[name]}
                 nameColor={RARITY_COLORS.Unique}
               />

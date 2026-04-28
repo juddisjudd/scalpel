@@ -28,6 +28,9 @@ const BY_QUERY_NAME: Map<string, RelatedEntry> = (() => {
 /**
  * Find the related-items entry triggered by an item, or null if no match.
  * Keyed by PoeItem.name (which equals unique name for uniques, baseType otherwise).
+ * Curated dataset only -- price-check sister shows hand-authored "related" lists,
+ * not auto-derived "uniques on this base" siblings (those belong on the filter
+ * page's UniquesForBase carousel).
  */
 export function findRelated(itemName: string): RelatedEntry | null {
   return BY_QUERY_NAME.get(itemName) ?? null
