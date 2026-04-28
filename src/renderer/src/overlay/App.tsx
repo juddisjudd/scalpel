@@ -57,6 +57,10 @@ export default function App(): JSX.Element {
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const dragging = useRef<{ startX: number; startY: number; origOffsetX: number; origOffsetY: number } | null>(null)
+  // Set while a titlebar drag is in flight; called to tear it down if the overlay
+  // hides (ESC/hotkey) before the user releases the mouse — otherwise the snap
+  // ghost stays painted at the mount point after the panel disappears.
+  const cancelDragRef = useRef<(() => void) | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sisterRef = useRef<HTMLDivElement>(null)
   const tierSisterRef = useRef<HTMLDivElement>(null)
@@ -239,6 +243,7 @@ export default function App(): JSX.Element {
       window.api.onNoFilterLoaded(() => setView('no-filter')),
       window.api.onNoItemInClipboard(() => setView('no-item')),
       window.api.onOverlayHide(() => {
+        cancelDragRef.current?.()
         setClosing(true)
         setTimeout(() => {
           setClosing(false)
@@ -309,6 +314,7 @@ export default function App(): JSX.Element {
   // No-op: onboarding is handled by the app window, not the overlay
 
   const close = (): void => {
+    cancelDragRef.current?.()
     setClosing(true)
     setTimeout(() => {
       setClosing(false)
@@ -399,6 +405,16 @@ export default function App(): JSX.Element {
     }
     document.body.classList.add('dragging')
     const SNAP_RANGE = 60
+    const scaleStr = settings?.overlayScale && settings.overlayScale !== 1 ? ` scale(${settings.overlayScale})` : ''
+    const setTranslate = (el: HTMLElement | null, x: number, y: number): void => {
+      if (!el) return
+      el.style.transform = `translate(${x}px, ${y}px)${scaleStr}`
+    }
+    const resetToIdentity = (el: HTMLElement | null): void => {
+      if (!el) return
+      el.style.transition = ''
+      el.style.transform = `translate(0px, 0px)${scaleStr}`
+    }
     let dragStarted = false
     const onMove = (ev: MouseEvent): void => {
       if (!dragStarted) {
@@ -409,14 +425,9 @@ export default function App(): JSX.Element {
       const nx = dragging.current.origOffsetX + ev.clientX - dragging.current.startX
       const ny = dragging.current.origOffsetY + ev.clientY - dragging.current.startY
       dragOffsetRef.current = { x: nx, y: ny }
-      const scaleStr = settings?.overlayScale && settings.overlayScale !== 1 ? ` scale(${settings.overlayScale})` : ''
-      if (wrapperRef.current) {
-        wrapperRef.current.style.transform = `translate(${nx}px, ${ny}px)${scaleStr}`
-      }
+      setTranslate(wrapperRef.current, nx, ny)
       // Follow the drag live so the sister overlay stays glued to the main panel.
-      if (sisterRef.current) {
-        sisterRef.current.style.transform = `translate(${nx}px, ${ny}px)${scaleStr}`
-      }
+      setTranslate(sisterRef.current, nx, ny)
       // Check snap proximity to mount points
       const currentLeft = (basePanelLeft ?? 0) + nx
       const currentTop = PANEL_TOP + ny
@@ -426,37 +437,47 @@ export default function App(): JSX.Element {
       else if (rightDist < SNAP_RANGE) setSnapTarget('right')
       else setSnapTarget(null)
     }
+    const cancel = (): void => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      dragging.current = null
+      document.body.classList.remove('dragging')
+      panelRef.current?.classList.remove('panel-unmounted')
+      setSnapTarget(null)
+      resetToIdentity(wrapperRef.current)
+      resetToIdentity(sisterRef.current)
+      dragOffsetRef.current = { x: 0, y: 0 }
+      setDragOffset({ x: 0, y: 0 })
+      cancelDragRef.current = null
+    }
+    cancelDragRef.current = cancel
     const onUp = (): void => {
       dragging.current = null
       document.body.classList.remove('dragging')
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
+      cancelDragRef.current = null
       // Snap to target if in range
       const snap = snapTargetRef.current
       if (snap && wrapperRef.current) {
         const targetMountX = snap === 'left' ? leftMountX : rightMountX
         const targetDx = targetMountX - (basePanelLeft ?? 0)
-        const scaleStr = settings?.overlayScale && settings.overlayScale !== 1 ? ` scale(${settings.overlayScale})` : ''
         const el = wrapperRef.current
-        el.style.transition = 'transform 0.2s ease-out'
-        el.style.transform = `translate(${targetDx}px, 0px)${scaleStr}`
-        // Sister rides the same transition so it stays glued to the main panel during snap.
         const sEl = sisterRef.current
+        el.style.transition = 'transform 0.2s ease-out'
+        setTranslate(el, targetDx, 0)
+        // Sister rides the same transition so it stays glued to the main panel during snap.
         if (sEl) {
           sEl.style.transition = 'transform 0.2s ease-out'
-          sEl.style.transform = `translate(${targetDx}px, 0px)${scaleStr}`
+          setTranslate(sEl, targetDx, 0)
         }
         const onEnd = (): void => {
           el.removeEventListener('transitionend', onEnd)
-          el.style.transition = ''
           // Set final position directly on the DOM - React may skip the
           // transform update if the value matches what it last rendered
           el.style.left = `${targetMountX}px`
-          el.style.transform = `translate(0px, 0px)${scaleStr}`
-          if (sEl) {
-            sEl.style.transition = ''
-            sEl.style.transform = `translate(0px, 0px)${scaleStr}`
-          }
+          resetToIdentity(el)
+          resetToIdentity(sEl)
           dragOffsetRef.current = { x: 0, y: 0 }
           setDragOffset({ x: 0, y: 0 })
           panelRef.current?.classList.remove('panel-unmounted')
