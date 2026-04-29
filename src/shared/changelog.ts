@@ -1,5 +1,9 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.7-rc3',
+    notes: ['Added ability to open items in Wiki(2) and PoEDB(2)', 'Added more support for uniques in PoE2'],
+  },
+  {
     version: '0.9.7-rc2',
     notes: [
       'Added ternary chips to price checker for corrupted, mirrored, and fractured',
