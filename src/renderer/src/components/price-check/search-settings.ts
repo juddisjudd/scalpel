@@ -60,6 +60,18 @@ export function getPriceOptions(version: 1 | 2): Array<{ value: PriceOption; lab
   return version === 2 ? PRICE_OPTIONS_POE2 : PRICE_OPTIONS_POE1
 }
 
+/** When price-checking a primary-currency item, return the OTHER primary
+ *  currency so listings show a meaningful exchange rate instead of "Divine
+ *  Orb listed for Divine Orbs". Returns null for non-primary items. */
+const PRIMARY_CURRENCY_SWAPS: Record<1 | 2, Record<string, PriceOption>> = {
+  1: { 'Chaos Orb': 'divine', 'Divine Orb': 'chaos' },
+  2: { 'Exalted Orb': 'divine', 'Divine Orb': 'exalted' },
+}
+
+export function primaryCurrencySwap(itemName: string, version: 1 | 2): PriceOption | null {
+  return PRIMARY_CURRENCY_SWAPS[version][itemName] ?? null
+}
+
 /**
  * Trade-listings mode. Maps to PoE trade `status.option`:
  *  - `securable` -> Instant buyout only

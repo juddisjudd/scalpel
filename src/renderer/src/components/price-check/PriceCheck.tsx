@@ -27,7 +27,7 @@ import { ListingRowsSkeleton } from './PriceCheckSkeleton'
 import { RateLimitBar } from './RateLimitBar'
 import { BASE_DEFAULT_ITEM_CLASSES, applyBaseModeToFilters, shouldIncludeImplicitsInBase } from './base-mode'
 import type { ListedTime, PriceOption, ResultsView, StatusOption } from './search-settings'
-import { LISTED_TIME_OPTIONS, getPriceOptions, STATUS_OPTIONS } from './search-settings'
+import { LISTED_TIME_OPTIONS, getPriceOptions, primaryCurrencySwap, STATUS_OPTIONS } from './search-settings'
 import { SearchSettingDropdown } from './SearchSettingDropdown'
 
 export function PriceCheck({
@@ -139,8 +139,13 @@ export function PriceCheck({
       if (baseModeApplied.current) return
       keepUncheckedVisible.current = !!s.tradeKeepUncheckedVisible
       neverAutoSearch.current = !!s.tradeNeverAutoSearch
-      // Seed the per-search dropdowns from the user's global preferences.
-      if (s.tradePriceOption) setPriceOption(s.tradePriceOption as PriceOption)
+      // Seed the per-search dropdowns from the user's global preferences --
+      // except for primary-currency items, where pricing in the same currency
+      // is meaningless. Override to the OTHER primary currency so the user
+      // sees a real exchange rate (PoE1: chaos<->divine, PoE2: exalted<->divine).
+      const crossCurrency = primaryCurrencySwap(item.name, poeVersion)
+      if (crossCurrency) setPriceOption(crossCurrency)
+      else if (s.tradePriceOption) setPriceOption(s.tradePriceOption as PriceOption)
       if (s.tradeStatus) setStatusOption(s.tradeStatus as StatusOption)
       if (s.tradeDefaultListedTime !== undefined) setListedTime(s.tradeDefaultListedTime as ListedTime)
       if (s.tradeResultsView) setResultsView(s.tradeResultsView)
@@ -168,9 +173,13 @@ export function PriceCheck({
     try {
       // PriceInfo.chaosValue keeps its PoE1 name but semantically means
       // "baseline currency count" -- chaos in PoE1, exalted in PoE2 -- so the
-      // currency we offer to pay with follows the active game's baseline.
+      // currency we offer to pay with follows the active game's baseline. For
+      // primary-currency items we override to the OTHER primary so we're not
+      // pricing divines in divines (the rate would always be 1:1).
+      const swap = primaryCurrencySwap(item.name, poeVersion)
       const payWith =
-        priceInfo?.divineValue != null && priceInfo.divineValue >= 1 ? 'divine' : features.bulkBaselineCurrency
+        swap ??
+        (priceInfo?.divineValue != null && priceInfo.divineValue >= 1 ? 'divine' : features.bulkBaselineCurrency)
       const result = await window.api.bulkExchange(item.name, item.baseType, payWith)
       setBulkListings(result.listings)
       setTotal(result.total)
