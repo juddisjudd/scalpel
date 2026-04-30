@@ -863,6 +863,46 @@ describe('matchItemMods', () => {
     })
   })
 
+  describe('fractured pseudo contribution', () => {
+    it('adds fractured ele-res mod into pseudo_total_elemental_resistance', () => {
+      // Trade API stat for "+#% to Lightning Resistance" lives under explicit.* and
+      // the buildPseudoMap pattern picks it up under pseudo_total_elemental_resistance.
+      // The fractured-prefix remap used to clobber matched.statId before the pseudo
+      // lookup ran, so fractured ele-res rolls silently dropped out of the pseudo.
+      _setStatEntriesForTests([
+        { id: 'explicit.stat_3261801346', text: '#% to Lightning Resistance', type: 'explicit' },
+      ])
+      const advancedMods: AdvancedMod[] = [
+        {
+          type: 'suffix',
+          name: 'of the Maelstrom',
+          tier: 3,
+          tags: ['Elemental', 'Lightning', 'Resistance'],
+          lines: ['+41% to Lightning Resistance'],
+          ranges: [{ value: 41, min: 36, max: 41 }],
+          fractured: true,
+          crafted: false,
+          eldritch: false,
+          foulborn: false,
+        },
+      ]
+      const filters = matchItemMods(
+        ['+41% to Lightning Resistance'],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Body Armours' }),
+        advancedMods,
+      )
+      const pseudoEle = filters.find((f) => f.id === 'pseudo.pseudo_total_elemental_resistance')
+      expect(pseudoEle).toBeDefined()
+      expect(pseudoEle!.value).toBe(41)
+      // The fractured row itself should still be tagged with the fractured stat id and type
+      const fracturedRow = filters.find((f) => f.id === 'fractured.stat_3261801346')
+      expect(fracturedRow).toBeDefined()
+      expect(fracturedRow!.type).toBe('fractured')
+    })
+  })
+
   describe('fractured chip', () => {
     it('generates fractured chip for equipment in "any" state when no fractured mods', () => {
       const filters = matchItemMods(

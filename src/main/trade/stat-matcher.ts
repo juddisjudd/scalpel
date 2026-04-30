@@ -721,13 +721,6 @@ export function matchItemMods(
         matched.statId = TINCTURE_STAT_REMAP[matched.statId]
       }
 
-      // Remap stat ID prefix based on mod source (fractured/crafted)
-      if (isFractured && matched.statId.startsWith('explicit.')) {
-        matched.statId = 'fractured.' + matched.statId.split('.').slice(1).join('.')
-      } else if (isCrafted && matched.statId.startsWith('explicit.')) {
-        matched.statId = 'crafted.' + matched.statId.split('.').slice(1).join('.')
-      }
-
       // Determine if this value is fixed or rolled, and capture tier/range for display
       // Fixed values (min === max in tier range, or no range) use exact match
       // Rolled values use percentage-based min
@@ -805,6 +798,16 @@ export function matchItemMods(
             }),
         )
         if (parentMod) isHybridCompanion = true
+      }
+
+      // Remap stat ID prefix based on mod source (fractured/crafted). Deferred
+      // until after the pseudo accumulation above so PSEUDO_CONTRIBUTIONS (keyed
+      // by explicit.* IDs) still hits for fractured/crafted mods -- they
+      // otherwise contribute to total ele res / total life same as a regular roll.
+      if (isFractured && matched.statId.startsWith('explicit.')) {
+        matched.statId = 'fractured.' + matched.statId.split('.').slice(1).join('.')
+      } else if (isCrafted && matched.statId.startsWith('explicit.')) {
+        matched.statId = 'crafted.' + matched.statId.split('.').slice(1).join('.')
       }
 
       filters.push({
