@@ -458,18 +458,26 @@ function _matchModToStat(
     if (bestMatch) return bestMatch
   }
 
-  // Fallback: prefix match for Unscalable Value mods where the clipboard text is
-  // a prefix of the trade API stat text (e.g. missing "by #% of their value" suffix)
+  // Fallback: prefix or suffix match for Unscalable Value mods where the clipboard
+  // text is a substring of the trade API stat text at one of its ends. Two real
+  // shapes seen in practice:
+  //   prefix:  clipboard "Bladefall deals extra Damage" matches stat
+  //            "Bladefall deals extra Damage by #% of their value" (trailing "% of"
+  //            chunk is unscalable so the clipboard hides it)
+  //   suffix:  clipboard "Gain Alchemist's Genius when you use a Flask" matches stat
+  //            "#% chance to gain Alchemist's Genius when you use a Flask" ("of the
+  //            Essence" belt suffix has a hidden 100% chance, so the clipboard drops
+  //            the leading "#% chance to ")
   for (const variant of textVariants) {
     let bestMatch: { statId: string; value: number | null; _textLen: number } | null = null
     for (const entry of statEntries) {
       if (!entry.id.startsWith(typePrefix)) continue
       if (BLOCKED_STAT_IDS.has(entry.id)) continue
       if (entry.text.includes('(Local)')) continue
-      // Check if the stat text starts with our variant text
       const statPlain = entry.text.replace(/#/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
       const variantPlain = variant.replace(/\d+/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
-      if (variantPlain.length > 10 && statPlain.startsWith(variantPlain)) {
+      if (variantPlain.length <= 10) continue
+      if (statPlain.startsWith(variantPlain) || statPlain.endsWith(variantPlain)) {
         if (!bestMatch || entry.text.length > bestMatch._textLen) {
           bestMatch = { statId: entry.id, value: null, _textLen: entry.text.length }
         }

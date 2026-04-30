@@ -1002,3 +1002,32 @@ describe('matchModToStat (PoE2 stat text without leading sign)', () => {
     expect(result!.value).toBeNull()
   })
 })
+
+describe('matchModToStat (Unscalable Value prefix/suffix fallback)', () => {
+  it('matches when clipboard text is the trailing portion of the stat (hidden chance prefix)', () => {
+    // "of the Essence" belt suffix in PoE1: clipboard hides the leading "#% chance to "
+    // because the chance is unscalable (always 100%). The stat-matcher must still
+    // resolve the trade API stat ID so the price-checker shows a row for it.
+    _setStatEntriesForTests([
+      {
+        id: 'explicit.stat_2989883253',
+        text: "#% chance to gain Alchemist's Genius when you use a Flask",
+        type: 'explicit',
+      },
+    ])
+    const result = matchModToStat("Gain Alchemist's Genius when you use a Flask")
+    expect(result).not.toBeNull()
+    expect(result!.statId).toBe('explicit.stat_2989883253')
+    expect(result!.value).toBeNull()
+  })
+
+  it('still matches when clipboard text is the leading portion of the stat (existing prefix case)', () => {
+    _setStatEntriesForTests([
+      { id: 'explicit.stat_xxx', text: 'Bladefall deals extra Damage by #% of their value', type: 'explicit' },
+    ])
+    const result = matchModToStat('Bladefall deals extra Damage')
+    expect(result).not.toBeNull()
+    expect(result!.statId).toBe('explicit.stat_xxx')
+    expect(result!.value).toBeNull()
+  })
+})
