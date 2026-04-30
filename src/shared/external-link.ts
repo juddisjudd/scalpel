@@ -4,10 +4,13 @@
 
 export type ExternalLinkTarget = 'wiki' | 'poedb'
 
-/** Foulborn unique items carry a "Foulborn " prefix (e.g. "Foulborn Headhunter")
- *  that the wiki/poedb pages don't. The prefix only applies on uniques -- a
- *  currency named "Foulborn Exalted Orb" has its own page and stays as-is. */
-function externalLookupName(item: { name: string; rarity: string }): string {
+/** Pick the lookup string the external site indexes by. Magic and Rare items
+ *  show a randomized name (e.g. "Mind Locket Chain Belt") that has no page;
+ *  the wiki/poedb keys those off the base type. Foulborn uniques carry a
+ *  "Foulborn " prefix the page doesn't, so strip it. Everything else (Normal,
+ *  Unique, Gem, Currency, Divination Cards, ...) is keyed by the displayed name. */
+function externalLookupName(item: { name: string; baseType: string; rarity: string }): string {
+  if (item.rarity === 'Magic' || item.rarity === 'Rare') return item.baseType
   if (item.rarity === 'Unique' && item.name.startsWith('Foulborn ')) {
     return item.name.slice('Foulborn '.length)
   }
@@ -40,7 +43,7 @@ const TARGETS: Record<
 
 export function externalLinkUrl(
   target: ExternalLinkTarget,
-  item: { name: string; rarity: string },
+  item: { name: string; baseType: string; rarity: string },
   poeVersion: 1 | 2,
 ): string {
   const cfg = TARGETS[target]
