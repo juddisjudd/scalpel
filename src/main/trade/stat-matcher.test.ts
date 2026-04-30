@@ -863,6 +863,90 @@ describe('matchItemMods', () => {
     })
   })
 
+  describe('attribute -> life/mana pseudo contribution', () => {
+    const runWithStats = (
+      stats: Array<{ id: string; text: string; type: string }>,
+      modLines: string[],
+    ): ReturnType<typeof matchItemMods> => {
+      _setStatEntriesForTests(stats)
+      return matchItemMods(modLines, [], undefined, makeItemInfo({ rarity: 'Rare' }))
+    }
+    const TOTAL_LIFE = 'pseudo.pseudo_total_life'
+    const TOTAL_MANA = 'pseudo.pseudo_total_mana'
+    const STR = { id: 'explicit.stat_4080418644', text: '+# to Strength', type: 'explicit' }
+    const INT = { id: 'explicit.stat_328541901', text: '+# to Intelligence', type: 'explicit' }
+    const DEX = { id: 'explicit.stat_3261801346', text: '+# to Dexterity', type: 'explicit' }
+    const STR_INT = { id: 'explicit.stat_1535626285', text: '+# to Strength and Intelligence', type: 'explicit' }
+    const STR_DEX = { id: 'explicit.stat_538848803', text: '+# to Strength and Dexterity', type: 'explicit' }
+    const DEX_INT = { id: 'explicit.stat_2300185227', text: '+# to Dexterity and Intelligence', type: 'explicit' }
+    const ALL_ATTR = { id: 'explicit.stat_1379411836', text: '+# to all Attributes', type: 'explicit' }
+    const MAX_MANA = { id: 'explicit.stat_1050105434', text: '+# to maximum Mana', type: 'explicit' }
+    const MAX_LIFE = { id: 'explicit.stat_3299347043', text: '+# to maximum Life', type: 'explicit' }
+
+    it('Strength contributes 0.5x to Total Life pseudo', () => {
+      const filters = runWithStats([STR], ['+30 to Strength'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)!.value).toBe(15)
+    })
+
+    it('Intelligence contributes 0.5x to Total Mana pseudo', () => {
+      const filters = runWithStats([INT], ['+40 to Intelligence'])
+      expect(filters.find((f) => f.id === TOTAL_MANA)!.value).toBe(20)
+    })
+
+    it('Dexterity does not contribute to Life or Mana pseudo', () => {
+      const filters = runWithStats([DEX], ['+50 to Dexterity'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)).toBeUndefined()
+      expect(filters.find((f) => f.id === TOTAL_MANA)).toBeUndefined()
+    })
+
+    it('Str+Int hybrid contributes to both Life and Mana', () => {
+      const filters = runWithStats([STR_INT], ['+20 to Strength and Intelligence'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)!.value).toBe(10)
+      expect(filters.find((f) => f.id === TOTAL_MANA)!.value).toBe(10)
+    })
+
+    it('Str+Dex hybrid contributes to Life only', () => {
+      const filters = runWithStats([STR_DEX], ['+24 to Strength and Dexterity'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)!.value).toBe(12)
+      expect(filters.find((f) => f.id === TOTAL_MANA)).toBeUndefined()
+    })
+
+    it('Dex+Int hybrid contributes to Mana only', () => {
+      const filters = runWithStats([DEX_INT], ['+24 to Dexterity and Intelligence'])
+      expect(filters.find((f) => f.id === TOTAL_MANA)!.value).toBe(12)
+      expect(filters.find((f) => f.id === TOTAL_LIFE)).toBeUndefined()
+    })
+
+    it('all Attributes contributes to both Life and Mana', () => {
+      const filters = runWithStats([ALL_ATTR], ['+10 to all Attributes'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)!.value).toBe(5)
+      expect(filters.find((f) => f.id === TOTAL_MANA)!.value).toBe(5)
+    })
+
+    it('floors the final Total Life value (single odd Str source)', () => {
+      // 25 * 0.5 = 12.5 -> floor to 12
+      const filters = runWithStats([STR], ['+25 to Strength'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)!.value).toBe(12)
+    })
+
+    it('pools Str sources before flooring (matches in-game pooling)', () => {
+      // Game pools Str (38) then halves -> 19. Flooring per-contribution would give 12 + 6 = 18.
+      const filters = runWithStats([STR], ['+25 to Strength', '+13 to Strength'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)!.value).toBe(19)
+    })
+
+    it('maximum Mana contributes 1:1 to Total Mana', () => {
+      const filters = runWithStats([MAX_MANA], ['+50 to maximum Mana'])
+      expect(filters.find((f) => f.id === TOTAL_MANA)!.value).toBe(50)
+    })
+
+    it('Str + maximum Life roll combine into a single Total Life pseudo', () => {
+      // 60 (life) + 30 * 0.5 (Str) = 75
+      const filters = runWithStats([STR, MAX_LIFE], ['+30 to Strength', '+60 to maximum Life'])
+      expect(filters.find((f) => f.id === TOTAL_LIFE)!.value).toBe(75)
+    })
+  })
+
   describe('fractured pseudo contribution', () => {
     it('adds fractured ele-res mod into pseudo_total_elemental_resistance', () => {
       // Trade API stat for "+#% to Lightning Resistance" lives under explicit.* and

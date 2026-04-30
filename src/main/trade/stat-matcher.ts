@@ -209,10 +209,12 @@ async function fetchStats(): Promise<void> {
 export { fetchStats as ensureStatsLoaded }
 
 /** Test hook: seed the in-memory stat list without making network calls.
- *  No-op in production -- callers must use ensureStatsLoaded(). */
+ *  No-op in production -- callers must use ensureStatsLoaded(). Also clears
+ *  the lazily-built pseudo map so it rebuilds from the new entries. */
 export function _setStatEntriesForTests(entries: StatEntry[]): void {
   statEntries = entries
   statsFetched = true
+  for (const k of Object.keys(PSEUDO_CONTRIBUTIONS)) delete PSEUDO_CONTRIBUTIONS[k]
 }
 
 /** Strip range annotations and parenthetical text from advanced mod lines */
@@ -506,10 +508,17 @@ const LOW_PRIORITY_PATTERNS = [
   /small passive skills which grant nothing/i,
 ]
 
-// Pseudo stat mappings: combine individual mods into pseudo totals
-const PSEUDO_CONTRIBUTIONS: Record<string, { pseudoId: string; pseudoLabel: string; multiplier: number }> = {}
+// Pseudo stat mappings: combine individual mods into pseudo totals. A single
+// stat can contribute to multiple pseudos (e.g. "+# to Strength and Intelligence"
+// adds to both Total Life via the Str half and Total Mana via the Int half), so
+// the value is an array.
+const PSEUDO_CONTRIBUTIONS: Record<string, Array<{ pseudoId: string; pseudoLabel: string; multiplier: number }>> = {}
 
 function buildPseudoMap(): void {
+  // Attribute -> resource conversions baked into PoE1: each Strength gives
+  // 0.5 Life, each Intelligence gives 0.5 Mana. Hybrid attribute mods (Str+Int,
+  // all attributes) contribute via both halves. Anchored patterns so "+# to
+  // Strength" doesn't also match "+# to Strength and Intelligence".
   const pseudoMappings: Array<[RegExp, string, string, number?]> = [
     [
       /to (?:fire|cold|lightning) resistance/i,
@@ -525,15 +534,41 @@ function buildPseudoMap(): void {
     [/to all elemental resistances/i, 'pseudo.pseudo_total_elemental_resistance', 'Total Elemental Resistance', 3],
     [/to chaos resistance/i, 'pseudo.pseudo_total_chaos_resistance', 'Total Chaos Resistance'],
     [/to maximum life/i, 'pseudo.pseudo_total_life', 'Total Life'],
+    [/to maximum mana/i, 'pseudo.pseudo_total_mana', 'Total Mana'],
+    // Strength: +# Str alone, +# Str+Dex hybrid, +# Str+Int hybrid, +# all Attrs
+    [/^\+?# to Strength$/i, 'pseudo.pseudo_total_life', 'Total Life', 0.5],
+    [/^\+?# to Strength and Dexterity$/i, 'pseudo.pseudo_total_life', 'Total Life', 0.5],
+    [/^\+?# to Strength and Intelligence$/i, 'pseudo.pseudo_total_life', 'Total Life', 0.5],
+    [/^\+?# to all Attributes$/i, 'pseudo.pseudo_total_life', 'Total Life', 0.5],
+    // Intelligence: +# Int alone, +# Dex+Int hybrid, +# Str+Int hybrid, +# all Attrs
+    [/^\+?# to Intelligence$/i, 'pseudo.pseudo_total_mana', 'Total Mana', 0.5],
+    [/^\+?# to Dexterity and Intelligence$/i, 'pseudo.pseudo_total_mana', 'Total Mana', 0.5],
+    [/^\+?# to Strength and Intelligence$/i, 'pseudo.pseudo_total_mana', 'Total Mana', 0.5],
+    [/^\+?# to all Attributes$/i, 'pseudo.pseudo_total_mana', 'Total Mana', 0.5],
   ]
 
   for (const entry of statEntries) {
     if (entry.type !== 'explicit' && entry.type !== 'implicit' && entry.type !== 'crafted') continue
     for (const [pattern, pseudoId, pseudoLabel, multiplier] of pseudoMappings) {
       if (pattern.test(entry.text)) {
-        PSEUDO_CONTRIBUTIONS[entry.id] = { pseudoId, pseudoLabel, multiplier: multiplier ?? 1 }
+        if (!PSEUDO_CONTRIBUTIONS[entry.id]) PSEUDO_CONTRIBUTIONS[entry.id] = []
+        PSEUDO_CONTRIBUTIONS[entry.id].push({ pseudoId, pseudoLabel, multiplier: multiplier ?? 1 })
       }
     }
+  }
+}
+
+/** Roll the contributions of a matched mod into the running pseudo accumulator.
+ *  A single mod can feed multiple pseudos (e.g. a "+# to Strength and Intelligence"
+ *  hybrid contributes to both Total Life and Total Mana). */
+function accumulatePseudo(
+  acc: Record<string, { pseudoId: string; pseudoLabel: string; total: number }>,
+  contributions: Array<{ pseudoId: string; pseudoLabel: string; multiplier: number }>,
+  value: number,
+): void {
+  for (const c of contributions) {
+    if (!acc[c.pseudoId]) acc[c.pseudoId] = { pseudoId: c.pseudoId, pseudoLabel: c.pseudoLabel, total: 0 }
+    acc[c.pseudoId].total += value * c.multiplier
   }
 }
 
@@ -634,15 +669,11 @@ export function matchItemMods(
         return { ...fallback, statId: 'implicit.' + fallback.statId.split('.')[1] }
       })()
     if (matched) {
-      // Check if this contributes to a pseudo stat
       // Skip "X per Y" mods -- they're conditional and shouldn't inflate pseudo totals
       const isPerMod = /\bper\b/i.test(cleaned)
-      const pseudo = PSEUDO_CONTRIBUTIONS[matched.statId]
-      if (pseudo && matched.value != null && !isPerMod) {
-        if (!pseudoAccumulator[pseudo.pseudoId]) {
-          pseudoAccumulator[pseudo.pseudoId] = { ...pseudo, total: 0 }
-        }
-        pseudoAccumulator[pseudo.pseudoId].total += matched.value * pseudo.multiplier
+      const pseudoList = PSEUDO_CONTRIBUTIONS[matched.statId]
+      if (pseudoList && matched.value != null && !isPerMod) {
+        accumulatePseudo(pseudoAccumulator, pseudoList, matched.value)
       }
       // Check if this implicit is from eldritch (Searing Exarch / Eater of Worlds)
       let isEldritch = false
@@ -766,17 +797,13 @@ export function matchItemMods(
       }
       const maxValue = isBeneficialNegative && matched.value != null ? matched.value : null
 
-      // Check if this contributes to a pseudo stat
       // Skip for cluster jewels -- their mods grant passives, not item stats
       // Skip "X per Y" mods -- they're conditional and shouldn't inflate pseudo totals
       const isPerMod = /\bper\b/i.test(cleaned)
       const isCluster = itemInfo?.baseType?.includes('Cluster Jewel')
-      const pseudo = isCluster || isPerMod ? undefined : PSEUDO_CONTRIBUTIONS[matched.statId]
-      if (pseudo && matched.value != null) {
-        if (!pseudoAccumulator[pseudo.pseudoId]) {
-          pseudoAccumulator[pseudo.pseudoId] = { ...pseudo, total: 0 }
-        }
-        pseudoAccumulator[pseudo.pseudoId].total += matched.value * pseudo.multiplier
+      const pseudoList = isCluster || isPerMod ? undefined : PSEUDO_CONTRIBUTIONS[matched.statId]
+      if (pseudoList && matched.value != null) {
+        accumulatePseudo(pseudoAccumulator, pseudoList, matched.value)
       }
 
       // Hybrid companion detection: if this mod shares an advanced mod block with a
@@ -821,7 +848,7 @@ export function matchItemMods(
           isFoulborn ||
           (!lowPriority &&
             !isCrafted &&
-            !pseudo &&
+            !pseudoList &&
             !isHybridCompanion &&
             !(hasDefenses && isDefenseMod(cleaned)) &&
             !useLocal &&
@@ -898,15 +925,22 @@ export function matchItemMods(
   // the label the same way defense chips do ("Armour: 450") so the user can
   // see what the accumulator summed to without having to look at the value
   // chip next to the row.
-  const pseudoFilters: StatFilter[] = Object.entries(pseudoAccumulator).map(([id, data]) => ({
-    id,
-    text: `${data.pseudoLabel}: ${data.total}`,
-    value: data.total,
-    min: data.total < 0 ? Math.ceil(data.total * (2 - pct)) : Math.floor(data.total * pct),
-    max: null,
-    enabled: true,
-    type: 'pseudo',
-  }))
+  const pseudoFilters: StatFilter[] = Object.entries(pseudoAccumulator).map(([id, data]) => {
+    // Attribute contributions use a 0.5 multiplier (2 Str = 1 Life, 2 Int = 1 Mana),
+    // so the running total can be fractional. Floor at emission rather than per-
+    // contribution so two odd-Str sources still pool to the same Life the game
+    // would compute (game pools Str first, then halves).
+    const total = data.total < 0 ? Math.ceil(data.total) : Math.floor(data.total)
+    return {
+      id,
+      text: `${data.pseudoLabel}: ${total}`,
+      value: total,
+      min: total < 0 ? Math.ceil(total * (2 - pct)) : Math.floor(total * pct),
+      max: null,
+      enabled: true,
+      type: 'pseudo',
+    }
+  })
 
   // Quality normalization: scale stats to 20% quality if item is below 20%
   // Quality affects base phys damage on weapons and base armour/evasion/ES on armour
