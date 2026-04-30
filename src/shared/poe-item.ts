@@ -1,5 +1,13 @@
 import type { PoeItem } from './types'
 
+/** Cluster jewels are the "Small/Medium/Large Cluster Jewel" base types. They
+ *  share the `Jewels` itemClass with abyss/regular/timeless jewels but trade
+ *  in their own subcategory (jewel.cluster) and carry size-specific pricing
+ *  semantics (passive-count brackets, distinct trade UI, etc.). */
+export function isClusterJewel(item: { itemClass: string; baseType: string }): boolean {
+  return item.itemClass === 'Jewels' && item.baseType.endsWith('Cluster Jewel')
+}
+
 /** Build a synthetic `PoeItem` with sensible defaults. Used by any code path that needs
  *  to evaluate a filter or run a trade lookup without a real clipboard-parsed item --
  *  e.g. the item-search combobox, sister-overlay click-throughs, tier previews.

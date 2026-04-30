@@ -5,6 +5,7 @@ import { getPoeVersion } from '../game-state'
 import { ATZOATL_ROOMS, ATZOATL_KEY_ROOMS } from '../../shared/data/trade/atzoatl'
 import { BENEFICIAL_NEGATIVE_KEYWORDS } from '../../shared/data/trade/beneficial-negatives'
 import { STAT_ID_REMAPS } from './stat-exceptions'
+import { isClusterJewel } from '../../shared/poe-item'
 import type { StatFilter } from './trade'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -800,7 +801,7 @@ export function matchItemMods(
       // Skip for cluster jewels -- their mods grant passives, not item stats
       // Skip "X per Y" mods -- they're conditional and shouldn't inflate pseudo totals
       const isPerMod = /\bper\b/i.test(cleaned)
-      const isCluster = itemInfo?.baseType?.includes('Cluster Jewel')
+      const isCluster = itemInfo ? isClusterJewel(itemInfo) : false
       const pseudoList = isCluster || isPerMod ? undefined : PSEUDO_CONTRIBUTIONS[matched.statId]
       if (pseudoList && matched.value != null) {
         accumulatePseudo(pseudoAccumulator, pseudoList, matched.value)
@@ -902,17 +903,33 @@ export function matchItemMods(
     for (const enchant of itemInfo.enchants) {
       const matched = matchModToStat(enchant, false, 'enchant')
       if (matched) {
-        let minVal = matched.option ? null : matched.value
-        // Medium cluster jewels: 5 passives is functionally identical to 4
-        if (itemInfo.baseType === 'Medium Cluster Jewel' && matched.value === 5 && enchant.includes('Adds')) {
-          minVal = 4
+        let minVal: number | null = matched.option ? null : matched.value
+        let maxVal: number | null = null
+        // Cluster jewel "Adds N Passive Skills": passive count drives price more
+        // than any other roll, so the bracketed defaults below override the usual
+        // "min = value" rule for the disjoint price tiers:
+        //   Medium 4/5 -- functionally identical; a 6 is either cheap filler or
+        //     a stat-stacker target, so 4-5 inclusive excludes both ends.
+        //   Large 8 -- 8s and 12s are price-disjoint with no in-between, so an
+        //     8-search wants max 8 (else every 12 surfaces).
+        const isAddsPassives = enchant.includes('Adds') && matched.value != null
+        if (isAddsPassives && itemInfo.baseType === 'Medium Cluster Jewel') {
+          if (matched.value === 4 || matched.value === 5) {
+            minVal = 4
+            maxVal = 5
+          }
+        } else if (isAddsPassives && itemInfo.baseType === 'Large Cluster Jewel') {
+          if (matched.value === 8) {
+            minVal = null
+            maxVal = 8
+          }
         }
         enchantFilters.push({
           id: matched.statId,
           text: enchant,
           value: matched.value,
           min: minVal,
-          max: null,
+          max: maxVal,
           enabled: true,
           type: 'enchant',
           option: matched.option,
@@ -1165,7 +1182,11 @@ export function matchItemMods(
         .replace(/\s*\(Tier \d+\)/, '')
         .trim()
       const isSpecialMap = itemInfo.itemClass === 'Maps' && specialMapTypes.has(baseTypeCleaned)
-      const baseTypeEnabled = isSpecialMap || (isBaseItem && isOverqualitied)
+      // Cluster jewels: Small/Medium/Large are price-disjoint, so an 8-passive
+      // Large search shouldn't surface Mediums (or vice versa). Pin to the exact
+      // base type via the misc.basetype chip the same way special maps do.
+      const isCluster = isClusterJewel({ itemClass: itemInfo.itemClass, baseType: baseTypeCleaned })
+      const baseTypeEnabled = isSpecialMap || isCluster || (isBaseItem && isOverqualitied)
       miscFilters.push({
         id: 'misc.basetype',
         text: itemInfo.baseType

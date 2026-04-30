@@ -334,6 +334,31 @@ describe('matchItemMods', () => {
       expect(baseChip!.enabled).toBe(false)
     })
 
+    it('enables base type chip by default for cluster jewels (size-specific search)', () => {
+      const filters = matchItemMods(
+        [],
+        [],
+        undefined,
+        makeItemInfo({ baseType: 'Large Cluster Jewel', rarity: 'Rare', itemClass: 'Jewels', sockets: '' }),
+      )
+      const baseChip = filters.find((f) => f.id === 'misc.basetype')
+      expect(baseChip).toBeDefined()
+      expect(baseChip!.text).toBe('Large Cluster Jewel')
+      expect(baseChip!.enabled).toBe(true)
+    })
+
+    it('does not enable base type chip for non-cluster Jewels (e.g. Cobalt Jewel)', () => {
+      const filters = matchItemMods(
+        [],
+        [],
+        undefined,
+        makeItemInfo({ baseType: 'Cobalt Jewel', rarity: 'Rare', itemClass: 'Jewels', sockets: '' }),
+      )
+      const baseChip = filters.find((f) => f.id === 'misc.basetype')
+      expect(baseChip).toBeDefined()
+      expect(baseChip!.enabled).toBe(false)
+    })
+
     it('generates rarity chip disabled by default for non-unique equipment', () => {
       const filters = matchItemMods(
         [],
@@ -849,6 +874,57 @@ describe('matchItemMods', () => {
           f.id !== 'heist.heist_max_wings',
       )
       expect(jobFilter).toBeUndefined()
+    })
+  })
+
+  describe('cluster jewel "Adds N Passive Skills" enchant', () => {
+    const ADDS_PASSIVES = { id: 'enchant.stat_3086156145', text: 'Adds # Passive Skills', type: 'enchant' }
+
+    const runEnchant = (baseType: string, enchant: string): ReturnType<typeof matchItemMods> => {
+      _setStatEntriesForTests([ADDS_PASSIVES])
+      return matchItemMods([], [], undefined, makeItemInfo({ baseType, itemClass: 'Jewels', enchants: [enchant] }))
+    }
+
+    it('Medium 4 -> default min 4 max 5 (excludes 6)', () => {
+      const filters = runEnchant('Medium Cluster Jewel', 'Adds 4 Passive Skills')
+      const f = filters.find((x) => x.id === 'enchant.stat_3086156145')!
+      expect(f.min).toBe(4)
+      expect(f.max).toBe(5)
+    })
+
+    it('Medium 5 -> default min 4 max 5 (5 == 4 functionally)', () => {
+      const filters = runEnchant('Medium Cluster Jewel', 'Adds 5 Passive Skills')
+      const f = filters.find((x) => x.id === 'enchant.stat_3086156145')!
+      expect(f.min).toBe(4)
+      expect(f.max).toBe(5)
+    })
+
+    it('Medium 6 -> min 6, no max (6 is its own price tier)', () => {
+      const filters = runEnchant('Medium Cluster Jewel', 'Adds 6 Passive Skills')
+      const f = filters.find((x) => x.id === 'enchant.stat_3086156145')!
+      expect(f.min).toBe(6)
+      expect(f.max).toBeNull()
+    })
+
+    it('Large 8 -> max 8, no min (else every 12 surfaces)', () => {
+      const filters = runEnchant('Large Cluster Jewel', 'Adds 8 Passive Skills')
+      const f = filters.find((x) => x.id === 'enchant.stat_3086156145')!
+      expect(f.min).toBeNull()
+      expect(f.max).toBe(8)
+    })
+
+    it('Large 12 -> min 12 (default)', () => {
+      const filters = runEnchant('Large Cluster Jewel', 'Adds 12 Passive Skills')
+      const f = filters.find((x) => x.id === 'enchant.stat_3086156145')!
+      expect(f.min).toBe(12)
+      expect(f.max).toBeNull()
+    })
+
+    it('Small cluster passes through with min equal to value', () => {
+      const filters = runEnchant('Small Cluster Jewel', 'Adds 3 Passive Skills')
+      const f = filters.find((x) => x.id === 'enchant.stat_3086156145')!
+      expect(f.min).toBe(3)
+      expect(f.max).toBeNull()
     })
   })
 

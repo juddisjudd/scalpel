@@ -4,6 +4,7 @@ import { getPoeVersion } from '../game-state'
 import { harvestIcons } from './icon-cache'
 import { getOverlayWindow } from '../overlay'
 import { TRANSFIGURED_GEM_DISC } from '../../shared/data/trade/transfigured-gems'
+import { isClusterJewel } from '../../shared/poe-item'
 import { RateLimiter, adjustRateLimits } from './rate-limiter'
 
 /** Forward any newly-harvested name->icon pairs to the overlay so it can merge
@@ -476,7 +477,10 @@ export async function searchTrade(
     query.type = buildGemTypeField(item.baseType, item.vaalGem)
   } else {
     // Non-uniques: search by item class, not base type. The implicit covers the base.
-    const classCategory = _ITEM_CLASS_TO_CATEGORY[item.itemClass]
+    // Cluster jewels narrow to the cluster subcategory (jewel.cluster) so the
+    // results don't bleed into abyss/timeless/regular jewels which are priced
+    // very differently and would dilute the comparison.
+    const classCategory = isClusterJewel(item) ? 'jewel.cluster' : _ITEM_CLASS_TO_CATEGORY[item.itemClass]
     const typeFilters: Record<string, unknown> = {
       rarity: { option: 'nonunique' },
     }
@@ -708,20 +712,22 @@ export async function searchTrade(
     'pseudo.pseudo_map_more_card_drops',
   ])
   // Unid items have hidden mods, so any explicit/implicit/fractured/crafted/pseudo
-  // filter would never match -- skip the whole mod-stat group when the chip is on.
+  // filter would never match -- drop those when the unid chip is on. Enchants
+  // and imbues survive identification (cluster jewel passive count etc.), so
+  // those keep flowing through.
   const unidEnabled = statFilters.some((f) => f.id === 'misc.identified' && f.enabled)
-  const enabledFilters = unidEnabled
-    ? []
-    : statFilters.filter(
-        (f) =>
-          f.enabled &&
-          f.type !== 'timeless' &&
-          f.id !== 'misc.memory_level' &&
-          f.id !== 'socket.white_sockets' &&
-          (!['defence', 'weapon', 'socket', 'misc', 'gem', 'map', 'heist', 'currency'].includes(f.type) ||
-            miscPseudoIds.has(f.id) ||
-            mapPseudoIds.has(f.id)),
-      )
+  const survivesUnid = (f: StatFilter): boolean => f.type === 'enchant' || f.type === 'imbued'
+  const enabledFilters = statFilters.filter(
+    (f) =>
+      f.enabled &&
+      f.type !== 'timeless' &&
+      f.id !== 'misc.memory_level' &&
+      f.id !== 'socket.white_sockets' &&
+      (!['defence', 'weapon', 'socket', 'misc', 'gem', 'map', 'heist', 'currency'].includes(f.type) ||
+        miscPseudoIds.has(f.id) ||
+        mapPseudoIds.has(f.id)) &&
+      (!unidEnabled || survivesUnid(f)),
+  )
   const timelessFilters = unidEnabled ? [] : statFilters.filter((f) => f.enabled && f.type === 'timeless')
 
   const statGroups: Array<{

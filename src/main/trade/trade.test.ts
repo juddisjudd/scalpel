@@ -189,6 +189,73 @@ describe('searchTrade filter-group dispatch', () => {
     expect(body.query.filters.weapon_filters).toBeUndefined()
   })
 
+  it('Large Cluster Jewel routes to jewel.cluster category (not generic jewel)', async () => {
+    setPoeVersion(1)
+    const clusterItem = {
+      name: '',
+      baseType: 'Large Cluster Jewel',
+      itemClass: 'Jewels',
+      rarity: 'Rare',
+    }
+    await searchTrade('Mirage', clusterItem, [], 'any', 'chaos_divine')
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    expect(req).toBeDefined()
+    const body = JSON.parse(req!.body!)
+    expect(body.query.filters.type_filters.filters.category).toEqual({ option: 'jewel.cluster' })
+  })
+
+  it('unidentified item still sends enchant filters (cluster jewel passive count survives id)', async () => {
+    setPoeVersion(1)
+    const unidCluster = {
+      name: '',
+      baseType: 'Large Cluster Jewel',
+      itemClass: 'Jewels',
+      rarity: 'Rare',
+    }
+    const filters: StatFilter[] = [
+      { id: 'misc.identified', text: 'Unidentified', type: 'misc', enabled: true, value: null, min: null, max: null },
+      {
+        id: 'enchant.stat_3086156145',
+        text: 'Adds 8 Passive Skills',
+        type: 'enchant',
+        enabled: true,
+        value: 8,
+        min: null,
+        max: 8,
+      },
+      {
+        id: 'explicit.stat_2828710986',
+        text: 'Added Small Passive Skills also grant: ...',
+        type: 'explicit',
+        enabled: true,
+        value: null,
+        min: null,
+        max: null,
+      },
+    ]
+    await searchTrade('Mirage', unidCluster, filters, 'any', 'chaos_divine')
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    const body = JSON.parse(req!.body!)
+    const sentIds = body.query.stats[0].filters.map((f: { id: string }) => f.id)
+    // Enchant survives the unid drop, regular explicit does not.
+    expect(sentIds).toContain('enchant.stat_3086156145')
+    expect(sentIds).not.toContain('explicit.stat_2828710986')
+  })
+
+  it('non-cluster Jewels still route to plain jewel category', async () => {
+    setPoeVersion(1)
+    const abyssJewel = {
+      name: '',
+      baseType: 'Cobalt Jewel',
+      itemClass: 'Jewels',
+      rarity: 'Rare',
+    }
+    await searchTrade('Mirage', abyssJewel, [], 'any', 'chaos_divine')
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    const body = JSON.parse(req!.body!)
+    expect(body.query.filters.type_filters.filters.category).toEqual({ option: 'jewel' })
+  })
+
   it('PoE2 rune_sockets filter lands under equipment_filters alongside defence stats', async () => {
     setPoeVersion(2)
     const withRunes: StatFilter[] = [
