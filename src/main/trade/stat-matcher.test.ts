@@ -877,6 +877,122 @@ describe('matchItemMods', () => {
     })
   })
 
+  describe('added elemental damage pseudo (non-weapon consolidator)', () => {
+    const FIRE_ATK = { id: 'explicit.stat_1573130764', text: 'Adds # to # Fire Damage to Attacks', type: 'explicit' }
+    const COLD_ATK = { id: 'explicit.stat_4067062424', text: 'Adds # to # Cold Damage to Attacks', type: 'explicit' }
+    const LITE_ATK = {
+      id: 'explicit.stat_1754445556',
+      text: 'Adds # to # Lightning Damage to Attacks',
+      type: 'explicit',
+    }
+    const FIRE_PLAIN = { id: 'explicit.stat_321077055', text: 'Adds # to # Fire Damage', type: 'explicit' }
+    const COLD_PLAIN = { id: 'explicit.stat_2387423236', text: 'Adds # to # Cold Damage', type: 'explicit' }
+    const FIRE_SPELLS = { id: 'explicit.stat_1133016593', text: 'Adds # to # Fire Damage to Spells', type: 'explicit' }
+    const LITE_SPELLS = {
+      id: 'explicit.stat_2831165374',
+      text: 'Adds # to # Lightning Damage to Spells',
+      type: 'explicit',
+    }
+    const FIRE_BOTH = {
+      id: 'explicit.stat_3964634628',
+      text: 'Adds # to # Fire Damage to Spells and Attacks',
+      type: 'explicit',
+    }
+
+    const PSEUDO_TO_ATK = 'pseudo.pseudo_adds_elemental_damage_to_attacks'
+    const PSEUDO_TO_SPL = 'pseudo.pseudo_adds_elemental_damage_to_spells'
+    const PSEUDO_PLAIN = 'pseudo.pseudo_adds_elemental_damage'
+
+    const run = (
+      stats: Array<{ id: string; text: string; type: string }>,
+      mods: string[],
+      itemClass = 'Belts',
+    ): ReturnType<typeof matchItemMods> => {
+      _setStatEntriesForTests(stats)
+      return matchItemMods(mods, [], undefined, makeItemInfo({ rarity: 'Rare', itemClass }))
+    }
+
+    it('two ele colors to-attacks on a non-weapon: pseudo emitted with summed averages', () => {
+      // Prismweave belt: fire 14-32 (avg 23) + cold 11-24 (avg 17.5) + lightning 1-61 (avg 31)
+      // Sum of averages -> 71.5 -> floored 71
+      const filters = run(
+        [FIRE_ATK, COLD_ATK, LITE_ATK],
+        [
+          'Adds 14 to 32 Fire Damage to Attacks',
+          'Adds 11 to 24 Cold Damage to Attacks',
+          'Adds 1 to 61 Lightning Damage to Attacks',
+        ],
+      )
+      const pseudo = filters.find((f) => f.id === PSEUDO_TO_ATK)
+      expect(pseudo).toBeDefined()
+      expect(pseudo!.value).toBe(71)
+    })
+
+    it('one ele color to-attacks on a non-weapon: no pseudo emitted (single-color row already shown)', () => {
+      const filters = run([FIRE_ATK], ['Adds 14 to 32 Fire Damage to Attacks'])
+      expect(filters.find((f) => f.id === PSEUDO_TO_ATK)).toBeUndefined()
+    })
+
+    it('two ele colors plain "Adds X to Y" on a non-weapon: pseudo emitted', () => {
+      // Painseeker gloves: fire 16-26 (avg 21) + cold 16-29 (avg 22.5) -> 43.5 -> 43
+      const filters = run(
+        [FIRE_PLAIN, COLD_PLAIN],
+        ['Adds 16 to 26 Fire Damage', 'Adds 16 to 29 Cold Damage'],
+        'Gloves',
+      )
+      const pseudo = filters.find((f) => f.id === PSEUDO_PLAIN)
+      expect(pseudo).toBeDefined()
+      expect(pseudo!.value).toBe(43)
+    })
+
+    it('two ele colors on a weapon: no pseudo (weapon DPS pipeline owns this)', () => {
+      const filters = run(
+        [FIRE_ATK, COLD_ATK],
+        ['Adds 10 to 20 Fire Damage to Attacks', 'Adds 5 to 15 Cold Damage to Attacks'],
+        'Wands',
+      )
+      expect(filters.find((f) => f.id === PSEUDO_TO_ATK)).toBeUndefined()
+    })
+
+    it('"to Spells" mods accumulate independently from "to Attacks"', () => {
+      const filters = run(
+        [FIRE_SPELLS, LITE_SPELLS],
+        ['Adds 5 to 15 Fire Damage to Spells', 'Adds 7 to 86 Lightning Damage to Spells'],
+        'Helmets',
+      )
+      const pseudo = filters.find((f) => f.id === PSEUDO_TO_SPL)
+      expect(pseudo).toBeDefined()
+      // (5+15)/2 + (7+86)/2 = 10 + 46.5 = 56.5 -> 56
+      expect(pseudo!.value).toBe(56)
+      expect(filters.find((f) => f.id === PSEUDO_TO_ATK)).toBeUndefined()
+    })
+
+    it('"Spells and Attacks" hybrid contributes to both pseudos', () => {
+      const filters = run(
+        [FIRE_BOTH, LITE_ATK, LITE_SPELLS],
+        [
+          'Adds 30 to 60 Fire Damage to Spells and Attacks',
+          'Adds 5 to 15 Lightning Damage to Attacks',
+          'Adds 5 to 15 Lightning Damage to Spells',
+        ],
+        'Amulets',
+      )
+      // To-attacks: fire-both (45) + lightning-attacks (10) = 55
+      const atk = filters.find((f) => f.id === PSEUDO_TO_ATK)
+      expect(atk!.value).toBe(55)
+      // To-spells: fire-both (45) + lightning-spells (10) = 55
+      const spl = filters.find((f) => f.id === PSEUDO_TO_SPL)
+      expect(spl!.value).toBe(55)
+    })
+
+    it('does not regress existing pseudos with default minCount=1', () => {
+      _setStatEntriesForTests([{ id: 'explicit.stat_1671376347', text: '+#% to Fire Resistance', type: 'explicit' }])
+      const filters = matchItemMods(['+30% to Fire Resistance'], [], undefined, makeItemInfo({ rarity: 'Rare' }))
+      // Single resistance roll still emits Total Ele Res pseudo (minCount default = 1)
+      expect(filters.find((f) => f.id === 'pseudo.pseudo_total_elemental_resistance')!.value).toBe(30)
+    })
+  })
+
   describe('cluster jewel "Adds N Passive Skills" enchant', () => {
     const ADDS_PASSIVES = { id: 'enchant.stat_3086156145', text: 'Adds # Passive Skills', type: 'enchant' }
 
