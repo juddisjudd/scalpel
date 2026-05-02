@@ -1385,6 +1385,20 @@ describe('matchModToStat (PoE2 stat text without leading sign)', () => {
     expect(result).not.toBeNull()
     expect(result!.value).toBeNull()
   })
+
+  it('matches "an additional <Noun>" clipboard text against "# additional <Noun>s" trade stat', () => {
+    // Real bug: the bow suffix "of Splintering" prints in clipboard as "Bow Attacks fire
+    // an additional Arrow" (singular) but the trade API stores it as "Bow Attacks fire
+    // # additional Arrows" (numeric placeholder + plural). Without the variant transform
+    // the price checker returned no match for this mod.
+    _setStatEntriesForTests([
+      { id: 'explicit.stat_2222186378', text: 'Bow Attacks fire # additional Arrows', type: 'explicit' },
+    ])
+    const result = matchModToStat('Bow Attacks fire an additional Arrow')
+    expect(result).not.toBeNull()
+    expect(result!.statId).toBe('explicit.stat_2222186378')
+    expect(result!.value).toBe(1)
+  })
 })
 
 describe('matchModToStat (Unscalable Value prefix/suffix fallback)', () => {

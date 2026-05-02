@@ -327,6 +327,16 @@ function generateTextVariants(text: string): string[] {
     variants.push(text.replace(/\b\d+ additional\b/i, 'an additional'))
   }
 
+  // "an additional <Noun>" -> "1 additional <Noun>s" (clipboard says "an additional Arrow"
+  // but the trade API stores the numeric form: "Bow Attacks fire # additional Arrows").
+  // Naive +s pluralization is sufficient for the PoE mods that hit this path (Arrow,
+  // Projectile, Curse, Modifier) -- if an irregular plural shows up later, special-case it.
+  const anAdditionalMatch = text.match(/\ban additional ([A-Za-z]+)\b/i)
+  if (anAdditionalMatch) {
+    const noun = anAdditionalMatch[1]
+    variants.push(text.replace(/\ban additional [A-Za-z]+\b/i, `1 additional ${noun}s`))
+  }
+
   const replacements: Array<[RegExp, string]> = [
     [/Flasks constantly apply their Flask Effects/g, 'Flask constantly applies its Flask Effect'],
     [/Flasks constantly apply their/g, 'Flask constantly applies its'],
