@@ -349,7 +349,16 @@ export interface AppSettings {
   stashScrollEnabled: boolean
   poeVersion: 1 | 2
   regexPresets: RegexPreset[]
+  /** Title-bar tab keys the user has hidden. Toggleable from View settings.
+   *  'settings' and 'close' are never hidden. */
+  hiddenTabs?: HideableTabKey[]
 }
+
+/** Title-bar tab keys the user is allowed to hide via View settings. Narrowing
+ *  this to a union (instead of bare `string`) makes a typo in either the View
+ *  settings UI or the TitleBar conditional a compile error rather than a silent
+ *  no-op hide. Settings + Close intentionally aren't here -- they're not hideable. */
+export type HideableTabKey = 'item' | 'pricecheck' | 'audit' | 'dust' | 'divcards' | 'regex'
 
 export interface FilterListEntry {
   /** Full path to the .filter file */

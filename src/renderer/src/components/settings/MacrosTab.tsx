@@ -5,6 +5,7 @@ import { RemoveButton } from '../RemoveButton'
 import { HotkeyRecorder } from './HotkeyRecorder'
 import { CommandInput } from './CommandInput'
 import { APP_MACRO_DEFS } from './utils'
+import { SettingToggleBox } from './SettingToggleBox'
 
 /** Extract all unique custom tag texts that contain "macro" (case-insensitive) */
 function getMacroTags(presets: RegexPreset[]): string[] {
@@ -34,7 +35,7 @@ export function MacrosTab({ settings, update, tryHotkey }: Props): JSX.Element {
   return (
     <>
       {/* Chat Macros */}
-      <div className="text-[10px] text-accent tracking-[1.5px] uppercase mt-3 font-bold">Chat Macros</div>
+      <div className="settings-section-title mt-3">Chat Macros</div>
       <section>
         <div className="flex flex-col gap-2">
           {(settings.chatCommands ?? []).map((cmd, i) => {
@@ -86,22 +87,15 @@ export function MacrosTab({ settings, update, tryHotkey }: Props): JSX.Element {
       </section>
 
       {/* Other Macros */}
-      <div className="text-[10px] text-accent tracking-[1.5px] uppercase mt-3 font-bold">Other Macros</div>
-      <section>
-        <div
-          onClick={() => update('stashScrollEnabled', !settings.stashScrollEnabled)}
-          className="flex items-center gap-[10px] cursor-pointer select-none"
-        >
-          <Toggle
-            checked={settings.stashScrollEnabled ?? false}
-            onChange={(val) => update('stashScrollEnabled', val)}
-          />
-          <span className="text-xs text-text">Stash tab scrolling (Ctrl + Scroll Wheel)</span>
-        </div>
-      </section>
+      <div className="settings-section-title mt-3">Other Macros</div>
+      <SettingToggleBox
+        label="Stash tab scrolling (Ctrl + Scroll Wheel)"
+        checked={settings.stashScrollEnabled ?? false}
+        onChange={(val) => update('stashScrollEnabled', val)}
+      />
 
       {/* App Macros */}
-      <div className="text-[10px] text-accent tracking-[1.5px] uppercase mt-3 font-bold">App Macros</div>
+      <div className="settings-section-title mt-3">App Macros</div>
       <section>
         <div className="flex flex-col gap-2">
           {(settings.appMacros ?? []).map((macro, i) => {

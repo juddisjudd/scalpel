@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppSettings } from '../../../../shared/types'
 import { PoeLoginButton } from './PoeLoginButton'
-import { Toggle } from '../Toggle'
 import { keyEventToAccelerator, prettyHotkey } from './utils'
 import {
   LISTED_TIME_OPTIONS,
@@ -51,6 +50,7 @@ export function PriceCheckTab({ settings, update, tryHotkey }: Props): JSX.Eleme
 
   return (
     <>
+      <div className="settings-section-title mt-3">Trade Settings</div>
       {/* Group the two top rows tighter than the outer section gap, matching Defaults. */}
       <div className="flex flex-col gap-[10px]">
         <section>
@@ -85,7 +85,7 @@ export function PriceCheckTab({ settings, update, tryHotkey }: Props): JSX.Eleme
         </section>
       </div>
 
-      <div className="text-[10px] text-accent tracking-[1.5px] uppercase mt-3 font-bold">Defaults</div>
+      <div className="settings-section-title mt-3">Defaults</div>
 
       <div className="grid grid-cols-2 gap-x-2 gap-y-[10px]">
         <SettingSelectBox
@@ -136,48 +136,26 @@ export function PriceCheckTab({ settings, update, tryHotkey }: Props): JSX.Eleme
         </section>
       </div>
 
-      <div className="text-[10px] text-accent tracking-[1.5px] uppercase mt-3 font-bold">Additional Settings</div>
+      <div className="settings-section-title mt-3">Additional Settings</div>
 
-      <section>
-        <div
-          onClick={() => update('tradeDefaultToBase', !settings.tradeDefaultToBase)}
-          className="flex items-center gap-[10px] cursor-pointer select-none"
-        >
-          <Toggle
-            checked={settings.tradeDefaultToBase ?? false}
-            onChange={(val) => update('tradeDefaultToBase', val)}
-          />
-          <span className="text-xs text-text">
-            Default all items to &quot;Base&quot; - can simplify unchecking unwanted mods
-          </span>
-        </div>
-      </section>
-
-      <section>
-        <div
-          onClick={() => update('tradeKeepUncheckedVisible', !settings.tradeKeepUncheckedVisible)}
-          className="flex items-center gap-[10px] cursor-pointer select-none"
-        >
-          <Toggle
-            checked={settings.tradeKeepUncheckedVisible ?? false}
-            onChange={(val) => update('tradeKeepUncheckedVisible', val)}
-          />
-          <span className="text-xs text-text">Don&apos;t hide mods I uncheck</span>
-        </div>
-      </section>
-
-      <section>
-        <div
-          onClick={() => update('tradeNeverAutoSearch', !settings.tradeNeverAutoSearch)}
-          className="flex items-center gap-[10px] cursor-pointer select-none"
-        >
-          <Toggle
-            checked={settings.tradeNeverAutoSearch ?? false}
-            onChange={(val) => update('tradeNeverAutoSearch', val)}
-          />
-          <span className="text-xs text-text">Never auto-search</span>
-        </div>
-      </section>
+      {/* Tighten the toggle group; outer fragment gap is for top-level sections, too sparse for stacked rows. */}
+      <div className="flex flex-col gap-[10px]">
+        <SettingToggleBox
+          label='Default all items to "Base" - can simplify unchecking unwanted mods'
+          checked={settings.tradeDefaultToBase ?? false}
+          onChange={(val) => update('tradeDefaultToBase', val)}
+        />
+        <SettingToggleBox
+          label="Don't hide mods I uncheck"
+          checked={settings.tradeKeepUncheckedVisible ?? false}
+          onChange={(val) => update('tradeKeepUncheckedVisible', val)}
+        />
+        <SettingToggleBox
+          label="Never auto-search"
+          checked={settings.tradeNeverAutoSearch ?? false}
+          onChange={(val) => update('tradeNeverAutoSearch', val)}
+        />
+      </div>
     </>
   )
 }

@@ -204,6 +204,10 @@ input[type='number']::-webkit-outer-spin-button {
     @apply text-sm font-bold text-accent;
   }
 
+  .settings-section-title {
+    @apply text-[10px] text-accent tracking-[1.5px] uppercase font-bold;
+  }
+
   .setting-box {
     @apply flex items-center justify-between rounded bg-black/30 cursor-pointer;
     padding: 8px 12px;

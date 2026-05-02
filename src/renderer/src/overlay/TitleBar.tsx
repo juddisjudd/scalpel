@@ -1,8 +1,8 @@
 import { Setting, CloseSmall, ChartHistogram, Flask, Buy } from '@icon-park/react'
-import type { OverlayData } from '../../../shared/types'
+import type { HideableTabKey, OverlayData } from '../../../shared/types'
 import type { GameFeatures } from '../../../shared/game-features'
 import { getCurrencyIcons } from '../shared/icons'
-import { divCardArtMap, iconMap, IP } from '../shared/constants'
+import { DIV_CARD_ICON_URL, divCardArtMap, iconMap, IP } from '../shared/constants'
 import dustIconAsset from '../assets/currency/thaumaturgic-dust.png'
 import appIcon from '../../../../resources/icon.png'
 import poereIcon from '../assets/other/poere-logo.svg'
@@ -26,6 +26,7 @@ interface TitleBarProps {
   poeVersion: 1 | 2 | null
   features: GameFeatures
   hasPriceCheckData: boolean
+  hiddenTabs: Set<HideableTabKey>
   onSetView: (view: View | ((prev: View) => View)) => void
   onClose: () => void
   onSetAuditBlockIndex: (v: number | null) => void
@@ -38,6 +39,7 @@ export function TitleBar({
   poeVersion,
   features,
   hasPriceCheckData,
+  hiddenTabs,
   onSetView,
   onClose,
   onSetAuditBlockIndex,
@@ -69,84 +71,89 @@ export function TitleBar({
           </button>
         )}
         {/* Item icon -- always navigates back to search results */}
-        <button
-          onClick={() => {
-            if (overlayData) onSetView('item')
-          }}
-          title="Filter Editor"
-          className="p-0.5 w-[30px] h-[30px] flex items-center justify-center"
-          style={{
-            background: view === 'item' ? 'var(--accent)' : undefined,
-            color: view === 'item' ? '#171821' : undefined,
-            opacity: overlayData ? 1 : 0.35,
-            cursor: overlayData ? 'pointer' : 'default',
-          }}
-        >
-          {(() => {
-            const isDivCard = overlayData && overlayData.item.itemClass === 'Divination Cards'
-            const divArt = isDivCard
-              ? (divCardArtMap.get(overlayData.item.baseType) ?? divCardArtMap.get(overlayData.item.name))
-              : undefined
-            const src = divArt
-              ? `https://web.poecdn.com/image/divination-card/${divArt}.png`
-              : overlayData
-                ? (iconMap[overlayData.item.name] ?? iconMap[overlayData.item.baseType] ?? fallbackIcon)
-                : fallbackIcon
+        {!hiddenTabs.has('item') && (
+          <button
+            onClick={() => {
+              if (overlayData) onSetView('item')
+            }}
+            title="Filter Editor"
+            className="p-0.5 w-[30px] h-[30px] flex items-center justify-center"
+            style={{
+              background: view === 'item' ? 'var(--accent)' : undefined,
+              color: view === 'item' ? '#171821' : undefined,
+              opacity: overlayData ? 1 : 0.35,
+              cursor: overlayData ? 'pointer' : 'default',
+            }}
+          >
+            {(() => {
+              const isDivCard = overlayData && overlayData.item.itemClass === 'Divination Cards'
+              const divArt = isDivCard
+                ? (divCardArtMap.get(overlayData.item.baseType) ?? divCardArtMap.get(overlayData.item.name))
+                : undefined
+              const src = divArt
+                ? `https://web.poecdn.com/image/divination-card/${divArt}.png`
+                : overlayData
+                  ? (iconMap[overlayData.item.name] ?? iconMap[overlayData.item.baseType] ?? fallbackIcon)
+                  : fallbackIcon
+              return (
+                <img
+                  src={src}
+                  alt=""
+                  className="w-5 h-5 object-cover"
+                  style={{
+                    imageRendering: 'auto',
+                    borderRadius: divArt ? 2 : 0,
+                  }}
+                />
+              )
+            })()}
+          </button>
+        )}
+        {!hiddenTabs.has('pricecheck') && (
+          <button
+            onClick={() => hasPriceCheckData && onSetView('pricecheck')}
+            disabled={!hasPriceCheckData}
+            title={hasPriceCheckData ? 'Price Checker' : 'Price Checker (no item checked yet)'}
+            className="w-[30px] h-[30px] flex items-center justify-center disabled:cursor-default"
+            style={{
+              background: view === 'pricecheck' ? 'var(--accent)' : undefined,
+              color: view === 'pricecheck' ? '#171821' : undefined,
+              opacity: hasPriceCheckData ? 1 : 0.35,
+            }}
+          >
+            <Buy size={16} {...IP} />
+          </button>
+        )}
+        {!hiddenTabs.has('audit') &&
+          (() => {
+            const auditMatch = overlayData?.matches.find((m) => m.isFirstMatch) ?? overlayData?.matches[0]
+            const hasBaseTypes =
+              auditMatch?.block.conditions.some((c) => c.type === 'BaseType' && c.values.length > 0) ?? false
+            const tierStr = auditMatch?.block.tierTag?.tier ?? ''
+            const isExTier = /^(ex\d*|exhide|exshow|2x\d*)$/.test(tierStr) || tierStr.startsWith('exotic')
+            const canAudit = overlayData && hasBaseTypes && !isExTier
             return (
-              <img
-                src={src}
-                alt=""
-                className="w-5 h-5 object-cover"
-                style={{
-                  imageRendering: 'auto',
-                  borderRadius: divArt ? 2 : 0,
+              <button
+                onClick={() => {
+                  if (canAudit) {
+                    onSetAuditBlockIndex(null)
+                    onSetView('audit')
+                  }
                 }}
-              />
+                title={canAudit ? 'Price Audit' : 'No base types to audit'}
+                className="w-[30px] h-[30px] flex items-center justify-center"
+                style={{
+                  background: view === 'audit' ? 'var(--accent)' : undefined,
+                  color: view === 'audit' ? '#171821' : undefined,
+                  opacity: canAudit ? 1 : 0.35,
+                  cursor: canAudit ? 'pointer' : 'default',
+                }}
+              >
+                <ChartHistogram size={16} {...IP} />
+              </button>
             )
           })()}
-        </button>
-        <button
-          onClick={() => hasPriceCheckData && onSetView('pricecheck')}
-          disabled={!hasPriceCheckData}
-          title={hasPriceCheckData ? 'Price Checker' : 'Price Checker (no item checked yet)'}
-          className="w-[30px] h-[30px] flex items-center justify-center disabled:cursor-default"
-          style={{
-            background: view === 'pricecheck' ? 'var(--accent)' : undefined,
-            color: view === 'pricecheck' ? '#171821' : undefined,
-            opacity: hasPriceCheckData ? 1 : 0.35,
-          }}
-        >
-          <Buy size={16} {...IP} />
-        </button>
-        {(() => {
-          const auditMatch = overlayData?.matches.find((m) => m.isFirstMatch) ?? overlayData?.matches[0]
-          const hasBaseTypes =
-            auditMatch?.block.conditions.some((c) => c.type === 'BaseType' && c.values.length > 0) ?? false
-          const tierStr = auditMatch?.block.tierTag?.tier ?? ''
-          const isExTier = /^(ex\d*|exhide|exshow|2x\d*)$/.test(tierStr) || tierStr.startsWith('exotic')
-          const canAudit = overlayData && hasBaseTypes && !isExTier
-          return (
-            <button
-              onClick={() => {
-                if (canAudit) {
-                  onSetAuditBlockIndex(null)
-                  onSetView('audit')
-                }
-              }}
-              title={canAudit ? 'Price Audit' : 'No base types to audit'}
-              className="w-[30px] h-[30px] flex items-center justify-center"
-              style={{
-                background: view === 'audit' ? 'var(--accent)' : undefined,
-                color: view === 'audit' ? '#171821' : undefined,
-                opacity: canAudit ? 1 : 0.35,
-                cursor: canAudit ? 'pointer' : 'default',
-              }}
-            >
-              <ChartHistogram size={16} {...IP} />
-            </button>
-          )
-        })()}
-        {features.dustExplorer && (
+        {features.dustExplorer && !hiddenTabs.has('dust') && (
           <button
             onClick={() => onSetView('dust')}
             title="Dust Explorer"
@@ -158,7 +165,7 @@ export function TitleBar({
             <img src={dustIconAsset} alt="" className="w-[18px] h-[18px] object-contain" />
           </button>
         )}
-        {features.divCards && (
+        {features.divCards && !hiddenTabs.has('divcards') && (
           <button
             onClick={() => onSetView('divcards')}
             title="Div Card Explorer"
@@ -167,14 +174,10 @@ export function TitleBar({
               background: view === 'divcards' ? 'var(--accent)' : undefined,
             }}
           >
-            <img
-              src="https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvRGl2aW5hdGlvbi9JbnZlbnRvcnlJY29uIiwidyI6MSwiaCI6MSwic2NhbGUiOjF9XQ/f34bf8cbb5/InventoryIcon.png"
-              alt=""
-              className="w-[18px] h-[18px] object-contain"
-            />
+            <img src={DIV_CARD_ICON_URL} alt="" className="w-[18px] h-[18px] object-contain" />
           </button>
         )}
-        {features.regexTool && (
+        {features.regexTool && !hiddenTabs.has('regex') && (
           <button
             onClick={() => onSetView('regex')}
             title="Regex Tool"

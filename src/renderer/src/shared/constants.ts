@@ -20,6 +20,12 @@ export const IP = {
   style: { display: 'flex' },
 }
 
+/** GGG CDN art for the div-card inventory icon. Used by the title-bar Div Card
+ *  Explorer button and the Show/Hide Tabs preview in View settings. Hosted on
+ *  poecdn so the URL hash is stable as long as GGG doesn't rotate the asset. */
+export const DIV_CARD_ICON_URL =
+  'https://web.poecdn.com/gen/image/WzI1LDE0LHsiZiI6IjJESXRlbXMvRGl2aW5hdGlvbi9JbnZlbnRvcnlJY29uIiwidyI6MSwiaCI6MSwic2NhbGUiOjF9XQ/f34bf8cbb5/InventoryIcon.png'
+
 const ICONS_BY_VERSION: Record<1 | 2, Record<string, string>> = {
   1: itemIconsPoe1 as Record<string, string>,
   2: itemIconsPoe2 as Record<string, string>,

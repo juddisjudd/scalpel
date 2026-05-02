@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { AppSettings, PoeItem } from '../../../shared/types'
-import { GeneralTab, MacrosTab, FilterTab, PriceCheckTab, FaqTab, prettyHotkey } from './settings'
+import { GeneralTab, ViewTab, MacrosTab, FilterTab, PriceCheckTab, FaqTab, prettyHotkey } from './settings'
 import { HistoryPanel } from './HistoryPanel'
 import { ErrorBanner } from './ErrorBanner'
 import { findHotkeyCollision, type HotkeySlot } from './settings/hotkey-collisions'
@@ -22,6 +22,18 @@ interface Props {
 /** Hotkeys PoE itself uses - warn (don't block) when the user binds one of these. */
 const POE_PROTECTED_HOTKEYS = new Set(['CommandOrControl+F', 'CommandOrControl+Alt+C'])
 
+const TAB_KEYS = ['general', 'view', 'macros', 'filter', 'pricecheck', 'history', 'faq'] as const
+type TabKey = (typeof TAB_KEYS)[number]
+const TAB_LABELS: Record<TabKey, string> = {
+  general: 'General',
+  view: 'View',
+  macros: 'Macros',
+  filter: 'Filter',
+  pricecheck: 'Trade',
+  history: 'History',
+  faq: 'FAQ',
+}
+
 export function SettingsPanel({
   settings,
   onSettingsChange,
@@ -33,7 +45,7 @@ export function SettingsPanel({
   currentItem,
   onError,
 }: Props): JSX.Element {
-  const [tab, setTab] = useState<'general' | 'macros' | 'filter' | 'pricecheck' | 'history' | 'faq'>('general')
+  const [tab, setTab] = useState<TabKey>('general')
   const [localError, setLocalError] = useState<string | null>(null)
   const [localErrorTone, setLocalErrorTone] = useState<'error' | 'warn'>('error')
 
@@ -82,43 +94,25 @@ export function SettingsPanel({
           <span className="text-[9px] text-accent opacity-60">Beta {__APP_VERSION__}</span>
         </div>
         <div className="flex flex-wrap gap-[6px]">
-          {(['general', 'macros', 'filter', 'pricecheck', 'history', 'faq'] as const).map((t) => {
-            const label =
-              t === 'general'
-                ? 'General'
-                : t === 'macros'
-                  ? 'Macros'
-                  : t === 'filter'
-                    ? 'Filter'
-                    : t === 'pricecheck'
-                      ? 'Trade'
-                      : t === 'history'
-                        ? 'History'
-                        : 'FAQ'
-            return (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`text-[11px] px-3 py-1.5 ${tab === t ? 'bg-accent text-bg-solid' : 'text-text-dim'}`}
-              >
-                {label}
-              </button>
-            )
-          })}
+          {TAB_KEYS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`text-[11px] px-3 py-1.5 ${tab === t ? 'bg-accent text-bg-solid' : 'text-text-dim'}`}
+            >
+              {TAB_LABELS[t]}
+            </button>
+          ))}
           {!isOverlay && onShowOnboarding && (
             <button onClick={onShowOnboarding} className="text-[11px] text-text-dim px-3 py-1.5">
               Setup Wizard
-            </button>
-          )}
-          {import.meta.env.DEV && (
-            <button onClick={() => window.api.openDevTools()} className="text-[11px] text-text-dim px-3 py-1.5">
-              DevTools
             </button>
           )}
         </div>
       </div>
 
       {tab === 'general' && <GeneralTab settings={settings} update={update} />}
+      {tab === 'view' && <ViewTab settings={settings} update={update} />}
       {tab === 'macros' && <MacrosTab settings={settings} update={update} tryHotkey={tryHotkey} />}
       {tab === 'filter' && (
         <FilterTab

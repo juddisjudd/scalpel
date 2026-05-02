@@ -13,7 +13,7 @@ export function FaqTab(): JSX.Element {
       <div className="mt-3 flex flex-col gap-3">
         {FAQ.map((section) => (
           <div key={section.section} className="flex flex-col gap-3">
-            <div className="text-[10px] text-accent tracking-[1.5px] uppercase font-bold mt-1">{section.section}</div>
+            <div className="settings-section-title mt-1">{section.section}</div>
             {section.items.map((item) => (
               <FaqItem key={item.q} q={item.q} a={item.a} />
             ))}

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppSettings } from '../../../../shared/types'
 import { getGameFeatures } from '../../../../shared/game-features'
-import { Toggle } from '../Toggle'
 import { FilterPicker } from '../FilterPicker'
 import { keyEventToAccelerator, prettyHotkey } from './utils'
+import { SettingToggleBox } from './SettingToggleBox'
 
 interface Props {
   settings: AppSettings
@@ -57,6 +57,8 @@ export function FilterTab({
 
   return (
     <>
+      <div className="settings-section-title mt-3">Filter</div>
+
       {/* Filter folder & picker */}
       <section>
         <label>Filter folder</label>
@@ -100,15 +102,11 @@ export function FilterTab({
       </section>
 
       {/* Reload on save */}
-      <section>
-        <div
-          onClick={() => update('reloadOnSave', !settings.reloadOnSave)}
-          className="flex items-center gap-[10px] cursor-pointer select-none"
-        >
-          <Toggle checked={settings.reloadOnSave} onChange={(val) => update('reloadOnSave', val)} />
-          <span className="text-xs text-text">Automatically reload filter when switching an item's tier</span>
-        </div>
-      </section>
+      <SettingToggleBox
+        label="Automatically reload filter when switching an item's tier"
+        checked={settings.reloadOnSave}
+        onChange={(val) => update('reloadOnSave', val)}
+      />
     </>
   )
 }

@@ -713,6 +713,7 @@ export default function App(): JSX.Element {
               poeVersion={poeVersion}
               features={features}
               hasPriceCheckData={!!priceCheckData}
+              hiddenTabs={new Set(settings?.hiddenTabs ?? [])}
               onSetView={setView}
               onClose={close}
               onSetAuditBlockIndex={setAuditBlockIndex}
