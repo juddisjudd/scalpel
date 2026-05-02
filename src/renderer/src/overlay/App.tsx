@@ -186,6 +186,11 @@ export default function App(): JSX.Element {
         setUpdateProgress(null)
         setUpdateReady(true)
       }),
+      window.api.onUpdateRescinded(() => {
+        setUpdateVersion(null)
+        setUpdateProgress(null)
+        setUpdateReady(false)
+      }),
       window.api.onUpdateApplied((version, savedState) => {
         setJustUpdated(version)
         setTimeout(() => setJustUpdated(null), 4000)

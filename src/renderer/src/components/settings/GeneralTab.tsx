@@ -103,20 +103,29 @@ export function GeneralTab({ settings, update }: Props): JSX.Element {
       {import.meta.env.DEV && (
         <section>
           <div className="settings-section-title mt-3">Dev Only Stuff</div>
-          <button
-            onClick={() => {
-              for (let i = localStorage.length - 1; i >= 0; i--) {
-                const k = localStorage.key(i)
-                if (k && k.startsWith('tip.')) localStorage.removeItem(k)
-              }
-              // Mounted DismissibleTip instances only check localStorage on mount,
-              // so reload to surface the dismissed tips again.
-              window.location.reload()
-            }}
-            className="text-[11px] px-3 py-1.5 mt-[6px] text-text-dim"
-          >
-            Reset tooltips
-          </button>
+          <div className="flex gap-1.5 mt-[6px] flex-wrap">
+            <button
+              onClick={() => {
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                  const k = localStorage.key(i)
+                  if (k && k.startsWith('tip.')) localStorage.removeItem(k)
+                }
+                // Mounted DismissibleTip instances only check localStorage on mount,
+                // so reload to surface the dismissed tips again.
+                window.location.reload()
+              }}
+              className="text-[11px] px-3 py-1.5 text-text-dim"
+            >
+              Reset tooltips
+            </button>
+            <button
+              onClick={() => window.api.devFakeUpdate()}
+              className="text-[11px] px-3 py-1.5 text-text-dim"
+              title="Inject a fake update-available event so you can test the channel-switch rescind flow"
+            >
+              Fake update banner
+            </button>
+          </div>
         </section>
       )}
     </>

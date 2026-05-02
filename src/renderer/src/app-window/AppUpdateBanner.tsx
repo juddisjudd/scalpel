@@ -29,6 +29,11 @@ export function AppUpdateBanner(): JSX.Element | null {
         setUpdateProgress(null)
         setUpdateReady(true)
       }),
+      window.api.onUpdateRescinded(() => {
+        setUpdateVersion(null)
+        setUpdateProgress(null)
+        setUpdateReady(false)
+      }),
       window.api.onUpdateApplied((v) => {
         setJustUpdated(v)
         if (justUpdatedTimer.current) clearTimeout(justUpdatedTimer.current)

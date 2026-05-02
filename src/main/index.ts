@@ -326,9 +326,12 @@ app.whenReady().then(() => {
     refreshPrices(store.get('league'))
   })
 
-  // Auto-update check (skip in dev mode to avoid overwriting source with packaged ASAR)
+  // Wire the updater unconditionally so broadcasts (update-available, update-rescinded)
+  // can fire in dev for fake-update testing. The periodic GitHub check and destructive
+  // install actions internally bail when ELECTRON_RENDERER_URL is set so a dev session
+  // doesn't overwrite source with a packaged ASAR.
   const overlayWin = getOverlayWindow()
-  if (overlayWin && !process.env['ELECTRON_RENDERER_URL'])
+  if (overlayWin)
     initUpdater([getOverlayWindow, getAppWindow], installDir, store.get('updateChannel'), () => showOverlay())
 
   if (process.env.NODE_ENV === 'development') {

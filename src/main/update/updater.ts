@@ -9,10 +9,19 @@ import { GITHUB_RELEASES_API, ELECTRON_RELEASES } from '../../shared/endpoints'
 const CHECK_DELAY = 5000
 const CHECK_INTERVAL = 60_000
 const MAX_RETRIES = 3
+// Sentinel version broadcast by the dev-fake-update IPC. Comically high so it
+// can't ever collide with a real release version comparison.
+const DEV_FAKE_VERSION = '99.99.99'
+// Detects the dev server (`npm run dev`). Used to skip the periodic GitHub poll
+// and the destructive download/install handlers so a dev session doesn't pull a
+// packaged ASAR over the working source tree. Matches the inline check pattern
+// used in app-window.ts, overlay.ts, and index.ts.
+const IS_DEV = !!process.env['ELECTRON_RENDERER_URL']
 
 let targetWindows: (() => BrowserWindow | null)[] = []
 let installDir: string = ''
 let checking = false
+let currentChannel: string = 'stable'
 let pendingRemote: InstallManifest | null = null
 // Cached state so the app window can pull current status on mount (events fired before
 // the window opened would otherwise be missed).
@@ -322,6 +331,7 @@ export function initUpdater(
 ): void {
   targetWindows = windows
   installDir = dir
+  currentChannel = channel
 
   // Check if we just updated and notify renderer
   const justUpdatedPath = join(app.getPath('userData'), 'just-updated.json')
@@ -354,13 +364,55 @@ export function initUpdater(
   }
 
   const check = (): void => {
-    checkForUpdates(channel).catch((err) => {
+    checkForUpdates(currentChannel).catch((err) => {
       console.error('[Updater] Check failed:', err.message)
     })
   }
-  setTimeout(check, CHECK_DELAY)
-  setInterval(check, CHECK_INTERVAL)
+  // Skip the real GitHub poll under the dev server -- otherwise the periodic check
+  // would pull a packaged ASAR over the working source tree. Channel switching
+  // (setUpdateChannel) also calls checkForUpdates, but bails on IS_DEV for the same
+  // reason. Dev can still exercise the banner state machine via the dev-fake-update
+  // IPC below.
+  if (!IS_DEV) {
+    setTimeout(check, CHECK_DELAY)
+    setInterval(check, CHECK_INTERVAL)
+  }
 }
+
+/** Wired to the settings handler so toggling the channel takes effect immediately
+ *  without a restart. Clears any pending state from the prior channel (the user may
+ *  have just switched away from a beta release they no longer want to install) and
+ *  fires a fresh check on the new channel. */
+export function setUpdateChannel(channel: string): void {
+  if (channel === currentChannel) return
+  currentChannel = channel
+  // Rescind any pending update from the prior channel. Clear local module state and
+  // tell the renderer to drop its banner; if the new channel still has an update for
+  // this version, the immediate recheck below will repopulate.
+  // `cachedAssetUrls` is intentionally NOT cleared -- the next checkForUpdates will
+  // overwrite it, and pendingRemote being null means no caller can reach the stale
+  // entries even if the new channel has no update for this version.
+  if (updateAvailableVersion || pendingRemote || updateReady) {
+    updateAvailableVersion = null
+    pendingRemote = null
+    updateReady = false
+    broadcast('update-rescinded')
+  }
+  if (IS_DEV) return
+  checkForUpdates(currentChannel).catch((err) => {
+    console.error('[Updater] Channel-switch check failed:', (err as Error).message)
+  })
+}
+
+// Dev-only: inject a fake "update available" event so the channel-switch rescind
+// flow can be tested without a real GitHub release. Real periodic checks are gated
+// off in dev so the renderer's banner state would otherwise stay empty. Production
+// builds ignore this IPC since IS_DEV is false and the early-return below trips.
+ipcMain.handle('dev-fake-update', (_event, version: string = DEV_FAKE_VERSION) => {
+  if (!IS_DEV) return
+  updateAvailableVersion = version
+  broadcast('update-available', version)
+})
 
 ipcMain.handle('get-update-state', () => ({
   updateVersion: updateAvailableVersion,
@@ -369,6 +421,7 @@ ipcMain.handle('get-update-state', () => ({
 }))
 
 ipcMain.handle('download-update', async () => {
+  if (IS_DEV) return
   if (!pendingRemote) return
 
   const local = readLocalManifest()
@@ -390,6 +443,7 @@ ipcMain.on('save-overlay-state', (_event, state: Record<string, unknown>) => {
 })
 
 ipcMain.handle('install-update', () => {
+  if (IS_DEV) return
   const stagingDir = getStagingDir()
   const asarNew = join(stagingDir, 'app.asar.new')
   const electronZip = join(stagingDir, 'electron.zip')

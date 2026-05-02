@@ -496,6 +496,15 @@ export const api = {
     ipcRenderer.on('update-downloaded', handler)
     return () => ipcRenderer.removeListener('update-downloaded', handler)
   },
+  /** Dev-only: inject a fake "update available" banner so you can test the
+   *  channel-switch rescind flow without a real GitHub release. No-op in production.
+   *  Pass a version to override the default sentinel from the main-process handler. */
+  devFakeUpdate: (version?: string): Promise<void> => ipcRenderer.invoke('dev-fake-update', version),
+  onUpdateRescinded: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('update-rescinded', handler)
+    return () => ipcRenderer.removeListener('update-rescinded', handler)
+  },
   onUpdateApplied: (cb: (version: string, state: Record<string, unknown> | null) => void): (() => void) => {
     const handler = (_: Electron.IpcRendererEvent, version: string, state: Record<string, unknown> | null): void =>
       cb(version, state)
