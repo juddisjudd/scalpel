@@ -174,6 +174,12 @@ export const api = {
   removeCheatSheetCategory: (categoryId: string): Promise<void> =>
     ipcRenderer.invoke('cheat-sheet:remove-category', categoryId),
   closeCheatSheets: (): void => ipcRenderer.send('cheat-sheet:close'),
+  openSettingsTab: (tab: string): void => ipcRenderer.send('open-settings-tab', tab),
+  onFocusSettingsTab: (cb: (tab: string) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tab: string): void => cb(tab)
+    ipcRenderer.on('focus-settings-tab', handler)
+    return () => ipcRenderer.removeListener('focus-settings-tab', handler)
+  },
   showCheatSheetPreview: (src: string, anchor: { x: number; y: number; width: number; height: number }): void =>
     ipcRenderer.send('cheat-sheet-preview:show', src, anchor),
   hideCheatSheetPreview: (): void => ipcRenderer.send('cheat-sheet-preview:hide'),

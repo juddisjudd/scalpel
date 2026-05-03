@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AppSettings, PoeItem } from '../../../shared/types'
 import {
   GeneralTab,
@@ -58,6 +58,12 @@ export function SettingsPanel({
   const [tab, setTab] = useState<TabKey>('general')
   const [localError, setLocalError] = useState<string | null>(null)
   const [localErrorTone, setLocalErrorTone] = useState<'error' | 'warn'>('error')
+
+  useEffect(() => {
+    return window.api.onFocusSettingsTab((t) => {
+      if ((TAB_KEYS as readonly string[]).includes(t)) setTab(t as TabKey)
+    })
+  }, [])
 
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
     window.api.setSetting(key, value)

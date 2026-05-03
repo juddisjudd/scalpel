@@ -31,8 +31,11 @@ export function App(): JSX.Element {
     return (
       <div className="flex flex-col h-screen bg-bg-card">
         <TitleBar onClose={() => window.api.closeCheatSheets()} />
-        <div className="flex-1 flex items-center justify-center">
-          <Notice icon="📋" title="No cheat sheets yet" body="Add some in Settings > Cheat Sheets." />
+        <div className="flex-1 flex flex-col items-center justify-center gap-2">
+          <Notice icon="📋" title="No cheat sheets yet" body="Add some in Settings to start using this overlay." />
+          <button onClick={() => window.api.openSettingsTab('cheatsheets')} className="text-[11px] px-3 py-1.5">
+            Open Settings
+          </button>
         </div>
       </div>
     )

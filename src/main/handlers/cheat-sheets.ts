@@ -11,6 +11,7 @@ import {
   showPreview,
   hidePreview,
 } from '../cheat-sheets'
+import { getOverlayWindow } from '../overlay'
 
 const ALLOWED_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif'])
 
@@ -56,6 +57,14 @@ export function register(): void {
   })
 
   ipcMain.on('cheat-sheet:close', () => hideGridWindow())
+
+  ipcMain.on('open-settings-tab', (_e, tab: string) => {
+    const overlay = getOverlayWindow()
+    if (!overlay || overlay.isDestroyed()) return
+    overlay.show()
+    overlay.webContents.send('open-view', 'setup')
+    overlay.webContents.send('focus-settings-tab', tab)
+  })
 
   ipcMain.on(
     'cheat-sheet-preview:show',
