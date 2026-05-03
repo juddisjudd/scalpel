@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen, protocol } from 'electron'
 
 // Prevent unhandled JS exceptions from crashing the native overlay thread
 // electron-overlay-window's tsfn_to_js_proxy calls napi_fatal_error if napi_call_function
@@ -53,6 +53,7 @@ import * as versionsHandlers from './handlers/versions'
 import * as onlineSyncHandlers from './handlers/online-sync'
 import * as pricesHandlers from './handlers/prices'
 import { register as registerCheatSheets } from './handlers/cheat-sheets'
+import { categoryDir } from './cheat-sheets'
 import type { AppSettings } from '../shared/types'
 
 // ---- Elevation detection ---------------------------------------------------
@@ -221,6 +222,14 @@ app.whenReady().then(() => {
   createOverlayWindow(store.get('poeVersion') ?? 1)
   createAppWindow()
   createTray()
+
+  // Serve cheat sheet images via a custom protocol so the renderer can load local files
+  protocol.handle('cheatsheet', (request) => {
+    const url = request.url.replace('cheatsheet://', '')
+    const [categoryId, file] = url.split('/')
+    const filePath = join(categoryDir(categoryId), file ?? '')
+    return new Response(require('fs').createReadStream(filePath) as unknown as ReadableStream)
+  })
 
   // Broadcast rate limit state to overlay
   onRateLimitUpdate((state) => {

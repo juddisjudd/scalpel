@@ -48,3 +48,7 @@ export const APP_MACRO_DEFS = [
   { id: 'useSavedRegex', label: 'Use Saved Regex' },
   { id: 'closeOverlay', label: 'Close Overlay' },
 ] as const
+
+export function generateClientCategoryId(): string {
+  return `cat-${Math.random().toString(36).slice(2, 10)}`
+}
