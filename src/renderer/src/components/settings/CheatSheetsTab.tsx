@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ReactSortable } from 'react-sortablejs'
 import { CloseSmall, AddOne, Drag, AddPicture, Link } from '@icon-park/react'
 import type { AppSettings, CheatSheetCategory } from '../../../../shared/types'
@@ -36,6 +36,15 @@ export function CheatSheetsTab({ settings, update, tryHotkey }: Props): JSX.Elem
           />
         </div>
       </section>
+
+      {/* Starter packs - shown only when the bundled list (synced from the
+          /cheat-sheet-prefabs/ folder) is non-empty. Each pack downloads a
+          fixed set of images on click and creates a new category from them. */}
+      <PrefabPicker
+        onImport={(cat) => {
+          setCategories([...cheatSheets.categories, cat])
+        }}
+      />
 
       {/* Categories */}
       {cheatSheets.categories.length === 0 ? (
@@ -86,6 +95,50 @@ export function CheatSheetsTab({ settings, update, tryHotkey }: Props): JSX.Elem
 
 function newCategory(): CheatSheetCategory {
   return { id: generateClientCategoryId(), name: 'New Category', hotkey: '', sheets: [] }
+}
+
+function PrefabPicker({ onImport }: { onImport: (cat: CheatSheetCategory) => void }): JSX.Element | null {
+  const [packs, setPacks] = useState<Array<{ slug: string; name: string; imageCount: number }>>([])
+  const [importing, setImporting] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void window.api.listCheatSheetPrefabs().then(setPacks)
+  }, [])
+
+  if (packs.length === 0) return null
+
+  const handleImport = async (pack: { slug: string; name: string }): Promise<void> => {
+    setImporting(pack.slug)
+    setError(null)
+    try {
+      const result = await window.api.importCheatSheetPrefab(pack.slug)
+      onImport({ id: result.categoryId, name: pack.name, hotkey: '', sheets: result.sheets })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  return (
+    <section>
+      <label>Starter packs</label>
+      <div className="mt-[6px] flex flex-wrap gap-2">
+        {packs.map((p) => (
+          <button
+            key={p.slug}
+            disabled={importing !== null}
+            onClick={() => handleImport(p)}
+            className="text-[11px] px-3 py-1.5 disabled:opacity-40 disabled:cursor-default"
+          >
+            {importing === p.slug ? `Importing ${p.name}...` : `+ ${p.name} (${p.imageCount})`}
+          </button>
+        ))}
+      </div>
+      {error && <div className="text-[10px] text-danger mt-1">{error}</div>}
+    </section>
+  )
 }
 
 function CategoriesEmptyState({ onAdd }: { onAdd: () => void }): JSX.Element {

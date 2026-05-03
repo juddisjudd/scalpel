@@ -6,12 +6,14 @@ import {
   removeSheetFile,
   removeCategoryDir,
   generateSheetId,
+  generateCategoryId,
   fetchImageBuffer,
   getCheatSheetsOverlay,
   showPreview,
   hidePreview,
 } from '../cheat-sheets'
 import { getOverlayWindow } from '../overlay'
+import { PREFAB_BASE_URL, PREFAB_PACKS } from '../../shared/data/cheat-sheet-prefabs'
 
 const ALLOWED_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif'])
 
@@ -47,6 +49,31 @@ export function register(): void {
       return { id, ext }
     },
   )
+
+  /** Download every image in a starter pack and persist them under a fresh
+   *  category id. The renderer creates the category in settings using the
+   *  returned (id, ext) list - this matches the existing add-from-file
+   *  contract so the same renderer plumbing handles both. */
+  ipcMain.handle(
+    'cheat-sheet:import-prefab',
+    async (_event, slug: string): Promise<{ categoryId: string; sheets: Array<{ id: string; ext: string }> }> => {
+      const pack = PREFAB_PACKS.find((p) => p.slug === slug)
+      if (!pack) throw new Error(`Unknown prefab pack: ${slug}`)
+      const categoryId = generateCategoryId()
+      const sheets: Array<{ id: string; ext: string }> = []
+      for (const relPath of pack.images) {
+        const { buffer, ext } = await fetchImageBuffer(PREFAB_BASE_URL + relPath)
+        const id = generateSheetId()
+        saveSheetBuffer(categoryId, id, ext, buffer)
+        sheets.push({ id, ext })
+      }
+      return { categoryId, sheets }
+    },
+  )
+
+  ipcMain.handle('cheat-sheet:list-prefabs', (): Array<{ slug: string; name: string; imageCount: number }> => {
+    return PREFAB_PACKS.map((p) => ({ slug: p.slug, name: p.name, imageCount: p.images.length }))
+  })
 
   ipcMain.handle('cheat-sheet:remove', (_event, categoryId: string, sheetId: string, ext: string): void => {
     removeSheetFile(categoryId, sheetId, ext)

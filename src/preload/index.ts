@@ -173,6 +173,10 @@ export const api = {
     ipcRenderer.invoke('cheat-sheet:remove', categoryId, sheetId, ext),
   removeCheatSheetCategory: (categoryId: string): Promise<void> =>
     ipcRenderer.invoke('cheat-sheet:remove-category', categoryId),
+  listCheatSheetPrefabs: (): Promise<Array<{ slug: string; name: string; imageCount: number }>> =>
+    ipcRenderer.invoke('cheat-sheet:list-prefabs'),
+  importCheatSheetPrefab: (slug: string): Promise<{ categoryId: string; sheets: Array<{ id: string; ext: string }> }> =>
+    ipcRenderer.invoke('cheat-sheet:import-prefab', slug),
   closeCheatSheets: (): void => ipcRenderer.send('cheat-sheet:close'),
   openSettingsTab: (tab: string): void => ipcRenderer.send('open-settings-tab', tab),
   onFocusSettingsTab: (cb: (tab: string) => void): (() => void) => {
