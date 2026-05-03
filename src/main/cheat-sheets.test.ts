@@ -56,3 +56,18 @@ describe('cheat-sheet file IO', () => {
     rmSync(testRoot, { recursive: true, force: true })
   })
 })
+
+describe('fetchImageBuffer', () => {
+  it('returns buffer + ext for a data:image/png URL', async () => {
+    const { fetchImageBuffer } = await import('./cheat-sheets')
+    const dataUrl = 'data:image/png;base64,' + Buffer.from('fake').toString('base64')
+    const result = await fetchImageBuffer(dataUrl)
+    expect(result.ext).toBe('png')
+    expect(result.buffer).toEqual(Buffer.from('fake'))
+  })
+
+  it('rejects non-image data URLs', async () => {
+    const { fetchImageBuffer } = await import('./cheat-sheets')
+    await expect(fetchImageBuffer('data:text/plain;base64,YWJj')).rejects.toThrow(/not an image/i)
+  })
+})
