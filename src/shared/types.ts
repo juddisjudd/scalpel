@@ -284,6 +284,26 @@ export interface RegexPreset {
   flaskIgnoreEffectTiers?: boolean
 }
 
+export interface CheatSheet {
+  id: string
+  label?: string
+  /** Filename extension stored separately from id so we can reconstruct the on-disk path. */
+  ext: string
+}
+
+export interface CheatSheetCategory {
+  id: string
+  name: string
+  hotkey: string
+  sheets: CheatSheet[]
+}
+
+export interface CheatSheetsSettings {
+  globalHotkey: string
+  categories: CheatSheetCategory[]
+  windowBounds?: { x: number; y: number; width: number; height: number }
+}
+
 export interface AppSettings {
   /** Active filter path + dir + league. Mirrored to/from the per-version fields
    *  (filterPathPoe1, filterPathPoe2, etc.) based on the current poeVersion at
@@ -346,6 +366,7 @@ export interface AppSettings {
   tradeNeverAutoSearch?: boolean
   chatCommands: Array<{ hotkey: string; command: string; autoSubmit?: boolean }>
   appMacros: Array<{ action: string; hotkey: string; tag?: string }>
+  cheatSheets: CheatSheetsSettings
   stashScrollEnabled: boolean
   poeVersion: 1 | 2
   regexPresets: RegexPreset[]

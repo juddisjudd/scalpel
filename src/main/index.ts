@@ -96,6 +96,7 @@ const store = new Store<AppSettings>({
     tradeDefaultToBase: false,
     chatCommands: [],
     appMacros: [],
+    cheatSheets: { globalHotkey: '', categories: [] },
     stashScrollEnabled: false,
     poeVersion: 1,
     regexPresets: [],
