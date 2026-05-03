@@ -21,6 +21,7 @@ export default defineConfig({
           overlay: resolve(__dirname, 'src/renderer/index.html'),
           app: resolve(__dirname, 'src/renderer/app.html'),
           cheatSheetsGrid: resolve(__dirname, 'src/renderer/cheat-sheets-grid.html'),
+          cheatSheetsPreview: resolve(__dirname, 'src/renderer/cheat-sheets-preview.html'),
         }
       }
     }

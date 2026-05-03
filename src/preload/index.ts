@@ -182,6 +182,24 @@ export const api = {
     ipcRenderer.on('cheat-sheet:focus-category', handler)
     return () => ipcRenderer.removeListener('cheat-sheet:focus-category', handler)
   },
+  onCheatSheetPreview: (
+    cb: (state: {
+      src: string
+      anchor: { x: number; y: number; width: number; height: number }
+      screen: { width: number; height: number }
+    }) => void,
+  ): (() => void) => {
+    const handler = (
+      _: Electron.IpcRendererEvent,
+      state: {
+        src: string
+        anchor: { x: number; y: number; width: number; height: number }
+        screen: { width: number; height: number }
+      },
+    ): void => cb(state)
+    ipcRenderer.on('cheat-sheet-preview:render', handler)
+    return () => ipcRenderer.removeListener('cheat-sheet-preview:render', handler)
+  },
 
   // Event subscriptions
   onOverlayData: (cb: (data: OverlayData) => void): (() => void) => {
