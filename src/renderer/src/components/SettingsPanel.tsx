@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import type { AppSettings, PoeItem } from '../../../shared/types'
-import { GeneralTab, ViewTab, MacrosTab, FilterTab, PriceCheckTab, FaqTab, prettyHotkey } from './settings'
+import {
+  GeneralTab,
+  ViewTab,
+  MacrosTab,
+  FilterTab,
+  PriceCheckTab,
+  FaqTab,
+  CheatSheetsTab,
+  prettyHotkey,
+} from './settings'
 import { HistoryPanel } from './HistoryPanel'
 import { ErrorBanner } from './ErrorBanner'
 import { findHotkeyCollision, type HotkeySlot } from './settings/hotkey-collisions'
@@ -22,12 +31,13 @@ interface Props {
 /** Hotkeys PoE itself uses - warn (don't block) when the user binds one of these. */
 const POE_PROTECTED_HOTKEYS = new Set(['CommandOrControl+F', 'CommandOrControl+Alt+C'])
 
-const TAB_KEYS = ['general', 'view', 'macros', 'filter', 'pricecheck', 'history', 'faq'] as const
+const TAB_KEYS = ['general', 'view', 'macros', 'cheatsheets', 'filter', 'pricecheck', 'history', 'faq'] as const
 type TabKey = (typeof TAB_KEYS)[number]
 const TAB_LABELS: Record<TabKey, string> = {
   general: 'General',
   view: 'View',
   macros: 'Macros',
+  cheatsheets: 'Cheat Sheets',
   filter: 'Filter',
   pricecheck: 'Trade',
   history: 'History',
@@ -114,6 +124,7 @@ export function SettingsPanel({
       {tab === 'general' && <GeneralTab settings={settings} update={update} />}
       {tab === 'view' && <ViewTab settings={settings} update={update} />}
       {tab === 'macros' && <MacrosTab settings={settings} update={update} tryHotkey={tryHotkey} />}
+      {tab === 'cheatsheets' && <CheatSheetsTab settings={settings} update={update} tryHotkey={tryHotkey} />}
       {tab === 'filter' && (
         <FilterTab
           settings={settings}
