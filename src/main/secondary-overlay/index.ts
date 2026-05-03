@@ -157,6 +157,19 @@ export function setMainOverlayGetter(get: () => BrowserWindow | null): void {
   mainOverlayGetter = get
 }
 
+// Fired when our secondary-overlay blur handler detects focus has left every
+// Scalpel surface (i.e. the user alt-tabbed away while interacting with a
+// secondary overlay). main/index.ts wires this to suspendHotkeys so global
+// hotkeys don't keep firing in the user's browser. The PoE-blur path already
+// suspends in the more common "user alt-tabbed straight from PoE" case; this
+// hook covers the PoE -> overlay -> other-app path that PoE-blur misses
+// (because PoE was already blurred when focus moved into the overlay).
+let onLeaveScalpelCb: (() => void) | null = null
+
+export function setOnLeaveScalpel(cb: (() => void) | null): void {
+  onLeaveScalpelCb = cb
+}
+
 /** True iff focus is currently on any Scalpel-owned window: the main overlay
  *  or any registered secondary overlay. The single source of truth for "did
  *  the user actually leave the app?" - every blur/hide decision should defer
@@ -307,6 +320,11 @@ function wireWindowEvents(state: OverlayState, win: BrowserWindow): void {
         state.win.hide()
       }
       setSnapGhost(null)
+      // Focus left every Scalpel surface. The PoE-blur handler in main can't
+      // fire here because PoE was already blurred when focus moved into this
+      // overlay; without this hook, hotkeys would stay armed in the
+      // destination app.
+      onLeaveScalpelCb?.()
     })
   })
 }

@@ -65,6 +65,7 @@ import {
   restoreAllOnPoeFocus,
   isAnyScalpelWindowFocused,
   setMainOverlayGetter,
+  setOnLeaveScalpel,
 } from './secondary-overlay'
 import type { AppSettings } from '../shared/types'
 
@@ -235,6 +236,10 @@ app.whenReady().then(() => {
   // Let the secondary-overlay system know about the main overlay window so its
   // isAnyScalpelWindowFocused predicate can include it.
   setMainOverlayGetter(getOverlayWindow)
+  // When focus leaves Scalpel via the PoE -> overlay -> other-app path
+  // (which the PoE-blur handler can't catch), suspend hotkeys so they don't
+  // fire in the destination app.
+  setOnLeaveScalpel(() => suspendHotkeys())
   createAppWindow()
   createTray()
 
