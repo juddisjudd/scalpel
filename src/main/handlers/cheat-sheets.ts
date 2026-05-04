@@ -13,7 +13,9 @@ import {
   hidePreview,
 } from '../cheat-sheets'
 import { getOverlayWindow } from '../overlay'
-import { PREFAB_BASE_URL, PREFAB_PACKS } from '../../shared/data/cheat-sheet-prefabs'
+import { aroundNativeDialog } from '../windowing'
+import { PREFAB_PACKS } from '../../shared/data/cheat-sheet-prefabs'
+import { CHEAT_SHEET_PREFAB_BASE_URL } from '../../shared/endpoints'
 
 const ALLOWED_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif'])
 
@@ -21,10 +23,14 @@ export function register(): void {
   ipcMain.handle(
     'cheat-sheet:add-from-file',
     async (_event, categoryId: string): Promise<Array<{ id: string; ext: string }>> => {
-      const result = await dialog.showOpenDialog({
-        properties: ['openFile', 'multiSelections'],
-        filters: [{ name: 'Images', extensions: [...ALLOWED_EXTS] }],
-      })
+      // Wrap so the file picker doesn't trip the Scalpel-blur handlers and
+      // hide the overlay the user opened it from.
+      const result = await aroundNativeDialog(() =>
+        dialog.showOpenDialog({
+          properties: ['openFile', 'multiSelections'],
+          filters: [{ name: 'Images', extensions: [...ALLOWED_EXTS] }],
+        }),
+      )
       if (result.canceled) return []
       const added: Array<{ id: string; ext: string }> = []
       for (const filePath of result.filePaths) {
@@ -62,7 +68,7 @@ export function register(): void {
       const categoryId = generateCategoryId()
       const sheets: Array<{ id: string; ext: string }> = []
       for (const relPath of pack.images) {
-        const { buffer, ext } = await fetchImageBuffer(PREFAB_BASE_URL + relPath)
+        const { buffer, ext } = await fetchImageBuffer(CHEAT_SHEET_PREFAB_BASE_URL + relPath)
         const id = generateSheetId()
         saveSheetBuffer(categoryId, id, ext, buffer)
         sheets.push({ id, ext })
@@ -71,9 +77,17 @@ export function register(): void {
     },
   )
 
-  ipcMain.handle('cheat-sheet:list-prefabs', (): Array<{ slug: string; name: string; imageCount: number }> => {
-    return PREFAB_PACKS.map((p) => ({ slug: p.slug, name: p.name, imageCount: p.images.length }))
-  })
+  ipcMain.handle(
+    'cheat-sheet:list-prefabs',
+    (): Array<{ slug: string; name: string; imageCount: number; poeVersion?: 1 | 2 }> => {
+      return PREFAB_PACKS.map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        imageCount: p.images.length,
+        poeVersion: p.poeVersion,
+      }))
+    },
+  )
 
   ipcMain.handle('cheat-sheet:remove', (_event, categoryId: string, sheetId: string, ext: string): void => {
     removeSheetFile(categoryId, sheetId, ext)

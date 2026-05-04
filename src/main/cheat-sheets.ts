@@ -1,12 +1,6 @@
 import { screen } from 'electron'
 import { OverlayController } from 'electron-overlay-window'
-import {
-  registerSecondaryOverlay,
-  sendCanvasIpc,
-  moveCanvasTop,
-  type Rect,
-  type SecondaryOverlay,
-} from './secondary-overlay'
+import { registerSecondaryOverlay, sendCanvasIpc, moveCanvasTop, type Rect, type SecondaryOverlay } from './windowing'
 import { setSecondaryOverlayHotkeys } from './hotkeys'
 import type { AppSettings } from '../shared/types'
 

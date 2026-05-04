@@ -324,7 +324,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
       id: -235013251,
       regex: '理傷害$',
       rawText: '怪物反射 (13-18)% 物理傷害',
-      generalizedText: '^怪物反射 #% ���理傷害$',
+      generalizedText: '^怪物反射 #% 物理傷害$',
       options: { scary: 1000, nm: false, prefix: true },
     },
     {
@@ -351,7 +351,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
     {
       id: -166549521,
       regex: '率點',
-      rawText: '擊中時，怪物有 (15-20)% 機率點燃、冰凍和感電',
+      rawText: '擊中時，怪物有 (15-20)% 機率點���、冰凍和感電',
       generalizedText: '^擊中時，怪物有 #% 機率點燃、冰凍和感電$',
       options: { scary: 98, nm: false, prefix: true },
     },
@@ -393,7 +393,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
     {
       id: -105914721,
       regex: '%更',
-      rawText: '40%更少施加於玩家的藥劑效果|區域中掉落的通貨增加 47%',
+      rawText: '40%更少施加於��家的藥劑效果|區域中掉落的通貨增加 47%',
       generalizedText: '^#%更少施加於玩家的藥劑效果$|^區域中掉落的通貨增加 #%$',
       options: { scary: 1001, nm: true, prefix: true },
     },
@@ -429,7 +429,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
       id: 17483843,
       regex: '物移',
       rawText: '增加 (15-30)% 怪物移動速度|增加 (20-45)% 怪物攻擊速度|增加 (20-45)% 怪物施放速度',
-      generalizedText: '^增加 #% 怪物移動速度$|^增加 #% 怪物攻擊速度$|^增加 #% 怪物施放速度$',
+      generalizedText: '^增加 #% 怪物移動速度$|^增加 #% 怪物攻擊速度$|^增加 #% 怪物施放���度$',
       options: { scary: 420, nm: false, prefix: true },
     },
     {
@@ -624,7 +624,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
     {
       id: 1082020744,
       regex: '創',
-      rawText: '區域含有大��被創造生物',
+      rawText: '區域含有大量被創造生物',
       generalizedText: '^區域含有大量被創造生物$',
       options: { scary: 4, nm: false, prefix: true },
     },
@@ -645,7 +645,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
     {
       id: 1202132179,
       regex: '被脆',
-      rawText: '玩家被脆弱詛咒',
+      rawText: '玩家被��弱詛咒',
       generalizedText: '^玩家被脆弱詛咒$',
       options: { scary: 360, nm: false, prefix: true },
     },
@@ -667,7 +667,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
       id: 1283094925,
       regex: '顆暴',
       rawText: '怪物擊中時獲得 1 顆暴擊球',
-      generalizedText: '^怪物擊中時獲得 # 顆暴��球$',
+      generalizedText: '^怪物擊中時獲得 # 顆暴擊球$',
       options: { scary: 80, nm: false, prefix: true },
     },
     {
@@ -807,7 +807,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
       id: 1861748274,
       regex: '且',
       rawText: '來自玩家技能、且可以影響友方的光環會同時影響敵人',
-      generalizedText: '^來自玩家技能、且可以��響友方的光環會同時影響敵人$',
+      generalizedText: '^來自玩家技能、且可以影響友方的光環會同時影響敵人$',
       options: { scary: 1001, nm: true, prefix: true },
     },
     {
@@ -828,7 +828,7 @@ export const regexMapModsCHINESE: Regex<MapModsTokenOption> = {
       id: 1932675161,
       regex: '數片',
       rawText: '區域內含有數片會施加隨機印記的移動印記地面|區域中掉落的聖甲蟲增加 36%',
-      generalizedText: '^區域內含有數片會施加隨機印記的移動印記地面$|^區域中掉落的聖甲蟲增加 #%$',
+      generalizedText: '^區域內含有數片會施加隨機印記的移動印記地���$|^區域中掉落的聖甲蟲增加 #%$',
       options: { scary: 1001, nm: true, prefix: true },
     },
     {

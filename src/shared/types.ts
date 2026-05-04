@@ -296,6 +296,11 @@ export interface CheatSheetCategory {
   name: string
   hotkey: string
   sheets: CheatSheet[]
+  /** Slug of the prefab pack this category was imported from (cheat-sheet-
+   *  prefabs/<slug>/). Set on import; never set for user-created categories.
+   *  Lets the Starter Packs UI know whether to still surface a pack as
+   *  available - one prefab can only be imported once. */
+  prefabSlug?: string
 }
 
 export interface CheatSheetsSettings {
@@ -367,6 +372,8 @@ export interface AppSettings {
   chatCommands: Array<{ hotkey: string; command: string; autoSubmit?: boolean }>
   appMacros: Array<{ action: string; hotkey: string; tag?: string }>
   cheatSheets: CheatSheetsSettings
+  cheatSheetsPoe1: CheatSheetsSettings
+  cheatSheetsPoe2: CheatSheetsSettings
   stashScrollEnabled: boolean
   poeVersion: 1 | 2
   regexPresets: RegexPreset[]

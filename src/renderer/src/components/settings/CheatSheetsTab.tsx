@@ -3,6 +3,8 @@ import { ReactSortable } from 'react-sortablejs'
 import { CloseSmall, AddOne, Drag, AddPicture, Link } from '@icon-park/react'
 import type { AppSettings, CheatSheetCategory } from '../../../../shared/types'
 import { RemoveButton } from '../RemoveButton'
+import { usePoeVersion } from '../../shared/poe-version-context'
+import { createMomentumScrollHandler } from '../../shared/momentumScroll'
 import { HotkeyField } from './HotkeyField'
 import { generateClientCategoryId } from './utils'
 import type { HotkeySlot } from './hotkey-collisions'
@@ -37,10 +39,12 @@ export function CheatSheetsTab({ settings, update, tryHotkey }: Props): JSX.Elem
         </div>
       </section>
 
-      {/* Starter packs - shown only when the bundled list (synced from the
-          /cheat-sheet-prefabs/ folder) is non-empty. Each pack downloads a
-          fixed set of images on click and creates a new category from them. */}
+      {/* Starter packs - shown only when at least one bundled pack hasn't yet
+          been imported into the user's categories for this game. Each pack
+          downloads a fixed set of images on click and creates a category
+          stamped with the pack's slug. */}
       <PrefabPicker
+        importedSlugs={new Set(cheatSheets.categories.map((c) => c.prefabSlug).filter((s): s is string => !!s))}
         onImport={(cat) => {
           setCategories([...cheatSheets.categories, cat])
         }}
@@ -97,23 +101,42 @@ function newCategory(): CheatSheetCategory {
   return { id: generateClientCategoryId(), name: 'New Category', hotkey: '', sheets: [] }
 }
 
-function PrefabPicker({ onImport }: { onImport: (cat: CheatSheetCategory) => void }): JSX.Element | null {
-  const [packs, setPacks] = useState<Array<{ slug: string; name: string; imageCount: number }>>([])
+function PrefabPicker({
+  importedSlugs,
+  onImport,
+}: {
+  importedSlugs: Set<string>
+  onImport: (cat: CheatSheetCategory) => void
+}): JSX.Element | null {
+  const [packs, setPacks] = useState<Array<{ slug: string; name: string; imageCount: number; poeVersion?: 1 | 2 }>>([])
   const [importing, setImporting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const poeVersion = usePoeVersion()
 
   useEffect(() => {
     void window.api.listCheatSheetPrefabs().then(setPacks)
   }, [])
 
-  if (packs.length === 0) return null
+  // Show only packs that target this PoE version (or have no restriction)
+  // AND haven't already been imported. When the user deletes their imported
+  // pack category, the slug leaves importedSlugs and the button reappears.
+  const visible = packs.filter(
+    (p) => (p.poeVersion === undefined || p.poeVersion === poeVersion) && !importedSlugs.has(p.slug),
+  )
+  if (visible.length === 0) return null
 
   const handleImport = async (pack: { slug: string; name: string }): Promise<void> => {
     setImporting(pack.slug)
     setError(null)
     try {
       const result = await window.api.importCheatSheetPrefab(pack.slug)
-      onImport({ id: result.categoryId, name: pack.name, hotkey: '', sheets: result.sheets })
+      onImport({
+        id: result.categoryId,
+        name: pack.name,
+        hotkey: '',
+        sheets: result.sheets,
+        prefabSlug: pack.slug,
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -125,7 +148,7 @@ function PrefabPicker({ onImport }: { onImport: (cat: CheatSheetCategory) => voi
     <section>
       <label>Starter packs</label>
       <div className="mt-[6px] flex flex-wrap gap-2">
-        {packs.map((p) => (
+        {visible.map((p) => (
           <button
             key={p.slug}
             disabled={importing !== null}
@@ -186,13 +209,16 @@ function CategoryCard({ category, index, tryHotkey, onUpdate, onRemove }: Catego
   const addFromFile = async (): Promise<void> => {
     const added = await window.api.addCheatSheetFromFile(category.id)
     if (added.length === 0) return
-    onUpdate({ ...category, sheets: [...category.sheets, ...added.map((a) => ({ id: a.id, ext: a.ext }))] })
+    // Prepend new images so they land next to the placeholder (which sits at
+    // the head of the strip). User expectation: "the slot I clicked is where
+    // the new sheet appears."
+    onUpdate({ ...category, sheets: [...added.map((a) => ({ id: a.id, ext: a.ext })), ...category.sheets] })
   }
   const addFromUrl = async (url: string): Promise<void> => {
     if (!url.trim()) return
     try {
       const added = await window.api.addCheatSheetFromUrl(category.id, url.trim())
-      onUpdate({ ...category, sheets: [...category.sheets, { id: added.id, ext: added.ext }] })
+      onUpdate({ ...category, sheets: [{ id: added.id, ext: added.ext }, ...category.sheets] })
       setUrlInput(null)
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
@@ -219,8 +245,19 @@ function CategoryCard({ category, index, tryHotkey, onUpdate, onRemove }: Catego
         <RemoveButton onClick={() => setConfirming(true)} />
       </div>
 
-      {/* Thumbnail strip */}
-      <div className="flex flex-wrap gap-2 no-drag" onClick={(e) => e.stopPropagation()}>
+      {/* Thumbnail strip - single row, horizontally scrollable with drag-and-
+          momentum like the uniques-for-base strip. The negative inline margins
+          let the scroll track run edge-to-edge of the card while paddingLeft/
+          Right keeps the first/last tile inset to match the rest of the card
+          content. mouseDown on the drag handle (.sheet-grab) or any button
+          inside the row is ignored so reorder + click handlers still work. */}
+      <div
+        className="flex gap-2 overflow-x-auto overflow-y-hidden no-scrollbar no-drag -mx-[5px]"
+        style={{ paddingLeft: 5, paddingRight: 5 }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={createMomentumScrollHandler(['.sheet-grab', 'button'])}
+      >
+        <PlaceholderTile onClickFile={addFromFile} onClickUrl={() => setUrlInput('')} />
         <ReactSortable
           list={category.sheets.map((s) => ({ ...s }))}
           setList={(next) => onUpdate({ ...category, sheets: next.map((s) => ({ id: s.id, ext: s.ext })) })}
@@ -240,7 +277,6 @@ function CategoryCard({ category, index, tryHotkey, onUpdate, onRemove }: Catego
             />
           ))}
         </ReactSortable>
-        <PlaceholderTile onClickFile={addFromFile} onClickUrl={() => setUrlInput('')} />
       </div>
 
       {/* URL paste row - shown under the thumbnail strip when the user clicks
@@ -297,8 +333,12 @@ function ThumbnailTile({
 }): JSX.Element {
   const src = `cheatsheet://${categoryId}/${sheet.id}.${sheet.ext}?thumb=1`
   return (
-    <div className="relative group rounded overflow-hidden bg-black/30" style={{ width: 80, height: 60 }}>
-      <img src={src} alt="" className="w-full h-full object-cover" />
+    <div className="relative group shrink-0 rounded overflow-hidden bg-black/30" style={{ width: 80, height: 60 }}>
+      {/* draggable=false disables Chromium's native HTML5 image-drag (the
+          translucent ghost it creates would otherwise hijack our momentum-
+          scroll mousedown). Our reorder drag (.sheet-grab + ReactSortable)
+          uses separate mousedown tracking and is unaffected. */}
+      <img src={src} alt="" draggable={false} className="w-full h-full object-cover" />
       <div
         className="sheet-grab cursor-grab absolute top-0.5 left-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 rounded-full p-0.5 text-text-dim hover:text-text"
         title="Drag to reorder"
@@ -325,7 +365,7 @@ function PlaceholderTile({
 }): JSX.Element {
   return (
     <div
-      className="flex rounded border-2 border-dashed border-text-dim/40 bg-white/[0.04] overflow-hidden"
+      className="flex shrink-0 rounded border-2 border-dashed border-text-dim/40 bg-white/[0.04] overflow-hidden"
       style={{ width: 80, height: 60 }}
     >
       <button

@@ -2,7 +2,7 @@ import { BrowserWindow, screen } from 'electron'
 import { OverlayController } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
 import { createOverlayWindow } from './window'
-import { prewarmSnapCanvas, setSnapGhost, type Rect } from './snap-canvas'
+import { prewarmSnapCanvas, setSnapGhost, getSnapCanvasWindow, type Rect } from './snap-canvas'
 
 export type { Rect }
 export { setSnapGhost, sendCanvasIpc, moveCanvasTop, prewarmSnapCanvas } from './snap-canvas'
@@ -170,12 +170,56 @@ export function setOnLeaveScalpel(cb: (() => void) | null): void {
   onLeaveScalpelCb = cb
 }
 
+// True while a native OS dialog (file picker, etc.) is open. The dialog
+// isn't a BrowserWindow and steals focus, which would otherwise trip the
+// blur-handlers and hide whichever overlay the user opened it from. Treat
+// it as "still in Scalpel" - a dialog is part of the same logical task.
+let nativeDialogOpen = false
+
+/** Run an async block while marking a native dialog as open. While open, the
+ *  isAnyScalpelWindowFocused predicate returns true so PoE-blur and Scalpel-
+ *  window-blur handlers don't hide overlays mid-dialog. Also temporarily
+ *  demotes every Scalpel window's alwaysOnTop level so the dialog can render
+ *  above us - a screen-saver-level window otherwise occludes the file picker. */
+export async function aroundNativeDialog<T>(fn: () => Promise<T>): Promise<T> {
+  nativeDialogOpen = true
+  const demoted = collectScalpelWindows().filter((w) => w.isAlwaysOnTop())
+  for (const w of demoted) w.setAlwaysOnTop(false)
+  try {
+    return await fn()
+  } finally {
+    for (const w of demoted) {
+      if (w.isDestroyed()) continue
+      w.setAlwaysOnTop(true, 'screen-saver')
+      // setAlwaysOnTop sets the topmost *flag* but doesn't actively raise an
+      // already-buried window, so if the user clicked into PoE during the
+      // dialog the overlay would stay behind PoE even after restore. moveTop
+      // forces it to the front of the Z-order.
+      w.moveTop()
+    }
+    nativeDialogOpen = false
+  }
+}
+
+function collectScalpelWindows(): BrowserWindow[] {
+  const result: BrowserWindow[] = []
+  const main = mainOverlayGetter()
+  if (main && !main.isDestroyed()) result.push(main)
+  for (const state of overlays.values()) {
+    if (state.win && !state.win.isDestroyed()) result.push(state.win)
+  }
+  const canvas = getSnapCanvasWindow()
+  if (canvas) result.push(canvas)
+  return result
+}
+
 /** True iff focus is currently on any Scalpel-owned window: the main overlay
  *  or any registered secondary overlay. The single source of truth for "did
  *  the user actually leave the app?" - every blur/hide decision should defer
  *  to this so clicking from one Scalpel window to another doesn't trigger
  *  cross-overlay hides. */
 export function isAnyScalpelWindowFocused(): boolean {
+  if (nativeDialogOpen) return true
   const focused = BrowserWindow.getFocusedWindow()
   if (!focused || focused.isDestroyed()) return false
   if (focused === mainOverlayGetter()) return true

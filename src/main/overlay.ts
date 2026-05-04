@@ -3,7 +3,7 @@ import { join } from 'path'
 import { OverlayController, OVERLAY_WINDOW_OPTS } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
 import { getPoeVersion, setPoeVersion } from './game-state'
-import { isInsideAnySecondaryOverlay, isAnyScalpelWindowFocused } from './secondary-overlay'
+import { isInsideAnySecondaryOverlay, isAnyScalpelWindowFocused } from './windowing'
 
 let overlayWindow: BrowserWindow | null = null
 let overlayVisible = false

@@ -66,7 +66,7 @@ import {
   isAnyScalpelWindowFocused,
   setMainOverlayGetter,
   setOnLeaveScalpel,
-} from './secondary-overlay'
+} from './windowing'
 import type { AppSettings } from '../shared/types'
 
 // ---- Elevation detection ---------------------------------------------------
@@ -112,6 +112,8 @@ const store = new Store<AppSettings>({
     chatCommands: [],
     appMacros: [],
     cheatSheets: { globalHotkey: '', categories: [] },
+    cheatSheetsPoe1: { globalHotkey: '', categories: [] },
+    cheatSheetsPoe2: { globalHotkey: '', categories: [] },
     stashScrollEnabled: false,
     poeVersion: 1,
     regexPresets: [],
@@ -162,6 +164,7 @@ if (!store.get('tradePriceOptionPoe1')) store.set('tradePriceOptionPoe1', store.
   store.set('filterPath', store.get(`filterPath${suffix}`))
   store.set('filterDir', store.get(`filterDir${suffix}`))
   store.set('tradePriceOption', store.get(`tradePriceOption${suffix}`))
+  store.set('cheatSheets', store.get(`cheatSheets${suffix}`))
 }
 
 // ---- Register IPC handlers -------------------------------------------------
@@ -347,7 +350,14 @@ app.whenReady().then(() => {
     storedBounds: () => store.get('cheatSheets')?.windowBounds,
     onBoundsChanged: (bounds) => {
       const cs = store.get('cheatSheets') ?? { globalHotkey: '', categories: [] }
-      store.set('cheatSheets', { ...cs, windowBounds: bounds })
+      const next = { ...cs, windowBounds: bounds }
+      store.set('cheatSheets', next)
+      // Mirror to the per-game slot too. The IPC settings path (set-setting)
+      // does this via MIRROR_KEYS, but bounds writes go through this direct
+      // store.set callback - without the mirror, the user's resized bounds
+      // would revert on the next game switch.
+      const v = store.get('poeVersion')
+      store.set(v === 2 ? 'cheatSheetsPoe2' : 'cheatSheetsPoe1', next)
     },
   })
   // Hide the main overlay before showing the cheat sheet (keeps things tidy if

@@ -63,6 +63,13 @@ export function prewarmSnapCanvas(): void {
   ensureCanvasWindow()
 }
 
+/** The shared canvas BrowserWindow, or null if it hasn't been created yet.
+ *  Used by aroundNativeDialog to temporarily demote alwaysOnTop so native
+ *  dialogs render above us. */
+export function getSnapCanvasWindow(): BrowserWindow | null {
+  return canvasWin && !canvasWin.isDestroyed() ? canvasWin : null
+}
+
 /** Show the snap ghost at the given rect. Pass null to clear it. */
 export function setSnapGhost(rect: Rect | null): void {
   const win = ensureCanvasWindow()

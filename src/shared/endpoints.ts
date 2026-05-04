@@ -51,3 +51,10 @@ export const ELECTRON_RELEASES = 'https://github.com/electron/electron/releases/
 
 /** GitHub releases page (user-facing, for manual download links in banners) */
 export const GITHUB_RELEASES_PAGE = 'https://github.com/scalpelpoe/scalpel/releases/latest'
+
+/** Raw GitHub URL prefix for the cheat-sheet starter packs hosted in this
+ *  repo's /cheat-sheet-prefabs/ folder. Images are not bundled into the
+ *  installer; they're fetched on demand when the user clicks "+ <Pack>" in
+ *  Settings -> Sheets. */
+export const CHEAT_SHEET_PREFAB_BASE_URL =
+  'https://raw.githubusercontent.com/scalpelpoe/scalpel/main/cheat-sheet-prefabs/'

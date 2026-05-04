@@ -21,7 +21,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
     },
     {
       id: -2038489408,
-      regex: 'o al',
+      regex: 'l max',
       rawText: 'Players have -20% to all maximum Resistances',
       generalizedText: '^players have -#% to all maximum resistances$',
       options: { scary: 1001, nm: true, prefix: false },
@@ -284,7 +284,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
     },
     {
       id: -477049138,
-      regex: 'o al',
+      regex: 'l max',
       rawText: 'Players have -(5-12)% to all maximum Resistances',
       generalizedText: '^players have -#% to all maximum resistances$',
       options: { scary: 980, nm: false, prefix: false },
@@ -939,18 +939,6 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       weight: 3,
       count: 6,
     },
-    '-2038489408:-1158025910:-694214737:-477049138:-258709095': {
-      ids: [-2038489408, -1158025910, -694214737, -477049138, -258709095],
-      regex: 'tanc',
-      weight: 4,
-      count: 5,
-    },
-    '-2038489408:-1158025910:-694214737:-258709095': {
-      ids: [-2038489408, -1158025910, -694214737, -258709095],
-      regex: 'tanc',
-      weight: 4,
-      count: 4,
-    },
     '-2038489408:-477049138:-126908257:2080363489': {
       ids: [-2038489408, -477049138, -126908257, 2080363489],
       regex: 'all m',
@@ -963,13 +951,6 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       weight: 7,
       count: 3,
     },
-    '-2038489408:-477049138:151806012': {
-      ids: [-2038489408, -477049138, 151806012],
-      regex: '% to a',
-      weight: 8,
-      count: 3,
-    },
-    '-2038489408:151806012': { ids: [-2038489408, 151806012], regex: '% to a', weight: 8, count: 2 },
     '-1940135977:-1204380788:-1088873049:-933231182:-80588106:17483843': {
       ids: [-1940135977, -1204380788, -1088873049, -933231182, -80588106, 17483843],
       regex: 'att',
@@ -1323,12 +1304,6 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
     },
     '-1204380788:-166549521': { ids: [-1204380788, -166549521], regex: 'e to i', weight: 8, count: 2 },
     '-1158025910:2080363489': { ids: [-1158025910, 2080363489], regex: 'tes', weight: 3, count: 2 },
-    '-1158025910:-694214737:-477049138:-258709095': {
-      ids: [-1158025910, -694214737, -477049138, -258709095],
-      regex: 'tanc',
-      weight: 4,
-      count: 4,
-    },
     '-1158025910:-26777606:1799781772:2132856290': {
       ids: [-1158025910, -26777606, 1799781772, 2132856290],
       regex: '% e',
@@ -1340,12 +1315,6 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'ster d',
       weight: 8,
       count: 4,
-    },
-    '-1158025910:-694214737:-258709095': {
-      ids: [-1158025910, -694214737, -258709095],
-      regex: 'l resi',
-      weight: 8,
-      count: 3,
     },
     '-1158025910:151806012': { ids: [-1158025910, 151806012], regex: 'mage p', weight: 8, count: 2 },
     '-1158025910:-1088873049:-106750911': {
@@ -1368,8 +1337,8 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
     },
     '-1139261923:-128171261:156744008:472035128:1062763755:1211148661': {
       ids: [-1139261923, -128171261, 156744008, 472035128, 1062763755, 1211148661],
-      regex: 'a h',
-      weight: 5,
+      regex: 'ea h',
+      weight: 6,
       count: 6,
     },
     '-1139261923:-128171261:472035128:1062763755:1211148661': {
@@ -1608,7 +1577,6 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       weight: 7,
       count: 3,
     },
-    '-477049138:151806012': { ids: [-477049138, 151806012], regex: '% to a', weight: 8, count: 2 },
     '-268547495:151806012': { ids: [-268547495, 151806012], regex: 'sup', weight: 3, count: 2 },
     '-268547495:151806012:1743546402': { ids: [-268547495, 151806012, 1743546402], regex: 'pel', weight: 3, count: 3 },
     '-268547495:151806012:1014295028': { ids: [-268547495, 151806012, 1014295028], regex: 'll d', weight: 6, count: 3 },
@@ -1722,7 +1690,6 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       count: 4,
     },
     '472035128:1932675161': { ids: [472035128, 1932675161], regex: 'ked', weight: 3, count: 2 },
-    '472035128:1861748274': { ids: [472035128, 1861748274], regex: 'ich', weight: 3, count: 2 },
     '647925005:1882321261': { ids: [647925005, 1882321261], regex: 'h el', weight: 6, count: 2 },
     '647925005:1202132179': { ids: [647925005, 1202132179], regex: 'h vu', weight: 6, count: 2 },
     '647925005:1598599541': { ids: [647925005, 1598599541], regex: 'h tem', weight: 7, count: 2 },

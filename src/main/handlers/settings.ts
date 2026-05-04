@@ -27,6 +27,7 @@ export function register(store: Store<AppSettings>): void {
     filterPath: ['filterPathPoe1', 'filterPathPoe2'],
     filterDir: ['filterDirPoe1', 'filterDirPoe2'],
     tradePriceOption: ['tradePriceOptionPoe1', 'tradePriceOptionPoe2'],
+    cheatSheets: ['cheatSheetsPoe1', 'cheatSheetsPoe2'],
   } as const satisfies Partial<Record<keyof AppSettings, readonly [keyof AppSettings, keyof AppSettings]>>
 
   ipcMain.handle('set-setting', (event, key: keyof AppSettings, value: AppSettings[typeof key]) => {

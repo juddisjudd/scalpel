@@ -94,7 +94,7 @@ function Thumbnail({ categoryId, sheet }: { categoryId: string; sheet: { id: str
       onMouseEnter={() => window.api.showCheatSheetPreview(fullSrc)}
       onMouseLeave={() => window.api.hideCheatSheetPreview()}
     >
-      <img src={thumbSrc} alt="" className="w-full h-full object-cover" />
+      <img src={thumbSrc} alt="" draggable={false} className="w-full h-full object-cover" />
     </div>
   )
 }

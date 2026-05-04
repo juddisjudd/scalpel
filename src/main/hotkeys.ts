@@ -3,7 +3,7 @@ import { clipboard, globalShortcut } from 'electron'
 import { snapshotClipboard } from './clipboard-preserve'
 import { OverlayController } from 'electron-overlay-window'
 import { focusGameWindow, getOverlayWindow } from './overlay'
-import { hideFocusedOrAnyVisibleSecondaryOverlay } from './secondary-overlay'
+import { hideFocusedOrAnyVisibleSecondaryOverlay } from './windowing'
 
 // ─── Accelerator → uiohook keycode mapping ────────────────────────────────────
 
