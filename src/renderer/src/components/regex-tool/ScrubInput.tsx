@@ -107,12 +107,17 @@ export function ScrubInput({
     }
   }
 
+  // Widen the input when the value range exceeds 5 digits so 9-10 digit numbers
+  // (e.g. Facetor's Lens stored experience, ~1.95B) actually fit. Falls back
+  // to the legacy 70px for the common 0-99999 case.
+  const widthPx = max > 99999 ? Math.min(120, 20 + String(max).length * 9) : 70
   return (
     <div
       onMouseDown={editing ? undefined : startScrub}
       onClick={editing ? undefined : handleClick}
-      className="w-[70px] h-7 flex items-center justify-between px-2 rounded-[3px] text-[13px] select-none"
+      className="h-7 flex items-center justify-between px-2 rounded-[3px] text-[13px] select-none"
       style={{
+        width: widthPx,
         background: 'rgba(0,0,0,0.3)',
         cursor: editing ? 'text' : 'ew-resize',
         color: color ?? (value != null ? 'var(--text)' : 'var(--text-dim)'),

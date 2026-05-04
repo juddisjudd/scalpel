@@ -155,6 +155,14 @@ export interface PoeItem {
   atzoatlRooms?: string[]
   atzoatlOpenCount?: number
   storedExperience?: number
+  // Inscribed Ultimatum lines. ultimatumChallenge stores the human text from
+  // "Challenge:" (e.g. "Defeat waves of enemies"); the trade-side mapping
+  // converts to internal ids. ultimatumRewardText is the raw "Reward:" line;
+  // ultimatumRequired is the "Requires Sacrifice:" name with the count
+  // stripped.
+  ultimatumChallenge?: string
+  ultimatumRewardText?: string
+  ultimatumRequired?: string
 }
 
 export interface AdvancedMod {

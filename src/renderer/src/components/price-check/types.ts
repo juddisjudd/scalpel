@@ -8,6 +8,13 @@ export interface StatFilter {
   max: number | null
   enabled: boolean
   type: string
+  /** Trade-API option value. For option-based stats (e.g. ultimatum chips),
+   *  this is the id sent to trade - it may differ from what the user sees. */
+  option?: number | string
+  /** Human-readable text shown in the row's value box for option-based chips
+   *  (e.g. "Defeat waves of enemies"), separate from the API id in `option`
+   *  ("Exterminate"). Optional - falls back to `option` when not set. */
+  displayValue?: string
   foulborn?: boolean
   modTier?: number
   modRange?: { min: number; max: number }

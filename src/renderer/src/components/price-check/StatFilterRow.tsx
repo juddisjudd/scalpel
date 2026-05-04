@@ -1,8 +1,43 @@
 import { useState } from 'react'
 import { Star } from '@icon-park/react'
 import { ScrubInput } from '../regex-tool/ScrubInput'
-import { getModColor, MOD_BOLD_TYPES } from './constants'
+import { divCardArtMap, RARITY_COLORS } from '../../shared/constants'
+import { getModColor, MOD_BOLD_TYPES, uniqueToBase } from './constants'
 import type { StatFilter } from './types'
+
+/** Tint static-box text by the value's item type. Used by Ultimatum chips
+ *  whose value is a literal item name - unique flasks for Sacrifice, unique
+ *  names or div card names for Specific Reward. Falls back to default text
+ *  color for category labels (Currency / Mirrored Rare / etc.) and challenge
+ *  names that aren't items. */
+function getStaticValueColor(value: string): string | undefined {
+  if (uniqueToBase[value]) return RARITY_COLORS.Unique
+  if (divCardArtMap.has(value)) return RARITY_COLORS.Divination
+  return undefined
+}
+
+/** Read-only value box styled to match ScrubInput but without the scrubber.
+ *  Used for non-numeric stat filters (Ultimatum challenge/reward/input/output)
+ *  where the value is a string id baked at parse time. The user can't change
+ *  it without an actual text input - that's a bigger UI investment we don't
+ *  need right now since these filters are always pre-filled from the item. */
+function StaticValueBox({ value }: { value: string }): JSX.Element {
+  const tint = getStaticValueColor(value)
+  return (
+    <div
+      className="h-7 flex items-center px-2 rounded-[3px] text-[13px] select-none"
+      style={{
+        width: 170,
+        background: 'rgba(0,0,0,0.3)',
+        color: tint ?? 'var(--text)',
+        cursor: 'default',
+      }}
+      title={value}
+    >
+      <span className="truncate">{value}</span>
+    </div>
+  )
+}
 
 function formatRange(range: { min: number; max: number }): string {
   const fmt = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1))
@@ -59,6 +94,11 @@ export function StatFilterRow({
   // Filters whose values are inherently fractional (APS, crit %) need decimal
   // input; everything else stays integer-only.
   const decimals = f.id === 'weapon.aps' || f.id === 'weapon.crit' ? 1 : 0
+  // Per-filter scrub cap. Most stats top out under 99999, but Facetor's Lens
+  // stored experience can hit ~1.95B (max gem level XP); without a higher cap
+  // both the slider and the field would clip at 99999. Add new entries here
+  // when more large-value stats appear.
+  const MAX_VALUE = f.id === 'misc.stored_experience' ? 2_000_000_000 : 99999
   const [hovered, setHovered] = useState(false)
   const hasTier = f.modTier != null && f.modTier > 0
   const hasRange = !!f.modRange
@@ -113,24 +153,36 @@ export function StatFilterRow({
           </span>
         )}
       </span>
-      <ScrubInput
-        value={f.min}
-        placeholder="min"
-        min={-99999}
-        defaultValue={f.max != null ? Math.floor(f.max * 0.8) || f.max : f.value}
-        onChange={(val) => updateFilterMin(i, val == null ? '' : String(val))}
-        color={minTint ?? undefined}
-        decimals={decimals}
-      />
-      <ScrubInput
-        value={f.max}
-        placeholder="max"
-        min={-99999}
-        defaultValue={f.min != null ? Math.ceil(f.min * 1.2) || f.min : f.value}
-        onChange={(val) => updateFilterMax(i, val == null ? '' : String(val))}
-        color={maxTint ?? undefined}
-        decimals={decimals}
-      />
+      {f.type === 'ultimatum' ? (
+        // Ultimatum filters are string-valued (challenge id, sacrifice item
+        // name, etc). Show the human-readable clipboard text from `displayValue`
+        // (e.g. "Defeat waves of enemies"); the trade query uses `option` (the
+        // API id like "Exterminate") directly via the query builder.
+        <StaticValueBox value={f.displayValue ?? (typeof f.option === 'string' ? f.option : '')} />
+      ) : (
+        <>
+          <ScrubInput
+            value={f.min}
+            placeholder="min"
+            min={-MAX_VALUE}
+            max={MAX_VALUE}
+            defaultValue={f.max != null ? Math.floor(f.max * 0.8) || f.max : f.value}
+            onChange={(val) => updateFilterMin(i, val == null ? '' : String(val))}
+            color={minTint ?? undefined}
+            decimals={decimals}
+          />
+          <ScrubInput
+            value={f.max}
+            placeholder="max"
+            min={-MAX_VALUE}
+            max={MAX_VALUE}
+            defaultValue={f.min != null ? Math.ceil(f.min * 1.2) || f.min : f.value}
+            onChange={(val) => updateFilterMax(i, val == null ? '' : String(val))}
+            color={maxTint ?? undefined}
+            decimals={decimals}
+          />
+        </>
+      )}
     </div>
   )
 }

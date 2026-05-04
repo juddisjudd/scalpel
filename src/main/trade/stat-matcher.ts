@@ -271,6 +271,42 @@ function isLocalMod(modText: string, isWeapon: boolean): boolean {
 }
 
 // Item classes that have local defense mods
+// Inscribed Ultimatum trade filter lookups. Source:
+// pathofexile.com/api/trade/data/filters → ultimatum_filters.
+// Keys are lowercased so case-insensitive lookup works without a normalizer
+// at every call site.
+const ULTIMATUM_CHALLENGE_TEXT_TO_ID: Record<string, string> = {
+  'defeat waves of enemies': 'Exterminate',
+  survive: 'Survival',
+  'protect the altar': 'Defense',
+  'stand in the stone circles': 'Conquer',
+}
+
+/** The "Reward:" line is a free-form sentence: "Doubles sacrificed Currency",
+ *  "Doubles sacrificed Divination Cards", "Mirrored Rare Item", or just a
+ *  unique's name (e.g. "The Bringer of Rain") when the reward is "Exchange
+ *  for <unique>". Match by keyword against the four trade reward categories;
+ *  anything that doesn't match is presumed to be a unique-name fallback. */
+function resolveUltimatumRewardId(text: string): string | null {
+  const t = text.toLowerCase()
+  if (t.includes('divination card')) return 'DoubleDivCards'
+  if (t.includes('mirror')) return 'MirrorRare'
+  if (t.includes('currency')) return 'DoubleCurrency'
+  if (t.length > 0) return 'ExchangeUnique'
+  return null
+}
+
+/** Display labels for the trade reward category ids. Used as the chip text so
+ *  the user sees "Reward Type: Unique" instead of the raw clipboard sentence
+ *  ("Doubles sacrificed Divination Cards"), which often duplicates info we
+ *  already show on the specific-reward chip. */
+const ULTIMATUM_REWARD_ID_LABEL: Record<string, string> = {
+  DoubleCurrency: 'Currency',
+  DoubleDivCards: 'Divination Cards',
+  MirrorRare: 'Mirrored Rare',
+  ExchangeUnique: 'Unique',
+}
+
 const ARMOUR_CLASSES = new Set(['Helmets', 'Body Armours', 'Gloves', 'Boots', 'Shields'])
 // Item classes that have local weapon mods
 const WEAPON_CLASSES = new Set([
@@ -729,6 +765,9 @@ export function matchItemMods(
     atzoatlRooms?: string[]
     atzoatlOpenCount?: number
     storedExperience?: number
+    ultimatumChallenge?: string
+    ultimatumRewardText?: string
+    ultimatumRequired?: string
     isSynthetic?: boolean
   },
   advancedMods?: AdvancedMod[],
@@ -1598,6 +1637,47 @@ export function matchItemMods(
     })
   }
 
+  // Inscribed Ultimatum chips. Each chip's id encodes which sub-filter the
+  // trade query builder should populate; the chip's `option` carries the
+  // resolved API-internal id (Exterminate, DoubleDivCards, ...) so the
+  // builder doesn't need to redo the human-text -> id lookup.
+  const ultChip = (id: string, text: string, option: string, displayValue: string): StatFilter => ({
+    id,
+    text,
+    value: null,
+    min: null,
+    max: null,
+    enabled: true,
+    type: 'ultimatum',
+    option,
+    displayValue,
+  })
+  if (itemInfo?.ultimatumChallenge) {
+    const id = ULTIMATUM_CHALLENGE_TEXT_TO_ID[itemInfo.ultimatumChallenge.toLowerCase()]
+    if (id) filters.push(ultChip('ultimatum.challenge', 'Challenge', id, itemInfo.ultimatumChallenge))
+  }
+  if (itemInfo?.ultimatumRewardText) {
+    const id = resolveUltimatumRewardId(itemInfo.ultimatumRewardText)
+    if (id) {
+      filters.push(
+        ultChip('ultimatum.reward', 'Reward', id, ULTIMATUM_REWARD_ID_LABEL[id] ?? itemInfo.ultimatumRewardText),
+      )
+      // For "Exchange for <Unique>" rewards, also surface the specific unique
+      // name via ultimatum_output so the search narrows to that exact reward.
+      // The other reward categories don't have a specific-name dropdown.
+      if (id === 'ExchangeUnique') {
+        filters.push(
+          ultChip('ultimatum.output', 'Specific Reward', itemInfo.ultimatumRewardText, itemInfo.ultimatumRewardText),
+        )
+      }
+    }
+  }
+  if (itemInfo?.ultimatumRequired) {
+    // The trade-side ultimatum_input dropdown is keyed by the literal item
+    // name (e.g. "No Traces"), so we pass it through verbatim as the option.
+    filters.push(ultChip('ultimatum.input', 'Sacrifice', itemInfo.ultimatumRequired, itemInfo.ultimatumRequired))
+  }
+
   // Logbook faction and boss chips
   if (itemInfo?.logbookFactions && itemInfo.logbookFactions.length > 0) {
     const factionLabels: Record<string, string> = {
@@ -1851,7 +1931,7 @@ export function matchItemMods(
     }
   }
 
-  return [
+  const combined: StatFilter[] = [
     ...weaponFilters,
     ...defenseFilters,
     ...pseudoFilters,
@@ -1862,4 +1942,17 @@ export function matchItemMods(
     ...miscFilters,
     ...filters,
   ]
+
+  // Inscribed Ultimatum mod chips ("Choking Miasma", "30% more Monster Life",
+  // etc.) describe the random map-roll modifiers, not anything you'd narrow a
+  // trade search by - the chips that actually matter are the ultimatum_filters
+  // (challenge / reward / sacrifice). Default the affix-typed chips off so the
+  // search starts clean; the user can opt in if they really want to filter on
+  // a specific monster mod.
+  if (itemInfo?.baseType === 'Inscribed Ultimatum') {
+    const affixTypes = new Set(['explicit', 'implicit', 'fractured', 'crafted', 'enchant', 'imbued', 'pseudo'])
+    return combined.map((f) => (affixTypes.has(f.type) ? { ...f, enabled: false } : f))
+  }
+
+  return combined
 }

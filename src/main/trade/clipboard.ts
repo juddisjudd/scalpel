@@ -396,6 +396,26 @@ export function parseItemText(text: string): PoeItem | null {
     }
   }
 
+  // Parse Inscribed Ultimatum lines (Challenge / Reward / Requires Sacrifice).
+  // Lives in the metadata section the in-game tooltip puts above the modifier
+  // block. We capture as raw text; the trade-side stat-matcher resolves the
+  // human-readable label to the internal API id.
+  let ultimatumChallenge: string | undefined
+  let ultimatumRewardText: string | undefined
+  let ultimatumRequired: string | undefined
+  if (baseType === 'Inscribed Ultimatum') {
+    for (const section of sections) {
+      for (const line of section.split('\n').map((l) => l.trim())) {
+        const ch = line.match(/^Challenge:\s*(.+)$/)
+        if (ch) ultimatumChallenge = ch[1].trim()
+        const rw = line.match(/^Reward:\s*(.+)$/)
+        if (rw) ultimatumRewardText = rw[1].trim()
+        const rs = line.match(/^Requires Sacrifice:\s*(.+?)(?:\s*x\d+)?$/)
+        if (rs) ultimatumRequired = rs[1].trim()
+      }
+    }
+  }
+
   // Parse Chronicle of Atzoatl rooms
   const atzoatlOpenRooms: string[] = []
   const atzoatlObstructedRooms: string[] = []
@@ -530,6 +550,9 @@ export function parseItemText(text: string): PoeItem | null {
     ...(atzoatlOpenRooms.length > 0 || atzoatlObstructedRooms.length > 0
       ? { atzoatlRooms: [...atzoatlOpenRooms, ...atzoatlObstructedRooms], atzoatlOpenCount: atzoatlOpenRooms.length }
       : {}),
+    ...(ultimatumChallenge != null ? { ultimatumChallenge } : {}),
+    ...(ultimatumRewardText != null ? { ultimatumRewardText } : {}),
+    ...(ultimatumRequired != null ? { ultimatumRequired } : {}),
     // Default areaLevel to itemLevel - we don't know the actual zone but this prevents
     // leveling blocks (AreaLevel <= 16) from matching endgame items viewed in stash/town
     areaLevel: itemLevel > 0 ? itemLevel : undefined,

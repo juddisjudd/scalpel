@@ -11,7 +11,7 @@ export const RARITY_COLORS: Record<string, string> = {
   Rare: '#ffff77',
   Unique: '#af6025',
   Gem: '#1ba29b',
-  Divination: '#016a8b',
+  Divination: '#00BAFE',
 }
 
 export const IP = {

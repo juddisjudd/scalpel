@@ -151,6 +151,11 @@ export interface StatFilter {
   enabled: boolean
   type: string // 'explicit', 'implicit', etc.
   option?: number | string // for option-based stats like "Map contains #'s Citadel" or reward names
+  // Human-readable label paired with `option` for chips whose API id differs
+  // from the user-visible text (e.g. ultimatum: option="Exterminate",
+  // displayValue="Defeat waves of enemies"). Flows over IPC to the renderer's
+  // value box; the trade query builder reads `option`, not this.
+  displayValue?: string
   timelessLeaders?: string[] // all leader stat IDs for timeless count group
   foulborn?: boolean
   modTier?: number // mod tier if known (from advanced mod data)
@@ -725,7 +730,7 @@ export async function searchTrade(
       f.type !== 'timeless' &&
       f.id !== 'misc.memory_level' &&
       f.id !== 'socket.white_sockets' &&
-      (!['defence', 'weapon', 'socket', 'misc', 'gem', 'map', 'heist', 'currency'].includes(f.type) ||
+      (!['defence', 'weapon', 'socket', 'misc', 'gem', 'map', 'heist', 'currency', 'ultimatum'].includes(f.type) ||
         miscPseudoIds.has(f.id) ||
         mapPseudoIds.has(f.id)) &&
       (!unidEnabled || survivesUnid(f)),
@@ -770,6 +775,29 @@ export async function searchTrade(
       type: 'and',
       filters: [{ id: timelessSpecific.id, value: { min: timelessSpecific.min, max: timelessSpecific.max } }],
     })
+  }
+
+  // Inscribed Ultimatum filters. Each enabled chip carries the API-internal id
+  // in its `option` field (resolved at chip-generation time in stat-matcher).
+  const ultimatumChips = statFilters.filter((f) => f.type === 'ultimatum' && f.enabled)
+  if (ultimatumChips.length > 0) {
+    const ultiKeyMap: Record<string, string> = {
+      'ultimatum.challenge': 'ultimatum_challenge',
+      'ultimatum.reward': 'ultimatum_reward',
+      'ultimatum.input': 'ultimatum_input',
+      'ultimatum.output': 'ultimatum_output',
+    }
+    const ultimatumFilters: Record<string, { option: string }> = {}
+    for (const f of ultimatumChips) {
+      const key = ultiKeyMap[f.id]
+      if (key && typeof f.option === 'string') ultimatumFilters[key] = { option: f.option }
+    }
+    if (Object.keys(ultimatumFilters).length > 0) {
+      query.filters = {
+        ...((query.filters as Record<string, unknown>) ?? {}),
+        ultimatum_filters: { disabled: false, filters: ultimatumFilters },
+      }
+    }
   }
 
   query.stats = statGroups.length > 0 ? statGroups : [{ type: 'and', filters: [] }]
