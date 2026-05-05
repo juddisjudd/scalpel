@@ -1,5 +1,15 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.7-rc8',
+    notes: [
+      "Added regex tab for PoE2 starting with Waystones and Custom (I don't trust that Tablets will be back yet)",
+      'Added PoE2 leveling starter packs (zone layouts by @lolcohol used with permission)',
+      'Added thumbnail size controls to the cheat sheet overlay',
+      'Fixed Forbidden Shako support mods routing to the wrong stat ID on trade',
+      'Fixed cheat sheet overlay disappearing after switching to another app and returning to PoE',
+    ],
+  },
+  {
     version: '0.9.7-rc7',
     notes: [
       'Added cheat sheets: hotkey-toggled overlay showing reference images organized into categories.',
