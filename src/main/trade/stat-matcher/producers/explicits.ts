@@ -44,15 +44,17 @@ export function processExplicits(ctx: MatchContext): StatFilter[] {
     // fails silently and the mod disappears from the price checker.
     let isFractured = false
     let isFoulborn = false
+    let isRandomSupport = false
     let advMod: ReturnType<typeof findAdvMod> = undefined
     if (advancedMods) {
       advMod = findAdvMod(advancedMods, cleaned, 'explicit')
       if (advMod?.fractured) isFractured = true
       if (advMod?.foulborn) isFoulborn = true
       if (advMod?.crafted) isCrafted = true
+      if (advMod?.randomSupport) isRandomSupport = true
     }
     const useLocal = hasLocalMods && isLocalMod(cleaned, isWeapon)
-    const matched = matchModToStat(cleaned, useLocal, isCrafted ? 'crafted' : 'explicit')
+    const matched = matchModToStat(cleaned, useLocal, isCrafted ? 'crafted' : 'explicit', isRandomSupport)
     if (matched) {
       const lowPriority = isLowPriority(cleaned)
 

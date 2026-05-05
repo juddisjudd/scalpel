@@ -1429,3 +1429,144 @@ describe('matchModToStat (Unscalable Value prefix/suffix fallback)', () => {
     expect(result!.value).toBeNull()
   })
 })
+
+describe('matchModToStat (Forbidden Shako indexable_support routing)', () => {
+  // The trade API ships TWO stats with identical display text for each Forbidden
+  // Shako-style randomized support: a regular `stat_*` ID (which doesn't actually
+  // search Forbidden Shakos) and an `indexable_support_*` ID (which does). The
+  // matcher must route to the right family based on whether the caller has flagged
+  // the mod as a randomized support. Without this, both candidates match and the
+  // matcher coin-flips between them.
+
+  function seedDuplicateSupports() {
+    _setStatEntriesForTests([
+      // Regular family: applies to craftable / built-in support mods on equipment.
+      {
+        id: 'explicit.stat_2388360415',
+        text: 'Socketed Gems are Supported by Level # Endurance Charge on Melee Stun',
+        type: 'explicit',
+      },
+      // Indexable family: only applies to Forbidden Shako-style randomized supports.
+      {
+        id: 'explicit.indexable_support_98',
+        text: 'Socketed Gems are Supported by Level # Endurance Charge on Melee Stun',
+        type: 'explicit',
+      },
+    ])
+  }
+
+  it('default behavior excludes indexable_support entries (regular item path)', () => {
+    seedDuplicateSupports()
+    const result = matchModToStat('Socketed Gems are Supported by Level 9 Endurance Charge on Melee Stun')
+    expect(result).not.toBeNull()
+    expect(result!.statId).toBe('explicit.stat_2388360415')
+  })
+
+  it('preferIndexableSupport=true routes to indexable_support family (Forbidden Shako path)', () => {
+    seedDuplicateSupports()
+    const result = matchModToStat(
+      'Socketed Gems are Supported by Level 9 Endurance Charge on Melee Stun',
+      false,
+      'explicit',
+      true,
+    )
+    expect(result).not.toBeNull()
+    expect(result!.statId).toBe('explicit.indexable_support_98')
+  })
+
+  it('preferIndexableSupport=true returns null when only the regular stat exists', () => {
+    // Defensive: if the trade dict has no indexable variant for this support type,
+    // we'd rather return null than fall back to the wrong family. The chip just
+    // gets dropped, which is preferable to emitting a chip that searches nothing.
+    _setStatEntriesForTests([
+      {
+        id: 'explicit.stat_2388360415',
+        text: 'Socketed Gems are Supported by Level # Endurance Charge on Melee Stun',
+        type: 'explicit',
+      },
+    ])
+    const result = matchModToStat(
+      'Socketed Gems are Supported by Level 9 Endurance Charge on Melee Stun',
+      false,
+      'explicit',
+      true,
+    )
+    expect(result).toBeNull()
+  })
+
+  it('matchItemMods routes a Forbidden Shako support to indexable_support when advanced data flags it', () => {
+    seedDuplicateSupports()
+    const advancedMods: AdvancedMod[] = [
+      {
+        type: 'prefix',
+        name: '',
+        tier: 0,
+        tags: ['Gem'],
+        lines: ['Socketed Gems are Supported by Level 9 Endurance Charge on Melee Stun'],
+        ranges: [],
+        randomSupport: true,
+      },
+    ]
+    const filters = matchItemMods(
+      ['Socketed Gems are Supported by Level 9 Endurance Charge on Melee Stun'],
+      [],
+      undefined,
+      makeItemInfo({ itemClass: 'Helmets', rarity: 'Unique', baseType: 'Great Crown' }),
+      advancedMods,
+    )
+    const supportChip = filters.find((f) => f.text.includes('Endurance Charge on Melee Stun'))
+    expect(supportChip).toBeDefined()
+    expect(supportChip!.id).toBe('explicit.indexable_support_98')
+  })
+
+  it('matchItemMods routes a regular crafted/built-in support to the stat_* family by default', () => {
+    seedDuplicateSupports()
+    // No advancedMods, or advancedMods without randomSupport flag -> regular path.
+    const filters = matchItemMods(
+      ['Socketed Gems are Supported by Level 9 Endurance Charge on Melee Stun'],
+      [],
+      undefined,
+      makeItemInfo({ itemClass: 'Helmets', rarity: 'Rare' }),
+    )
+    const supportChip = filters.find((f) => f.text.includes('Endurance Charge on Melee Stun'))
+    expect(supportChip).toBeDefined()
+    expect(supportChip!.id).toBe('explicit.stat_2388360415')
+  })
+})
+
+describe('parseAdvancedMods (Forbidden Shako randomSupport detection)', () => {
+  // Sanity: the clipboard parser must set randomSupport=true on advanced mod blocks
+  // whose lines start with "Socketed Gems are Supported by" AND carry the
+  // "Unscalable Value" suffix. This is the upstream fingerprint that drives the
+  // indexable_support routing in matchModToStat.
+
+  it('flags Forbidden Shako support mods with randomSupport=true', async () => {
+    const { parseItemText } = await import('./clipboard')
+    const text = `Item Class: Helmets
+Rarity: Unique
+Forbidden Shako
+Great Crown
+--------
+Item Level: 85
+--------
+{ Unique Modifier — Gem }
+Socketed Gems are Supported by Level 9(1-10) Endurance Charge on Melee Stun(Greater Multiple Projectiles-Hallow) — Unscalable Value
+{ Unique Modifier — Gem }
+Socketed Gems are Supported by Level 35(25-35) Bloodthirst(Greater Multiple Projectiles-Hallow) — Unscalable Value
+{ Unique Modifier — Attribute }
++29(25-30) to all Attributes
+`
+    const item = parseItemText(text)
+    expect(item).not.toBeNull()
+    expect(item!.advancedMods).toBeDefined()
+    const supportMods = item!.advancedMods!.filter((am) =>
+      am.lines.some((l) => /Socketed Gems are Supported by/i.test(l)),
+    )
+    expect(supportMods.length).toBe(2)
+    expect(supportMods.every((m) => m.randomSupport === true)).toBe(true)
+    // Attribute mod should NOT be flagged (no Unscalable Value).
+    const attrMod = item!.advancedMods!.find((am) => am.lines.some((l) => /to all Attributes/.test(l)))
+    expect(attrMod).toBeDefined()
+    expect(attrMod!.randomSupport).toBeUndefined()
+  })
+})

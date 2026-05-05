@@ -22,16 +22,25 @@ const BLOCKED_STAT_IDS = new Set([
   'explicit.stat_3664950032', // "#% increased Quantity of Gold Dropped by Slain Enemies" (duplicate, broken)
 ])
 
+/** Forbidden Shako-style randomized supports live under the `indexable_support_*`
+ *  stat family, which shares display text with regular `stat_*` entries. We always
+ *  filter one or the other out so the matcher doesn't coin-flip between them:
+ *  default behavior excludes the indexable family (so regular items match correctly);
+ *  callers that know they're looking at a randomized-support mod pass
+ *  preferIndexableSupport=true to flip the filter. */
+const INDEXABLE_SUPPORT_RE = /^[a-z]+\.indexable_support_\d+/
+
 export function matchModToStat(
   modText: string,
   preferLocal = false,
   modType: 'explicit' | 'crafted' | 'implicit' | 'enchant' | 'imbued' = 'explicit',
+  preferIndexableSupport = false,
 ): { statId: string; value: number | null; option?: number } | null {
   // Check direct mappings first (for mods with completely different trade API wording)
   const directKey = modText.toLowerCase().trim()
   if (DIRECT_MOD_MAPPINGS[directKey]) return DIRECT_MOD_MAPPINGS[directKey]
 
-  const result = _matchModToStat(modText, preferLocal, modType)
+  const result = _matchModToStat(modText, preferLocal, modType, preferIndexableSupport)
   if (result && STAT_ID_REMAPS[result.statId]) {
     result.statId = STAT_ID_REMAPS[result.statId]
   }
@@ -42,6 +51,7 @@ function _matchModToStat(
   modText: string,
   preferLocal = false,
   modType: 'explicit' | 'crafted' | 'implicit' | 'enchant' | 'imbued' = 'explicit',
+  preferIndexableSupport = false,
 ): { statId: string; value: number | null; option?: number } | null {
   const statEntries: StatEntry[] = getStatEntries()
   const typePrefix = modType + '.'
@@ -63,6 +73,7 @@ function _matchModToStat(
     for (const entry of statEntries) {
       if (!entry.id.startsWith(typePrefix)) continue
       if (BLOCKED_STAT_IDS.has(entry.id)) continue
+      if (preferIndexableSupport ? !INDEXABLE_SUPPORT_RE.test(entry.id) : INDEXABLE_SUPPORT_RE.test(entry.id)) continue
       const isLocal = entry.text.includes('(Local)')
       const textForPattern = isLocal ? entry.text.replace(/\s*\(Local\)/, '') : entry.text
       const pattern = statTextToPattern(textForPattern)
@@ -115,6 +126,7 @@ function _matchModToStat(
     for (const entry of statEntries) {
       if (!entry.id.startsWith(typePrefix)) continue
       if (BLOCKED_STAT_IDS.has(entry.id)) continue
+      if (preferIndexableSupport ? !INDEXABLE_SUPPORT_RE.test(entry.id) : INDEXABLE_SUPPORT_RE.test(entry.id)) continue
       if (entry.text.includes('(Local)')) continue // skip local in relaxed mode
       const relaxedPattern = statTextToRelaxedPattern(entry.text)
       const match = normalizedVariant.match(relaxedPattern)
@@ -145,6 +157,7 @@ function _matchModToStat(
     for (const entry of statEntries) {
       if (!entry.id.startsWith(typePrefix)) continue
       if (BLOCKED_STAT_IDS.has(entry.id)) continue
+      if (preferIndexableSupport ? !INDEXABLE_SUPPORT_RE.test(entry.id) : INDEXABLE_SUPPORT_RE.test(entry.id)) continue
       if (entry.text.includes('(Local)')) continue
       const statPlain = entry.text.replace(/#/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
       const variantPlain = variant.replace(/\d+/g, '').replace(/\s+/g, ' ').trim().toLowerCase()

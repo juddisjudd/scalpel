@@ -177,6 +177,11 @@ export interface AdvancedMod {
   eldritch?: boolean
   foulborn?: boolean
   magnitudeMultiplier?: number
+  /** True for Forbidden Shako-style "Socketed Gems are Supported by..." mods that
+   *  carry the "Unscalable Value" suffix in advanced data. These resolve to a
+   *  separate `explicit.indexable_support_*` stat ID family on the trade API,
+   *  not the regular `explicit.stat_*` ID their cleaned text would otherwise hit. */
+  randomSupport?: boolean
 }
 
 // ─── IPC Channel Payloads ─────────────────────────────────────────────────────
