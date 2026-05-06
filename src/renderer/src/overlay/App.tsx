@@ -523,7 +523,10 @@ export default function App(): JSX.Element {
       dragOffsetRef.current = { x: nx, y: ny }
       setTranslate(wrapperRef.current, nx, ny)
       // Follow the drag live so the sister overlay stays glued to the main panel.
+      // sister vs. tier-sister are mounted under different views and are never
+      // both present at once, but applying to both is safe (setTranslate null-guards).
       setTranslate(sisterRef.current, nx, ny)
+      setTranslate(tierSisterRef.current, nx, ny)
       // Check snap proximity to mount points
       const currentLeft = (basePanelLeft ?? 0) + nx
       const currentTop = PANEL_TOP + ny
@@ -542,6 +545,7 @@ export default function App(): JSX.Element {
       setSnapTarget(null)
       resetToIdentity(wrapperRef.current)
       resetToIdentity(sisterRef.current)
+      resetToIdentity(tierSisterRef.current)
       dragOffsetRef.current = { x: 0, y: 0 }
       setDragOffset({ x: 0, y: 0 })
       cancelDragRef.current = null
@@ -559,11 +563,13 @@ export default function App(): JSX.Element {
         const targetMountX = snap === 'left' ? leftMountX : rightMountX
         const targetDx = targetMountX - (basePanelLeft ?? 0)
         const el = wrapperRef.current
-        const sEl = sisterRef.current
+        // Whichever sister is currently mounted (price-check or tier) rides the
+        // same transition so it stays glued to the main panel during snap.
+        const sEls = [sisterRef.current, tierSisterRef.current]
         el.style.transition = 'transform 0.2s ease-out'
         setTranslate(el, targetDx, 0)
-        // Sister rides the same transition so it stays glued to the main panel during snap.
-        if (sEl) {
+        for (const sEl of sEls) {
+          if (!sEl) continue
           sEl.style.transition = 'transform 0.2s ease-out'
           setTranslate(sEl, targetDx, 0)
         }
@@ -573,7 +579,7 @@ export default function App(): JSX.Element {
           // transform update if the value matches what it last rendered
           el.style.left = `${targetMountX}px`
           resetToIdentity(el)
-          resetToIdentity(sEl)
+          for (const sEl of sEls) resetToIdentity(sEl)
           dragOffsetRef.current = { x: 0, y: 0 }
           setDragOffset({ x: 0, y: 0 })
           panelRef.current?.classList.remove('panel-unmounted')
