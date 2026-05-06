@@ -93,6 +93,10 @@ export default function App(): JSX.Element {
   const priceCheckPending = useRef(false)
   const auditPending = useRef(false)
   const filterHotkeyPending = useRef(false)
+  // Set when a click inside the tier sister fires lookup-base-type. Consumed by
+  // the next overlay-data arrival so that drill-down synth items don't invalidate
+  // the tier sister freeze (real hotkey arrivals will, since they leave it false).
+  const drillDownPendingRef = useRef(false)
   const externalLinkPendingRef = useRef<ExternalLinkTarget | null>(null)
   const externalLinkPendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Mirror of poeVersion state for IPC listeners that capture a stale closure.
@@ -224,6 +228,14 @@ export default function App(): JSX.Element {
         setCursorSide(side)
       }),
       window.api.onOverlayData((data) => {
+        // Tier-sister freeze: a drill-down click set the flag, so leave the freeze
+        // alone (the synth item often has empty baseTypes). Anything else (real
+        // hotkey, search combobox, etc.) is a genuine new arrival -- drop the
+        // freeze so the next render re-captures from the new tier's live data.
+        const wasDrillDown = drillDownPendingRef.current
+        drillDownPendingRef.current = false
+        if (!wasDrillDown) frozenTierSisterDataRef.current = null
+
         setOverlayData(data)
         setSearchId((id) => id + 1)
         setNeedsElevation(false)
@@ -606,23 +618,22 @@ export default function App(): JSX.Element {
     }
   })()
 
-  // Freeze the tier sister's data to whatever was active the moment it opened.
-  // Sister clicks fire a new overlay-data event with a synthesised item that
-  // can fail conditions on the original tier block (especially in PoE2 -- the
-  // synth lacks itemLevel/areaLevel/sockets context), so re-deriving from the
-  // live overlay here would briefly land in a fallthrough block, empty out
-  // baseTypes, and visually drop the sister. Capturing on open + clearing on
-  // close keeps the displayed bases stable through drill-down clicks; the
-  // user's "current" base for highlighting still comes from live overlayData.
+  // Freeze the tier sister's data so drill-down clicks don't visually drop the
+  // sister. Clicking a row fires lookup-base-type, which builds a synthesised
+  // item that can fail conditions on the original tier block (especially in
+  // PoE2 -- the synth lacks itemLevel/areaLevel/sockets context), and re-
+  // deriving from the live overlay would briefly land in a fallthrough block
+  // with empty baseTypes. The drill-down click sets drillDownPendingRef so the
+  // next overlay-data arrival keeps the freeze; real arrivals (hotkey, search
+  // combobox, etc.) drop the freeze and let the next render re-capture from
+  // the new tier's live data.
   const frozenTierSisterDataRef = useRef<typeof liveTierSisterData>(null)
-  const wasTierSisterOpenRef = useRef(false)
-  if (tierSisterOpen && !wasTierSisterOpenRef.current && liveTierSisterData) {
+  if (tierSisterOpen && !frozenTierSisterDataRef.current && liveTierSisterData) {
     frozenTierSisterDataRef.current = liveTierSisterData
   }
   if (!tierSisterOpen) {
     frozenTierSisterDataRef.current = null
   }
-  wasTierSisterOpenRef.current = tierSisterOpen
   const tierSisterData = frozenTierSisterDataRef.current ?? liveTierSisterData
 
   // Build the click handler for a Wiki/PoEDB button. Returns undefined when
@@ -663,6 +674,9 @@ export default function App(): JSX.Element {
           scale={settings?.overlayScale}
           scaleOrigin={cursorSide === 'left' ? 'top right' : 'top left'}
           maxHeight={sisterMaxHeight}
+          onDrillDown={() => {
+            drillDownPendingRef.current = true
+          }}
         />
       )}
       {view === 'pricecheck' && priceCheckData && !isHidden && (

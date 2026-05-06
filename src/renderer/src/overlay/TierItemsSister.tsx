@@ -32,6 +32,9 @@ interface TierItemsSisterProps {
   maxHeight?: number
   /** Key the slide animation off the tier so switching tiers re-animates entry. */
   animKey?: string
+  /** Fires immediately before lookupBaseType so the parent can flag the resulting
+   *  overlay-data arrival as a drill-down (used to preserve the sister's freeze). */
+  onDrillDown?: () => void
 }
 
 export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(function TierItemsSister(
@@ -50,6 +53,7 @@ export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(
     scaleOrigin,
     maxHeight,
     animKey,
+    onDrillDown,
   },
   ref,
 ): JSX.Element | null {
@@ -104,7 +108,10 @@ export const TierItemsSister = forwardRef<HTMLDivElement, TierItemsSisterProps>(
               key={`${name}-${i}`}
               isCurrent={isCurrent}
               zebraEven={i % 2 === 0}
-              onClick={() => window.api.lookupBaseType(name, itemClass, synthRarity)}
+              onClick={() => {
+                onDrillDown?.()
+                window.api.lookupBaseType(name, itemClass, synthRarity)
+              }}
               title={isCurrent ? name : `Switch to ${name}`}
             >
               <ItemRowContent name={name} iconUrl={iconUrl} price={price} nameColor={titleColor} />
