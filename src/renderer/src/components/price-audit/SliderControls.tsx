@@ -125,7 +125,7 @@ export function PriceSlider({
               : `${thresholdInDiv.toFixed(1)}d`
             : threshold < 10
               ? `${threshold.toFixed(1)}c`
-              : `${threshold}c`}
+              : `${Math.round(threshold)}c`}
       </span>
     </div>
   )

@@ -86,7 +86,7 @@ export function ThresholdBars({
         : thresholdInDiv.toFixed(1)
       : threshold < 10
         ? `${threshold.toFixed(1)}`
-        : String(threshold)
+        : String(Math.round(threshold))
   const priceIcon = showMir ? mirrorIcon : showDiv ? divineIcon : baselineIcon
 
   const priceChipContent = (prefix: string) => (
