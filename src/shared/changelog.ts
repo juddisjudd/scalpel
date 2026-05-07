@@ -10,7 +10,6 @@ export const CHANGELOG: { version: string; notes: string[] }[] = [
       'Fixed sister overlay not refreshing on a new hotkey.',
       'Fixed sister overlay not following the main overlay during drag.',
       'Fixed filter tab icon sizing for tall items.',
-      'Fixed rc1 startup crash for users updating from older builds (manifest.json was not shipped via the auto-updater).',
     ],
   },
   {

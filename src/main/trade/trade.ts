@@ -807,8 +807,11 @@ export async function searchTrade(
   // it drops the whole filter block and returns broken results. APT/EE2 omit the price
   // filter entirely in that mode and do the equivalence math client-side; same here.
   const existing = (query.filters as Record<string, unknown>) ?? {}
-  const tradeFiltersInner: Record<string, unknown> = {
-    collapse: { option: collapseListings ? 'true' : 'false' },
+  const tradeFiltersInner: Record<string, unknown> = {}
+  // Only send the collapse option when grouping is wanted; sending 'false' is
+  // not the same as omitting it and produces ungrouped-but-noisy results.
+  if (collapseListings) {
+    tradeFiltersInner.collapse = { option: 'true' }
   }
   if (priceOption !== dialect.priceEquivalent) {
     tradeFiltersInner.price = { min: null, max: null, option: priceOption }
@@ -1407,7 +1410,7 @@ export async function searchMapsByRegex(
           ...(tradePriceOption === dialect.priceDivinePair
             ? { price: { min: null, max: null, option: tradePriceOption } }
             : {}),
-          collapse: { option: collapseListings ? 'true' : 'false' },
+          ...(collapseListings ? { collapse: { option: 'true' } } : {}),
         },
       },
     },
