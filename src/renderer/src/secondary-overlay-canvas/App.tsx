@@ -36,13 +36,16 @@ export function App(): JSX.Element {
   )
 }
 
+// Rects come from main in screen coords; the canvas window spans the
+// virtual-screen union, so subtract its origin to land in the local viewport.
+// window.screenX/Y track the window's current screen position automatically.
 function SnapGhost({ rect }: { rect: Rect }): JSX.Element {
   return (
     <div
       className="fixed pointer-events-none border-2 border-dashed border-white/35 bg-white/20 transition-opacity duration-150 ease-linear"
       style={{
-        left: rect.x,
-        top: rect.y,
+        left: rect.x - window.screenX,
+        top: rect.y - window.screenY,
         width: rect.width,
         height: rect.height,
         borderRadius: 6,
@@ -57,8 +60,8 @@ function CheatSheetPreviewLayer({ src, gameBounds }: { src: string; gameBounds: 
     <div
       className="fixed pointer-events-none flex items-center justify-center"
       style={{
-        left: gameBounds.x,
-        top: gameBounds.y,
+        left: gameBounds.x - window.screenX,
+        top: gameBounds.y - window.screenY,
         width: gameBounds.width,
         height: gameBounds.height,
         padding: PAD,

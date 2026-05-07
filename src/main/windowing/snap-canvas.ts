@@ -24,12 +24,27 @@ export interface Rect {
 }
 
 function applyCanvasBounds(win: BrowserWindow): void {
-  const display = screen.getPrimaryDisplay()
+  // Span the union of all displays so snap ghosts and the cheat-sheet hover
+  // preview are visible when PoE / a secondary overlay sits on a non-primary
+  // monitor. The renderer paints fixed-position elements at screen coords and
+  // translates by window.screenX/Y, so the canvas just needs to cover whatever
+  // screen rect those coords could land in.
+  const displays = screen.getAllDisplays()
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const d of displays) {
+    minX = Math.min(minX, d.bounds.x)
+    minY = Math.min(minY, d.bounds.y)
+    maxX = Math.max(maxX, d.bounds.x + d.bounds.width)
+    maxY = Math.max(maxY, d.bounds.y + d.bounds.height)
+  }
   win.setBounds({
-    x: display.bounds.x,
-    y: display.bounds.y,
-    width: display.bounds.width,
-    height: display.bounds.height,
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
   })
 }
 
