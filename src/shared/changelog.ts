@@ -1,5 +1,9 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.8-rc3',
+    notes: ['Fixed issue with cheat sheets on second monitors.'],
+  },
+  {
     version: '0.9.8-rc2',
     notes: [
       'Added price trend sparkline on poe.ninja price hover.',
