@@ -1,5 +1,11 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: 'Unreleased',
+    notes: [
+      'Added optional "Use Current Zone" toggle in the FilterPanel hero. Reads zone level from Path of Exile log file and applies to the displayed item when enabled. Hidden in towns and hideouts.',
+    ],
+  },
+  {
     version: '0.9.8-rc4',
     notes: [
       'Added Whiteboard in app macros',
