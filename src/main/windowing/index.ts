@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, screen } from 'electron'
 import { OverlayController } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
 import { createOverlayWindow } from './window'
@@ -19,36 +19,46 @@ export {
   restoreAllOnPoeFocus,
 } from './focus'
 export { setMainOverlayGetter, setOnLeaveScalpel } from './state'
+export type { OverlayAnchor } from '../../shared/types'
 
-interface DefaultBoundsCtx {
-  /** PoE's window bounds when known, else null (no game running). The bounds
-   *  helper should fall back to a sensible non-PoE default when null. */
-  poeBounds: Rect | null
-  /** Optional override for size when computing snap target during drag (use
-   *  the dragged window's *current* size, not the spec's default). */
-  width?: number
-  height?: number
-}
+import type { OverlayAnchor } from '../../shared/types'
 
 export interface OverlaySpec {
   /** Stable id, used for IPC channels and as a lookup key. Kebab-case. */
   id: string
   /** HTML filename in src/renderer/, e.g. 'cheat-sheets-grid.html'. */
   htmlEntry: string
-  /** Compute the snap-target / first-create rect. Called both at window
-   *  creation (when no persisted bounds exist) and during drag to determine
-   *  where the snap ghost goes. */
-  defaultBounds: (ctx: DefaultBoundsCtx) => Rect
-  /** Optional: read persisted bounds (from electron-store etc.). */
-  storedBounds?: () => Rect | undefined
-  /** Optional: fired whenever the user moves or resizes the window. Persist
-   *  here. */
-  onBoundsChanged?: (bounds: Rect) => void
+  /** The spec's default anchor - used when no stored anchor exists, and as
+   *  the snap target during drag. */
+  defaultAnchor: () => OverlayAnchor
+  /** Optional: read persisted anchor (from electron-store etc.). */
+  storedAnchor?: () => OverlayAnchor | undefined
+  /** Optional: fired when the user moves or resizes the window. Persist here. */
+  onAnchorChanged?: (anchor: OverlayAnchor) => void
   /** Fired once after did-finish-load + the very first show. The earliest
    *  safe point to deliver IPCs whose payload was known at registration time
    *  but couldn't be sent during window creation (renderer wasn't mounted
    *  yet, so webContents.send would silently drop them). */
   onFirstShow?: (win: BrowserWindow) => void
+}
+
+function anchorToBounds(anchor: OverlayAnchor, poeBounds: Rect | null): Rect {
+  const area = poeBounds ?? screen.getPrimaryDisplay().workArea
+  return {
+    x: Math.round(area.x + anchor.fracX * area.width),
+    y: Math.round(area.y + anchor.fracY * area.height),
+    width: Math.round(anchor.fracW * area.width),
+    height: Math.round(anchor.fracH * area.height),
+  }
+}
+
+function boundsToAnchor(bounds: Rect, poeBounds: Rect): OverlayAnchor {
+  return {
+    fracX: (bounds.x - poeBounds.x) / poeBounds.width,
+    fracY: (bounds.y - poeBounds.y) / poeBounds.height,
+    fracW: bounds.width / poeBounds.width,
+    fracH: bounds.height / poeBounds.height,
+  }
 }
 
 export interface SecondaryOverlay {
@@ -64,6 +74,37 @@ export interface SecondaryOverlay {
 }
 
 const SNAP_RANGE = 80
+/** Window between a programmatic setBounds and clearing the "ignore the move
+ *  events that setBounds will fire" flag. Long enough for the OS to deliver
+ *  every synthetic move/moved/resized event the bounds change provokes. */
+const PROGRAMMATIC_MOVE_SETTLE_MS = 200
+
+function resolveAnchor(spec: OverlaySpec): OverlayAnchor {
+  return spec.storedAnchor?.() ?? spec.defaultAnchor()
+}
+
+/** Snap target = the spec's default anchor's POSITION, with the window's
+ *  CURRENT size. Lets the user resize the window then drag-snap back to its
+ *  "home" without losing the new size. */
+function snapTargetFor(state: OverlayState, cur: Rect): Rect {
+  const defaultRect = anchorToBounds(state.spec.defaultAnchor(), getPoeBounds())
+  return { x: defaultRect.x, y: defaultRect.y, width: cur.width, height: cur.height }
+}
+
+/** Apply a programmatic setBounds and arm the settle timer. Replaces any
+ *  prior pending settle so rapid back-to-back calls (PoE live-drag) don't
+ *  let the flag drop while move/moved events from the latest setBounds are
+ *  still in flight. */
+function setBoundsProgrammatic(state: OverlayState, target: Rect): void {
+  if (!state.win || state.win.isDestroyed()) return
+  state.inProgrammaticMove = true
+  state.win.setBounds(target)
+  if (state.programmaticSettleTimer) clearTimeout(state.programmaticSettleTimer)
+  state.programmaticSettleTimer = setTimeout(() => {
+    state.inProgrammaticMove = false
+    state.programmaticSettleTimer = null
+  }, PROGRAMMATIC_MOVE_SETTLE_MS)
+}
 
 // Track left-mouse-button state globally so we only show the snap ghost when
 // the user is actually dragging. gridWin.on('move') fires for *any* bounds
@@ -91,6 +132,7 @@ export function registerSecondaryOverlay(spec: OverlaySpec): SecondaryOverlay {
     win: null,
     snapGhostActive: false,
     inProgrammaticMove: false,
+    programmaticSettleTimer: null,
     isResizing: false,
     wasVisibleBeforeFocusLoss: false,
   }
@@ -121,8 +163,7 @@ function makeOverlayApi(state: OverlayState): SecondaryOverlay {
 
 function ensureWin(state: OverlayState): BrowserWindow {
   if (state.win && !state.win.isDestroyed()) return state.win
-  const stored = state.spec.storedBounds?.()
-  const bounds = stored ?? state.spec.defaultBounds({ poeBounds: getPoeBounds() })
+  const bounds = anchorToBounds(resolveAnchor(state.spec), getPoeBounds())
   const win = createOverlayWindow({ htmlEntry: state.spec.htmlEntry, bounds })
   state.win = win
   prewarmSnapCanvas()
@@ -175,15 +216,8 @@ function wireWindowEvents(state: OverlayState, win: BrowserWindow): void {
       // reliably arrive on Windows, so we have to persist explicitly.
       state.snapGhostActive = false
       setSnapGhost(null)
-      state.inProgrammaticMove = true
-      const cur = win.getBounds()
-      const target = state.spec.defaultBounds({ poeBounds: getPoeBounds(), width: cur.width, height: cur.height })
-      win.setBounds(target)
+      setBoundsProgrammatic(state, snapTargetFor(state, win.getBounds()))
       persistBounds(state)
-      // Pad past the synthetic move/moved volley so distance=0 doesn't re-arm.
-      setTimeout(() => {
-        state.inProgrammaticMove = false
-      }, 200)
     } else {
       persistBounds(state)
       setSnapGhost(null)
@@ -219,7 +253,9 @@ function wireWindowEvents(state: OverlayState, win: BrowserWindow): void {
 
 function persistBounds(state: OverlayState): void {
   if (!state.win || state.win.isDestroyed()) return
-  state.spec.onBoundsChanged?.(state.win.getBounds())
+  const poeBounds = getPoeBounds()
+  if (!poeBounds) return
+  state.spec.onAnchorChanged?.(boundsToAnchor(state.win.getBounds(), poeBounds))
 }
 
 function maybeUpdateSnap(state: OverlayState): void {
@@ -234,7 +270,7 @@ function maybeUpdateSnap(state: OverlayState): void {
   // resizing.
   if (state.isResizing) return
   const cur = state.win.getBounds()
-  const target = state.spec.defaultBounds({ poeBounds: getPoeBounds(), width: cur.width, height: cur.height })
+  const target = snapTargetFor(state, cur)
   const dist = Math.hypot(cur.x - target.x, cur.y - target.y)
   const wantActive = dist < SNAP_RANGE
   if (wantActive === state.snapGhostActive) return
@@ -245,4 +281,21 @@ function maybeUpdateSnap(state: OverlayState): void {
 function getPoeBounds(): Rect | null {
   const tb = OverlayController.targetBounds
   return tb && tb.width > 0 && tb.height > 0 ? { x: tb.x, y: tb.y, width: tb.width, height: tb.height } : null
+}
+
+/** Subscribe to PoE attach/move/resize events and re-anchor every registered
+ *  secondary overlay's window to track PoE. Call once during main-process boot
+ *  after OverlayController is wired up. */
+export function subscribeToPoeMoves(): void {
+  OverlayController.events.on('attach', repositionAll)
+  OverlayController.events.on('moveresize', repositionAll)
+}
+
+function repositionAll(): void {
+  const poeBounds = getPoeBounds()
+  if (!poeBounds) return
+  for (const state of overlays.values()) {
+    if (!state.win || state.win.isDestroyed()) continue
+    setBoundsProgrammatic(state, anchorToBounds(resolveAnchor(state.spec), poeBounds))
+  }
 }

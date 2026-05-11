@@ -75,6 +75,7 @@ import {
   isAnyScalpelWindowFocused,
   setMainOverlayGetter,
   setOnLeaveScalpel,
+  subscribeToPoeMoves,
 } from './windowing'
 import type { AppSettings, RegexPreset } from '../shared/types'
 
@@ -399,19 +400,19 @@ app.whenReady().then(() => {
     }
   })
   setAppMacros(store.get('appMacros') ?? [])
-  // Register the cheat-sheets overlay with the secondary-overlay system. Bounds
-  // persist into settings.cheatSheets.windowBounds; the system handles window
-  // lifecycle, snap, alt-tab guard, etc. and the wireCheatSheetHotkeys helper
-  // below feeds the global + per-category hotkeys into the shared system.
+  // Register the cheat-sheets overlay with the secondary-overlay system. The
+  // anchor persists into settings.cheatSheets.windowAnchor; the system handles
+  // window lifecycle, snap, alt-tab guard, etc. and the wireCheatSheetHotkeys
+  // helper below feeds the global + per-category hotkeys into the shared system.
   registerCheatSheetsOverlay({
-    storedBounds: () => store.get('cheatSheets')?.windowBounds,
-    onBoundsChanged: (bounds) => {
+    storedAnchor: () => store.get('cheatSheets')?.windowAnchor,
+    onAnchorChanged: (anchor) => {
       const cs = store.get('cheatSheets') ?? { globalHotkey: '', categories: [] }
-      const next = { ...cs, windowBounds: bounds }
+      const next = { ...cs, windowAnchor: anchor }
       store.set('cheatSheets', next)
       // Mirror to the per-game slot too. The IPC settings path (set-setting)
-      // does this via MIRROR_KEYS, but bounds writes go through this direct
-      // store.set callback - without the mirror, the user's resized bounds
+      // does this via MIRROR_KEYS, but anchor writes go through this direct
+      // store.set callback - without the mirror, the user's repositioned anchor
       // would revert on the next game switch.
       const v = store.get('poeVersion')
       store.set(v === 2 ? 'cheatSheetsPoe2' : 'cheatSheetsPoe1', next)
@@ -422,6 +423,7 @@ app.whenReady().then(() => {
   setCheatSheetsBeforeShow(() => hideOverlay())
   applyCheatSheetHotkeys(store.get('cheatSheets'))
   registerWhiteboardOverlay()
+  subscribeToPoeMoves()
   setStashScrollEnabled(store.get('stashScrollEnabled') ?? false)
   setOpenSide(store.get('openSide') ?? 'both')
 

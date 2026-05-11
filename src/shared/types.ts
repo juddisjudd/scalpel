@@ -316,10 +316,17 @@ export interface CheatSheetCategory {
   prefabSlug?: string
 }
 
+export interface OverlayAnchor {
+  fracX: number
+  fracY: number
+  fracW: number
+  fracH: number
+}
+
 export interface CheatSheetsSettings {
   globalHotkey: string
   categories: CheatSheetCategory[]
-  windowBounds?: { x: number; y: number; width: number; height: number }
+  windowAnchor?: OverlayAnchor
 }
 
 export interface AppSettings {

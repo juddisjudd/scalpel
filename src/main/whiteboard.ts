@@ -1,8 +1,8 @@
-import { app, ipcMain, screen } from 'electron'
+import { app, ipcMain } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { emptyBoardLibrary, migrateBoardLibrary, type BoardLibrary } from '../shared/whiteboard-types'
-import { registerSecondaryOverlay, type Rect, type SecondaryOverlay } from './windowing'
+import { registerSecondaryOverlay, type SecondaryOverlay } from './windowing'
 
 let userDataDirOverride: string | null = null
 
@@ -94,10 +94,7 @@ export function registerWhiteboardOverlay(): SecondaryOverlay {
   overlay = registerSecondaryOverlay({
     id: 'whiteboard',
     htmlEntry: 'whiteboard.html',
-    defaultBounds: ({ poeBounds }): Rect => {
-      const area = poeBounds ?? screen.getPrimaryDisplay().workArea
-      return { x: area.x, y: area.y, width: area.width, height: area.height }
-    },
+    defaultAnchor: () => ({ fracX: 0, fracY: 0, fracW: 1, fracH: 1 }),
     onFirstShow: (win) => {
       // The very first show is the user opening the whiteboard via hotkey
       // (window is created lazily on first toggle). Fire the same shown IPC

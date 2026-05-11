@@ -8,6 +8,12 @@ export interface OverlayState {
   // Snap ghost coordination
   snapGhostActive: boolean
   inProgrammaticMove: boolean
+  // Pending settle timer for programmatic setBounds (snap commit, PoE-track
+  // reposition). Stored per-state so successive setBounds calls (e.g. a live
+  // PoE drag firing 'moveresize' on every frame) can replace the prior timer
+  // instead of letting it fire early and drop `inProgrammaticMove` while the
+  // OS is still delivering synthetic move/moved events from the next call.
+  programmaticSettleTimer: ReturnType<typeof setTimeout> | null
   // True between will-resize and resized. Resizing the window from the top
   // or left edges shifts the origin, firing 'move' events that would
   // otherwise look like a drag and trigger the snap ghost.

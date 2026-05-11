@@ -1,8 +1,8 @@
 import { screen } from 'electron'
 import { OverlayController } from 'electron-overlay-window'
-import { registerSecondaryOverlay, sendCanvasIpc, moveCanvasTop, type Rect, type SecondaryOverlay } from './windowing'
+import { registerSecondaryOverlay, sendCanvasIpc, moveCanvasTop, type SecondaryOverlay } from './windowing'
 import { setSecondaryOverlayHotkeys } from './hotkeys'
-import type { AppSettings } from '../shared/types'
+import type { AppSettings, OverlayAnchor } from '../shared/types'
 
 // Re-export the pure storage / image-fetch helpers so consumers (handlers,
 // protocol handler, tests) keep their existing import path. The actual
@@ -22,13 +22,16 @@ export {
 
 // ---- Overlay registration ---------------------------------------------------
 
-const DEFAULT_WIDTH = 885
-const DEFAULT_HEIGHT = 149
-const DEFAULT_BOTTOM_PAD = 30
+const DEFAULT_ANCHOR: OverlayAnchor = {
+  fracX: 0.2695,
+  fracY: 0.8343,
+  fracW: 0.4609,
+  fracH: 0.138,
+}
 
 let overlay: SecondaryOverlay | null = null
-let storedBoundsGetter: () => Rect | undefined = () => undefined
-let onBoundsChangedFn: ((b: Rect) => void) | undefined
+let storedAnchorGetter: () => OverlayAnchor | undefined = () => undefined
+let onAnchorChangedFn: ((a: OverlayAnchor) => void) | undefined
 
 // Stash for the focus-category IPC across the async did-finish-load delay
 // the very first time the overlay opens. After that, the window is always
@@ -39,27 +42,17 @@ let pendingFocusCategory: string | undefined
  *  Called once during main process boot (after settings are available).
  *  Returns the overlay handle so the caller can wire hotkeys. */
 export function registerCheatSheetsOverlay(deps: {
-  storedBounds: () => Rect | undefined
-  onBoundsChanged: (b: Rect) => void
+  storedAnchor: () => OverlayAnchor | undefined
+  onAnchorChanged: (a: OverlayAnchor) => void
 }): SecondaryOverlay {
-  storedBoundsGetter = deps.storedBounds
-  onBoundsChangedFn = deps.onBoundsChanged
+  storedAnchorGetter = deps.storedAnchor
+  onAnchorChangedFn = deps.onAnchorChanged
   overlay = registerSecondaryOverlay({
     id: 'cheat-sheets',
     htmlEntry: 'cheat-sheets-grid.html',
-    defaultBounds: ({ poeBounds, width, height }) => {
-      const w = width ?? DEFAULT_WIDTH
-      const h = height ?? DEFAULT_HEIGHT
-      const area = poeBounds ?? screen.getPrimaryDisplay().workArea
-      return {
-        width: w,
-        height: h,
-        x: Math.round(area.x + (area.width - w) / 2),
-        y: Math.round(area.y + area.height - h - DEFAULT_BOTTOM_PAD),
-      }
-    },
-    storedBounds: () => storedBoundsGetter(),
-    onBoundsChanged: (b) => onBoundsChangedFn?.(b),
+    defaultAnchor: () => DEFAULT_ANCHOR,
+    storedAnchor: () => storedAnchorGetter(),
+    onAnchorChanged: (a) => onAnchorChangedFn?.(a),
     onFirstShow: (win) => {
       // Deliver any focus-category IPC that arrived during the first window
       // creation - webContents.send before did-finish-load is silently
