@@ -42,22 +42,45 @@ export interface OverlaySpec {
   onFirstShow?: (win: BrowserWindow) => void
 }
 
-function anchorToBounds(anchor: OverlayAnchor, poeBounds: Rect | null): Rect {
-  const area = poeBounds ?? screen.getPrimaryDisplay().workArea
+/** Multiply an anchor against a rect, returning a rect in the same coordinate
+ *  space as the input. Used in physical space (anchor x PoE physical bounds)
+ *  and logical space (anchor x display workArea fallback). */
+function anchorTimes(anchor: OverlayAnchor, base: Rect): Rect {
   return {
-    x: Math.round(area.x + anchor.fracX * area.width),
-    y: Math.round(area.y + anchor.fracY * area.height),
-    width: Math.round(anchor.fracW * area.width),
-    height: Math.round(anchor.fracH * area.height),
+    x: Math.round(base.x + anchor.fracX * base.width),
+    y: Math.round(base.y + anchor.fracY * base.height),
+    width: Math.round(anchor.fracW * base.width),
+    height: Math.round(anchor.fracH * base.height),
   }
 }
 
-function boundsToAnchor(bounds: Rect, poeBounds: Rect): OverlayAnchor {
+/** Compute the DIP (logical) bounds an overlay window should occupy for the
+ *  given anchor. Uses `screen.screenToDipRect(win, physRect)` - the same path
+ *  the electron-overlay-window library uses for the main overlay - so behavior
+ *  matches across all DPI / multi-monitor configurations.
+ *
+ *  Returns null when PoE bounds aren't available yet. */
+function anchorToDipBounds(win: BrowserWindow, anchor: OverlayAnchor): Rect | null {
+  const tb = OverlayController.targetBounds
+  if (!tb || tb.width <= 0 || tb.height <= 0) return null
+  const phys = anchorTimes(anchor, { x: tb.x, y: tb.y, width: tb.width, height: tb.height })
+  return screen.screenToDipRect(win, phys)
+}
+
+/** Compute an anchor from a window's current DIP bounds. Converts PoE's
+ *  physical bounds to DIP using the same `screenToDipRect` path so the
+ *  numerator and denominator are in the same coordinate space. */
+function boundsToAnchor(win: BrowserWindow): OverlayAnchor | null {
+  const tb = OverlayController.targetBounds
+  if (!tb || tb.width <= 0 || tb.height <= 0) return null
+  const poeDip = screen.screenToDipRect(win, { x: tb.x, y: tb.y, width: tb.width, height: tb.height })
+  if (poeDip.width <= 0 || poeDip.height <= 0) return null
+  const cur = win.getBounds()
   return {
-    fracX: (bounds.x - poeBounds.x) / poeBounds.width,
-    fracY: (bounds.y - poeBounds.y) / poeBounds.height,
-    fracW: bounds.width / poeBounds.width,
-    fracH: bounds.height / poeBounds.height,
+    fracX: (cur.x - poeDip.x) / poeDip.width,
+    fracY: (cur.y - poeDip.y) / poeDip.height,
+    fracW: cur.width / poeDip.width,
+    fracH: cur.height / poeDip.height,
   }
 }
 
@@ -85,25 +108,43 @@ function resolveAnchor(spec: OverlaySpec): OverlayAnchor {
 
 /** Snap target = the spec's default anchor's POSITION, with the window's
  *  CURRENT size. Lets the user resize the window then drag-snap back to its
- *  "home" without losing the new size. */
-function snapTargetFor(state: OverlayState, cur: Rect): Rect {
-  const defaultRect = anchorToBounds(state.spec.defaultAnchor(), getPoeBounds())
+ *  "home" without losing the new size. Returns null when PoE isn't attached
+ *  (no anchor frame of reference). */
+function snapTargetFor(state: OverlayState, cur: Rect): Rect | null {
+  if (!state.win || state.win.isDestroyed()) return null
+  const defaultRect = anchorToDipBounds(state.win, state.spec.defaultAnchor())
+  if (!defaultRect) return null
   return { x: defaultRect.x, y: defaultRect.y, width: cur.width, height: cur.height }
 }
 
-/** Apply a programmatic setBounds and arm the settle timer. Replaces any
- *  prior pending settle so rapid back-to-back calls (PoE live-drag) don't
- *  let the flag drop while move/moved events from the latest setBounds are
- *  still in flight. */
+/** Apply a programmatic setBounds and arm the settle timer. Calls setBounds
+ *  twice on Windows because a fresh BrowserWindow's first setBounds doesn't
+ *  always stick at the OS level (and a cross-DPI move needs a second pass to
+ *  resolve the new display's scale factor) - same workaround the
+ *  electron-overlay-window library uses for the main overlay. Replaces any
+ *  pending settle so rapid back-to-back calls (PoE live-drag) don't let the
+ *  flag drop while move/moved events from the latest setBounds are still in
+ *  flight. */
 function setBoundsProgrammatic(state: OverlayState, target: Rect): void {
   if (!state.win || state.win.isDestroyed()) return
   state.inProgrammaticMove = true
   state.win.setBounds(target)
+  if (process.platform === 'win32') state.win.setBounds(target)
   if (state.programmaticSettleTimer) clearTimeout(state.programmaticSettleTimer)
   state.programmaticSettleTimer = setTimeout(() => {
     state.inProgrammaticMove = false
     state.programmaticSettleTimer = null
   }, PROGRAMMATIC_MOVE_SETTLE_MS)
+}
+
+/** Push the current anchor's DIP bounds onto the window. No-op when PoE
+ *  isn't attached yet - the bounds will be applied by `repositionAll` when
+ *  the next 'attach' event fires. */
+function applyAnchorBounds(state: OverlayState): void {
+  if (!state.win || state.win.isDestroyed()) return
+  const dip = anchorToDipBounds(state.win, resolveAnchor(state.spec))
+  if (!dip) return
+  setBoundsProgrammatic(state, dip)
 }
 
 // Track left-mouse-button state globally so we only show the snap ghost when
@@ -163,19 +204,43 @@ function makeOverlayApi(state: OverlayState): SecondaryOverlay {
 
 function ensureWin(state: OverlayState): BrowserWindow {
   if (state.win && !state.win.isDestroyed()) return state.win
-  const bounds = anchorToBounds(resolveAnchor(state.spec), getPoeBounds())
-  const win = createOverlayWindow({ htmlEntry: state.spec.htmlEntry, bounds })
+  // Window must exist before we can call `screen.screenToDipRect(win, ...)`
+  // (the same path the library uses for the main overlay), so create at a
+  // sensible placeholder - the display PoE is on if known, otherwise primary
+  // workArea - then immediately overwrite with the anchor-derived DIP bounds.
+  const placeholder = pickPlaceholderBounds()
+  const win = createOverlayWindow({ htmlEntry: state.spec.htmlEntry, bounds: placeholder })
   state.win = win
+  applyAnchorBounds(state)
   prewarmSnapCanvas()
   wireWindowEvents(state, win)
   win.webContents.once('did-finish-load', () => {
     if (!state.win || state.win.isDestroyed()) return
+    // Reapply anchor bounds: on Windows the first setBounds after window
+    // creation doesn't always stick until the renderer is loaded. Mirrors
+    // the double-apply pattern in electron-overlay-window.
+    applyAnchorBounds(state)
     // First show registers the window with the OS (one-time animation).
     // Doesn't steal focus from PoE - see installOpacityHideShow comment.
     state.win.show()
     state.spec.onFirstShow?.(state.win)
   })
   return win
+}
+
+/** Best-guess initial bounds before the window exists. Prefers the display
+ *  PoE is on (so the placeholder is on the right monitor), falling back to
+ *  the primary display's workArea when PoE isn't attached. Always in DIP. */
+function pickPlaceholderBounds(): Rect {
+  const tb = OverlayController.targetBounds
+  if (tb && tb.width > 0 && tb.height > 0) {
+    const display = screen.getDisplayNearestPoint({
+      x: tb.x + Math.round(tb.width / 2),
+      y: tb.y + Math.round(tb.height / 2),
+    })
+    return display.workArea
+  }
+  return screen.getPrimaryDisplay().workArea
 }
 
 function showState(state: OverlayState): void {
@@ -216,8 +281,11 @@ function wireWindowEvents(state: OverlayState, win: BrowserWindow): void {
       // reliably arrive on Windows, so we have to persist explicitly.
       state.snapGhostActive = false
       setSnapGhost(null)
-      setBoundsProgrammatic(state, snapTargetFor(state, win.getBounds()))
-      persistBounds(state)
+      const target = snapTargetFor(state, win.getBounds())
+      if (target) {
+        setBoundsProgrammatic(state, target)
+        persistBounds(state)
+      }
     } else {
       persistBounds(state)
       setSnapGhost(null)
@@ -253,9 +321,9 @@ function wireWindowEvents(state: OverlayState, win: BrowserWindow): void {
 
 function persistBounds(state: OverlayState): void {
   if (!state.win || state.win.isDestroyed()) return
-  const poeBounds = getPoeBounds()
-  if (!poeBounds) return
-  state.spec.onAnchorChanged?.(boundsToAnchor(state.win.getBounds(), poeBounds))
+  const anchor = boundsToAnchor(state.win)
+  if (!anchor) return
+  state.spec.onAnchorChanged?.(anchor)
 }
 
 function maybeUpdateSnap(state: OverlayState): void {
@@ -271,16 +339,12 @@ function maybeUpdateSnap(state: OverlayState): void {
   if (state.isResizing) return
   const cur = state.win.getBounds()
   const target = snapTargetFor(state, cur)
+  if (!target) return
   const dist = Math.hypot(cur.x - target.x, cur.y - target.y)
   const wantActive = dist < SNAP_RANGE
   if (wantActive === state.snapGhostActive) return
   state.snapGhostActive = wantActive
   setSnapGhost(state.snapGhostActive ? target : null)
-}
-
-function getPoeBounds(): Rect | null {
-  const tb = OverlayController.targetBounds
-  return tb && tb.width > 0 && tb.height > 0 ? { x: tb.x, y: tb.y, width: tb.width, height: tb.height } : null
 }
 
 /** Subscribe to PoE attach/move/resize events and re-anchor every registered
@@ -292,10 +356,8 @@ export function subscribeToPoeMoves(): void {
 }
 
 function repositionAll(): void {
-  const poeBounds = getPoeBounds()
-  if (!poeBounds) return
   for (const state of overlays.values()) {
     if (!state.win || state.win.isDestroyed()) continue
-    setBoundsProgrammatic(state, anchorToBounds(resolveAnchor(state.spec), poeBounds))
+    applyAnchorBounds(state)
   }
 }
