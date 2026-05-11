@@ -70,6 +70,10 @@ interface Props {
   item: PoeItem
   priceInfo?: PriceInfo
   rightSlot?: React.ReactNode
+  /** Optional content rendered as its own row at the bottom of the hero's
+   *  left column, after the iLvl/Quality/socket chip row. Used by the
+   *  FilterPanel to mount the Use-Current-Zone toggle inside the hero. */
+  extraRow?: React.ReactNode
   onRecolor?: () => void
   onDustExplore?: () => void
   onDivExplore?: () => void
@@ -94,6 +98,7 @@ export function ItemSummary({
   item,
   priceInfo,
   rightSlot,
+  extraRow,
   onRecolor,
   onDustExplore,
   onDivExplore,
@@ -361,6 +366,8 @@ export function ItemSummary({
             </InfoChip>
           ))}
         </div>
+
+        {extraRow}
       </div>
 
       {rightSlot}

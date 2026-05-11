@@ -169,9 +169,11 @@ export function FilterPanel({
           onOpenPoeDb={onOpenPoeDb}
           onOpenNinja={onOpenNinja}
           rightSlot={<SaveButton isDirty={isDirty} isSaving={isSaving} isSaved={isSaved} onSave={handleSave} />}
+          extraRow={
+            <ZoneToggle currentZone={currentZone} enabled={useCurrentZoneAreaLevel} onChange={onToggleZoneAreaLevel} />
+          }
           flush
         />
-        <ZoneToggle currentZone={currentZone} enabled={useCurrentZoneAreaLevel} onChange={onToggleZoneAreaLevel} />
         <div className="p-3 flex flex-col gap-3">
           {activeTierGroup && (
             <TierNavigator
