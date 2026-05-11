@@ -13,7 +13,7 @@ import { getOverlayWindow, setCloseOnClickOutside } from './overlay'
 import { getAppWindow } from './app-window'
 import { applyCheatSheetHotkeys, getCheatSheetsOverlay } from './cheat-sheets'
 import { setHotkey, setPriceCheckHotkey, setChatCommands, setAppMacros, setStashScrollEnabled } from './hotkeys'
-import { setOpenSide } from './evaluation'
+import { setOpenSide, reEvaluateLastItem } from './evaluation'
 import { refreshPrices } from './trade/prices'
 import { setUpdateChannel } from './update/updater'
 import type { AppSettings } from '../shared/types'
@@ -67,6 +67,7 @@ export function applySetting<K extends keyof AppSettings>(
   if (key === 'stashScrollEnabled') setStashScrollEnabled(value as boolean)
   if (key === 'openSide') setOpenSide(value as AppSettings['openSide'])
   if (key === 'updateChannel') setUpdateChannel(value as string)
+  if (key === 'useCurrentZoneAreaLevel') reEvaluateLastItem()
   if (key === 'cheatSheets') applyCheatSheetHotkeys(value as AppSettings['cheatSheets'])
 
   broadcastSettingUpdate(sender, key, value)
