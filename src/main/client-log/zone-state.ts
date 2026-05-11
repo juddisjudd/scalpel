@@ -6,6 +6,7 @@ export type Zone = { areaLevel: number; areaCode: string }
 
 let currentZone: Zone | null = null
 const emitter = new EventEmitter()
+emitter.setMaxListeners(3)
 
 /** Latest known real (non-town, non-hideout) zone. Null at startup and
  *  whenever the player enters a town or hideout. */

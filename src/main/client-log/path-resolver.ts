@@ -5,7 +5,8 @@ import { dirname, join } from 'node:path'
 /** Best-effort resolve the absolute Client.txt path for the running PoE
  *  process. Strategy: ask PowerShell for the executable Path of any
  *  process named PathOfExile* (covers PathOfExile.exe, PathOfExile_x64.exe,
- *  PathOfExileSteam.exe, PathOfExile2.exe, ...). Strip the filename,
+ *  PathOfExileSteam.exe, PathOfExile2.exe, ...). Forces UTF-8 stdout so
+ *  non-ASCII install paths round-trip cleanly. Strip the filename,
  *  append \logs\Client.txt, confirm the file exists.
  *
  *  Returns null on any failure. Callers should treat null as "watcher
@@ -18,8 +19,9 @@ export function resolveClientLogPath(): string | null {
       'powershell.exe',
       [
         '-NoProfile',
+        '-NonInteractive',
         '-Command',
-        "Get-Process | Where-Object { $_.Name -like 'PathOfExile*' } | Select-Object -ExpandProperty Path -First 1",
+        "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process -Name 'PathOfExile*' | Select-Object -First 1 -ExpandProperty Path",
       ],
       { encoding: 'utf8', timeout: 5000, windowsHide: true },
     )
