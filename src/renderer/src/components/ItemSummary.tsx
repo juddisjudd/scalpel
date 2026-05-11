@@ -138,7 +138,7 @@ export function ItemSummary({
         />
       )}
 
-      <div className="flex-1 flex flex-col gap-1 min-w-0 relative z-[1]">
+      <div className="flex-1 flex flex-col gap-0.5 min-w-0 relative z-[1]">
         <span className="font-bold text-sm" style={{ color }}>
           {item.name}
         </span>
@@ -366,7 +366,6 @@ export function ItemSummary({
             </InfoChip>
           ))}
         </div>
-
         {extraRow}
       </div>
 
