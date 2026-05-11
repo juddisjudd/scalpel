@@ -1,9 +1,11 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
-    version: 'unreleased',
+    version: '0.9.8-rc4',
     notes: [
-      'Added Whiteboard - new hotkey-toggled drawing surface over the game window. Pen, highlighter, eraser, color palette, pen-tip sizes, undo/redo, select/move/scale, opacity slider, play-toggle (drawings click through to game while toolbar stays interactive), auto-save, and named snapshots. Default hotkey: Alt+W.',
-      'Whiteboard: added Shape tool (rectangle, ellipse, triangle, line, arrow) and Text tool. Shapes draw with click-drag and snap to square or 0/45/90 with Shift; text places on click, enters edit mode immediately, commits on Enter or click-outside.',
+      'Added Whiteboard in app macros',
+      "Added separate onboarding for PoE1 and PoE2 so each game's filter, league, and trade settings can be set up independently.",
+      'Fixed overlay becoming click-through when saving',
+      "Fixed issue where secondary overlays wouldn't move with the window",
     ],
   },
   {
