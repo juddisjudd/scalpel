@@ -3,6 +3,7 @@ import { join } from 'path'
 import { OverlayController, OVERLAY_WINDOW_OPTS } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
 import { getPoeVersion, setPoeVersion } from './game-state'
+import { startClientLogWatcher } from './client-log'
 import { isInsideAnySecondaryOverlay, isAnyScalpelWindowFocused } from './windowing'
 
 let overlayWindow: BrowserWindow | null = null
@@ -305,6 +306,7 @@ export function createOverlayWindow(version: 1 | 2 = 1): BrowserWindow {
     try {
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         overlayWindow.webContents.send('poe-version', getPoeVersion())
+        startClientLogWatcher(overlayWindow)
       }
       sendGameBounds(ev.width, ev.height)
       mouseOverPanel = false
