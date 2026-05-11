@@ -183,17 +183,9 @@ export default function App(): JSX.Element {
   const [mergeMessage, setMergeMessage] = useState<string | null>(null)
 
   const currentZone = useCurrentZone()
-  const [useZoneAreaLevel, setUseZoneAreaLevel] = useState(false)
-
-  useEffect(() => {
-    window.api.getSettings().then((s) => setUseZoneAreaLevel(s.useCurrentZoneAreaLevel))
-    return window.api.onSettingUpdated((key, value) => {
-      if (key === 'useCurrentZoneAreaLevel') setUseZoneAreaLevel(value as boolean)
-    })
-  }, [])
 
   const handleToggleZoneAreaLevel = useCallback((next: boolean) => {
-    setUseZoneAreaLevel(next)
+    setSettings((prev) => (prev ? { ...prev, useCurrentZoneAreaLevel: next } : prev))
     window.api.setSetting('useCurrentZoneAreaLevel', next)
   }, [])
 
@@ -904,7 +896,7 @@ export default function App(): JSX.Element {
                   onToggleTierSister={() => setTierSisterOpen((v) => !v)}
                   tierSisterSide={cursorSide === 'left' ? 'right' : 'left'}
                   currentZone={currentZone}
-                  useCurrentZoneAreaLevel={useZoneAreaLevel}
+                  useCurrentZoneAreaLevel={settings?.useCurrentZoneAreaLevel ?? false}
                   onToggleZoneAreaLevel={handleToggleZoneAreaLevel}
                 />
               )}
