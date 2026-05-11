@@ -282,6 +282,12 @@ export const api = {
     ipcRenderer.on('poe-version', handler)
     return () => ipcRenderer.removeListener('poe-version', handler)
   },
+  onZoneChanged: (cb: (zone: { areaLevel: number; areaCode: string } | null) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, zone: { areaLevel: number; areaCode: string } | null): void =>
+      cb(zone)
+    ipcRenderer.on('zone-changed', handler)
+    return () => ipcRenderer.removeListener('zone-changed', handler)
+  },
   onOverlayDetach: (cb: () => void): (() => void) => {
     const handler = (): void => cb()
     ipcRenderer.on('overlay-detach', handler)
