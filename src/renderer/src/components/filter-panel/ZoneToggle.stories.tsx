@@ -25,3 +25,6 @@ export const On: Story = {
 export const InTownHidden: Story = {
   render: () => <Wrapped initial={true} zone={null} />,
 }
+export const AboveT16ThresholdHidden: Story = {
+  render: () => <Wrapped initial={true} zone={{ areaLevel: 83, areaCode: 'MapWorldsAtoll' }} />,
+}
