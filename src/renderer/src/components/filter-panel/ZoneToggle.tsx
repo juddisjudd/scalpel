@@ -1,32 +1,28 @@
 import type { Zone } from '../../shared/useCurrentZone'
+import { Toggle } from '../Toggle'
 
 interface ZoneToggleProps {
   currentZone: Zone | null
   enabled: boolean
   onChange: (next: boolean) => void
-  /** Compact mode renders just "Zone ##" instead of "Use Current Zone (lvl ##)". */
-  compact?: boolean
 }
 
-/** Pill that lets the user opt in to overriding the displayed item's
+/** Hero row that lets the user opt in to overriding the displayed item's
  *  areaLevel with the live zone level from Client.txt. Renders null when
- *  the player isn't in a real drop zone, so the call site doesn't need
- *  to wrap in a conditional. */
-export function ZoneToggle({ currentZone, enabled, onChange, compact = false }: ZoneToggleProps): JSX.Element | null {
+ *  the player isn't in a real drop zone (town, hideout, or no zone seen
+ *  yet), so the call site doesn't need to guard. */
+export function ZoneToggle({ currentZone, enabled, onChange }: ZoneToggleProps): JSX.Element | null {
   if (!currentZone) return null
-  const label = compact ? `Zone ${currentZone.areaLevel}` : `Use Current Zone (lvl ${currentZone.areaLevel})`
   return (
-    <label
-      className="flex items-center gap-1.5 text-[11px] text-text-dim cursor-pointer select-none whitespace-nowrap"
-      title={`Override item area level with the current zone (${currentZone.areaCode}, level ${currentZone.areaLevel})`}
-    >
-      <input
-        type="checkbox"
-        checked={enabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="accent-accent w-3 h-3"
-      />
-      {label}
-    </label>
+    <div className="px-3 py-2 bg-bg-card border-b border-border flex">
+      <div
+        className="inline-flex items-center gap-[6px] bg-black/30 rounded-full px-2 py-[3px] text-[11px]"
+        title={`Override item area level with the current zone (${currentZone.areaCode})`}
+      >
+        <Toggle checked={enabled} onChange={onChange} />
+        <span className="text-text-dim">Use Current Zone</span>
+        <span className="text-text font-semibold">lvl {currentZone.areaLevel}</span>
+      </div>
+    </div>
   )
 }

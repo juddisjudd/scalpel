@@ -149,9 +149,6 @@ export function FilterPanel({
         isSaving={isSaving}
         isSaved={isSaved}
         onSave={handleSave}
-        currentZone={currentZone}
-        useCurrentZoneAreaLevel={useCurrentZoneAreaLevel}
-        onToggleZoneAreaLevel={onToggleZoneAreaLevel}
       />
 
       {/* Scrollable content */}
@@ -171,18 +168,10 @@ export function FilterPanel({
           onOpenWiki={onOpenWiki}
           onOpenPoeDb={onOpenPoeDb}
           onOpenNinja={onOpenNinja}
-          rightSlot={
-            <div className="flex items-center gap-2">
-              <ZoneToggle
-                currentZone={currentZone}
-                enabled={useCurrentZoneAreaLevel}
-                onChange={onToggleZoneAreaLevel}
-              />
-              <SaveButton isDirty={isDirty} isSaving={isSaving} isSaved={isSaved} onSave={handleSave} />
-            </div>
-          }
+          rightSlot={<SaveButton isDirty={isDirty} isSaving={isSaving} isSaved={isSaved} onSave={handleSave} />}
           flush
         />
+        <ZoneToggle currentZone={currentZone} enabled={useCurrentZoneAreaLevel} onChange={onToggleZoneAreaLevel} />
         <div className="p-3 flex flex-col gap-3">
           {activeTierGroup && (
             <TierNavigator

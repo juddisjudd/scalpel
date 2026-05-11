@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
+import type { Zone } from '../../shared/useCurrentZone'
 import { ZoneToggle } from './ZoneToggle'
 
 const meta: Meta<typeof ZoneToggle> = {
@@ -10,9 +11,9 @@ export default meta
 
 type Story = StoryObj<typeof ZoneToggle>
 
-function Wrapped(props: { initial: boolean; compact?: boolean; zone: { areaLevel: number; areaCode: string } | null }) {
+function Wrapped(props: { initial: boolean; zone: Zone | null }): JSX.Element {
   const [enabled, setEnabled] = useState(props.initial)
-  return <ZoneToggle currentZone={props.zone} enabled={enabled} onChange={setEnabled} compact={props.compact} />
+  return <ZoneToggle currentZone={props.zone} enabled={enabled} onChange={setEnabled} />
 }
 
 export const Off: Story = {
@@ -20,9 +21,6 @@ export const Off: Story = {
 }
 export const On: Story = {
   render: () => <Wrapped initial={true} zone={{ areaLevel: 68, areaCode: 'MapWorldsAtoll' }} />,
-}
-export const Compact: Story = {
-  render: () => <Wrapped initial={true} compact zone={{ areaLevel: 68, areaCode: 'MapWorldsAtoll' }} />,
 }
 export const InTownHidden: Story = {
   render: () => <Wrapped initial={true} zone={null} />,
