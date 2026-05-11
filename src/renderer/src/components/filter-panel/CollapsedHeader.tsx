@@ -1,5 +1,7 @@
 import { SaveButton } from './SaveButton'
+import { ZoneToggle } from './ZoneToggle'
 import { IconGlow } from '../../shared/IconGlow'
+import type { Zone } from '../../shared/useCurrentZone'
 
 interface CollapsedHeaderProps {
   collapsed: boolean
@@ -11,6 +13,9 @@ interface CollapsedHeaderProps {
   isSaving: boolean
   isSaved: boolean
   onSave: () => void
+  currentZone: Zone | null
+  useCurrentZoneAreaLevel: boolean
+  onToggleZoneAreaLevel: (next: boolean) => void
 }
 
 export function CollapsedHeader({
@@ -23,6 +28,9 @@ export function CollapsedHeader({
   isSaving,
   isSaved,
   onSave,
+  currentZone,
+  useCurrentZoneAreaLevel,
+  onToggleZoneAreaLevel,
 }: CollapsedHeaderProps): JSX.Element {
   return (
     <div
@@ -40,6 +48,12 @@ export function CollapsedHeader({
       >
         {itemName !== baseType ? itemName : baseType}
       </span>
+      <ZoneToggle
+        currentZone={currentZone}
+        enabled={useCurrentZoneAreaLevel}
+        onChange={onToggleZoneAreaLevel}
+        compact
+      />
       <SaveButton isDirty={isDirty} isSaving={isSaving} isSaved={isSaved} onSave={onSave} compact />
     </div>
   )

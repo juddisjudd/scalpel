@@ -8,6 +8,7 @@ import { CollapsedHeader } from './filter-panel/CollapsedHeader'
 import { SaveButton } from './filter-panel/SaveButton'
 import { BreakpointEditor } from './filter-panel/BreakpointEditor'
 import { UniquesForBase } from './filter-panel/UniquesForBase'
+import { ZoneToggle } from './filter-panel/ZoneToggle'
 import type { FilterPanelProps, PendingThreshold } from './filter-panel/types'
 
 export function FilterPanel({
@@ -29,6 +30,9 @@ export function FilterPanel({
   tierSisterOpen,
   onToggleTierSister,
   tierSisterSide,
+  currentZone,
+  useCurrentZoneAreaLevel,
+  onToggleZoneAreaLevel,
 }: FilterPanelProps): JSX.Element {
   const { item, stackBreakpoints, qualityBreakpoints, strandBreakpoints } = data
   const hasBreakpoints = stackBreakpoints && stackBreakpoints.length > 1
@@ -145,6 +149,9 @@ export function FilterPanel({
         isSaving={isSaving}
         isSaved={isSaved}
         onSave={handleSave}
+        currentZone={currentZone}
+        useCurrentZoneAreaLevel={useCurrentZoneAreaLevel}
+        onToggleZoneAreaLevel={onToggleZoneAreaLevel}
       />
 
       {/* Scrollable content */}
@@ -164,7 +171,16 @@ export function FilterPanel({
           onOpenWiki={onOpenWiki}
           onOpenPoeDb={onOpenPoeDb}
           onOpenNinja={onOpenNinja}
-          rightSlot={<SaveButton isDirty={isDirty} isSaving={isSaving} isSaved={isSaved} onSave={handleSave} />}
+          rightSlot={
+            <div className="flex items-center gap-2">
+              <ZoneToggle
+                currentZone={currentZone}
+                enabled={useCurrentZoneAreaLevel}
+                onChange={onToggleZoneAreaLevel}
+              />
+              <SaveButton isDirty={isDirty} isSaving={isSaving} isSaved={isSaved} onSave={handleSave} />
+            </div>
+          }
           flush
         />
         <div className="p-3 flex flex-col gap-3">

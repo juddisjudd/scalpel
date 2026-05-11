@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AppSettings, OverlayData, PoeItem, PriceInfo } from '../../../shared/types'
 import { isHideableTabKey } from '../../../shared/types'
 import type { ExternalLinkTarget } from '../../../shared/external-link'
@@ -6,6 +6,7 @@ import { externalLinkUrl, ninjaLinkUrl } from '../../../shared/external-link'
 import { getGameFeatures } from '../../../shared/game-features'
 import { PoeVersionProvider } from '../shared/poe-version-context'
 import { useReportInputFocus } from '../shared/use-report-input-focus'
+import { useCurrentZone } from '../shared/useCurrentZone'
 import { FilterPanel } from '../components/FilterPanel'
 import { SettingsPanel } from '../components/SettingsPanel'
 import { SocketRecolor } from '../components/SocketRecolor'
@@ -180,6 +181,21 @@ export default function App(): JSX.Element {
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [updatingFilter, setUpdatingFilter] = useState(false)
   const [mergeMessage, setMergeMessage] = useState<string | null>(null)
+
+  const currentZone = useCurrentZone()
+  const [useZoneAreaLevel, setUseZoneAreaLevel] = useState(false)
+
+  useEffect(() => {
+    window.api.getSettings().then((s) => setUseZoneAreaLevel(s.useCurrentZoneAreaLevel))
+    return window.api.onSettingUpdated((key, value) => {
+      if (key === 'useCurrentZoneAreaLevel') setUseZoneAreaLevel(value as boolean)
+    })
+  }, [])
+
+  const handleToggleZoneAreaLevel = useCallback((next: boolean) => {
+    setUseZoneAreaLevel(next)
+    window.api.setSetting('useCurrentZoneAreaLevel', next)
+  }, [])
 
   useEffect(() => {
     window.api.getSettings().then(setSettings)
@@ -887,6 +903,9 @@ export default function App(): JSX.Element {
                   tierSisterOpen={tierSisterOpen}
                   onToggleTierSister={() => setTierSisterOpen((v) => !v)}
                   tierSisterSide={cursorSide === 'left' ? 'right' : 'left'}
+                  currentZone={currentZone}
+                  useCurrentZoneAreaLevel={useZoneAreaLevel}
+                  onToggleZoneAreaLevel={handleToggleZoneAreaLevel}
                 />
               )}
               {view === 'tools' && overlayData && features.socketRecolor && (
