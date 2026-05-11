@@ -22,6 +22,7 @@ export default defineConfig({
           app: resolve(__dirname, 'src/renderer/app.html'),
           cheatSheetsGrid: resolve(__dirname, 'src/renderer/cheat-sheets-grid.html'),
           secondaryOverlayCanvas: resolve(__dirname, 'src/renderer/secondary-overlay-canvas.html'),
+          whiteboard: resolve(__dirname, 'src/renderer/whiteboard.html'),
         }
       }
     }

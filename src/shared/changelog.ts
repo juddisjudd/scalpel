@@ -1,5 +1,12 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: 'unreleased',
+    notes: [
+      'Added Whiteboard - new hotkey-toggled drawing surface over the game window. Pen, highlighter, eraser, color palette, pen-tip sizes, undo/redo, select/move/scale, opacity slider, play-toggle (drawings click through to game while toolbar stays interactive), auto-save, and named snapshots. Default hotkey: Alt+W.',
+      'Whiteboard: added Shape tool (rectangle, ellipse, triangle, line, arrow) and Text tool. Shapes draw with click-drag and snap to square or 0/45/90 with Shift; text places on click, enters edit mode immediately, commits on Enter or click-outside.',
+    ],
+  },
+  {
     version: '0.9.8-rc3',
     notes: ['Fixed issue with cheat sheets on second monitors.'],
   },

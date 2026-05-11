@@ -23,15 +23,38 @@ const POE_SIDEBAR_RATIO = 370 / 600
 
 // Panel bounds in physical screen coordinates (for uiohook mouse hit testing).
 // Updated by the renderer reporting its actual CSS bounding rects, which we convert
-// to physical pixels. A list (not a union) so the empty space under a shorter adjacent
-// panel -- e.g. the related-items sister overlay -- stays click-through to PoE.
+// to physical pixels. Keyed by sender webContents ID so multiple windows (main overlay,
+// whiteboard toolbar, etc.) can each report their own rects without overwriting each other.
 interface PhysRect {
   left: number
   top: number
   right: number
   bottom: number
 }
-let panelRects: PhysRect[] = []
+
+interface PanelEntry {
+  win: BrowserWindow
+  rects: PhysRect[]
+}
+const panelRectsBySender = new Map<number, PanelEntry>()
+
+function flatPanelRects(): PhysRect[] {
+  const out: PhysRect[] = []
+  for (const entry of panelRectsBySender.values()) out.push(...entry.rects)
+  return out
+}
+
+/** Return the window that owns the topmost rect containing (x, y), or null. */
+function windowAtPoint(x: number, y: number): BrowserWindow | null {
+  for (const entry of panelRectsBySender.values()) {
+    for (const r of entry.rects) {
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        return entry.win.isDestroyed() ? null : entry.win
+      }
+    }
+  }
+  return null
+}
 
 function getScaleFactor(): number {
   // Use the display the game is actually on, not the primary display.
@@ -43,11 +66,15 @@ function getScaleFactor(): number {
   return screen.getPrimaryDisplay().scaleFactor
 }
 
-function updatePanelRectsFromCss(cssRects: Array<{ left: number; top: number; width: number; height: number }>): void {
+ipcMain.on('report-panel-rect', (event, payload: unknown) => {
+  // Accept either a single rect (legacy) or an array of rects (main + sister etc.).
+  const rects = Array.isArray(payload)
+    ? (payload as Array<{ left: number; top: number; width: number; height: number }>)
+    : [payload as { left: number; top: number; width: number; height: number }]
   const tb = OverlayController.targetBounds
   if (!tb || !tb.width) return
   const sf = getScaleFactor()
-  panelRects = cssRects
+  const phys = rects
     .filter((r) => r.width > 0 && r.height > 0)
     .map((r) => ({
       left: tb.x + r.left * sf,
@@ -55,14 +82,23 @@ function updatePanelRectsFromCss(cssRects: Array<{ left: number; top: number; wi
       right: tb.x + (r.left + r.width) * sf,
       bottom: tb.y + (r.top + r.height) * sf,
     }))
-}
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return
+  panelRectsBySender.set(event.sender.id, { win, rects: phys })
+})
 
-ipcMain.on('report-panel-rect', (_event, payload: unknown) => {
-  // Accept either a single rect (legacy) or an array of rects (main + sister etc.).
-  const rects = Array.isArray(payload)
-    ? (payload as Array<{ left: number; top: number; width: number; height: number }>)
-    : [payload as { left: number; top: number; width: number; height: number }]
-  updatePanelRectsFromCss(rects)
+ipcMain.on('clear-panel-rect', (event) => {
+  const entry = panelRectsBySender.get(event.sender.id)
+  panelRectsBySender.delete(event.sender.id)
+  // Restore click-through on the window we just dropped rects for, in case
+  // it was the currently-interactive one (cursor sat over its toolbar at
+  // unmount time).
+  if (entry && !entry.win.isDestroyed()) {
+    try {
+      entry.win.setIgnoreMouseEvents(true)
+    } catch {}
+  }
+  if (currentInteractiveWindow === entry?.win) currentInteractiveWindow = null
 })
 
 // Allow renderer to pull initial state on mount (attach events may fire before renderer loads)
@@ -95,12 +131,37 @@ ipcMain.on('unlock-interactive', () => {
 })
 
 function isInsidePanel(x: number, y: number): boolean {
-  for (const r of panelRects) {
+  for (const r of flatPanelRects()) {
     if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true
   }
   return false
 }
 
+/** Window currently flipped to interactive by the cursor-over-rect handler.
+ *  null when the cursor is in click-through territory. */
+let currentInteractiveWindow: BrowserWindow | null = null
+
+/** Make `win` interactive (or all windows click-through if `win` is null).
+ *  Setting a different window to interactive automatically reverts the prior
+ *  one to click-through, so we never end up with two windows competing. */
+function setInteractiveWindow(win: BrowserWindow | null): void {
+  if (currentInteractiveWindow === win) return
+  // Revert prior window to click-through.
+  if (currentInteractiveWindow && !currentInteractiveWindow.isDestroyed()) {
+    try {
+      currentInteractiveWindow.setIgnoreMouseEvents(true)
+    } catch {}
+  }
+  currentInteractiveWindow = win
+  if (win && !win.isDestroyed()) {
+    try {
+      win.setIgnoreMouseEvents(false)
+    } catch {}
+  }
+}
+
+/** Compatibility shim used by the lock-interactive IPC and other paths that
+ *  only care about the main overlay window. */
 function setInteractive(interactive: boolean): void {
   if (!overlayWindow || overlayWindow.isDestroyed()) return
   try {
@@ -108,6 +169,8 @@ function setInteractive(interactive: boolean): void {
   } catch {
     // Window may be in a transitional state
   }
+  if (interactive) currentInteractiveWindow = overlayWindow
+  else if (currentInteractiveWindow === overlayWindow) currentInteractiveWindow = null
 }
 
 // Track mouse position via uiohook to toggle click-through
@@ -115,24 +178,24 @@ function setInteractive(interactive: boolean): void {
 let exitTimer: ReturnType<typeof setTimeout> | null = null
 
 uIOhook.on('mousemove', (e) => {
-  if (!overlayVisible) return
-  // If no rects reported yet, renderer hasn't mounted -- skip hit testing
-  if (panelRects.length === 0) return
-  const inside = isInsidePanel(e.x, e.y)
-  if (inside) {
+  // No rects reported yet -- skip hit testing. (Whiteboard registers its own
+  // rects independently of the main overlay's `overlayVisible` flag.)
+  if (panelRectsBySender.size === 0) return
+  const winUnder = windowAtPoint(e.x, e.y)
+  if (winUnder) {
     if (exitTimer) {
       clearTimeout(exitTimer)
       exitTimer = null
     }
-    if (!mouseOverPanel) {
+    if (currentInteractiveWindow !== winUnder) {
       mouseOverPanel = true
-      setInteractive(true)
+      setInteractiveWindow(winUnder)
     }
-  } else if (mouseOverPanel && !exitTimer) {
+  } else if (currentInteractiveWindow && !exitTimer) {
     exitTimer = setTimeout(() => {
       exitTimer = null
       mouseOverPanel = false
-      if (!interactiveLocked) setInteractive(false)
+      if (!interactiveLocked) setInteractiveWindow(null)
     }, 50)
   }
 })
@@ -304,6 +367,10 @@ function sendGameBounds(physWidth: number, physHeight: number): void {
 
 export function showOverlay(): void {
   if (!overlayWindow || overlayWindow.isDestroyed()) return
+  // Mutual exclusion: hide the whiteboard before showing the main overlay.
+  import('./whiteboard').then(({ getWhiteboardOverlay }) => {
+    getWhiteboardOverlay()?.hide()
+  })
   overlayVisible = true
   lastShowTime = Date.now()
   // Call the overridden showInactive() to properly reset opacityHidden and restore visibility.

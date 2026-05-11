@@ -56,6 +56,8 @@ import * as versionsHandlers from './handlers/versions'
 import * as onlineSyncHandlers from './handlers/online-sync'
 import * as pricesHandlers from './handlers/prices'
 import { register as registerCheatSheets } from './handlers/cheat-sheets'
+import { register as registerWhiteboard } from './handlers/whiteboard'
+import { register as registerClipboard } from './handlers/clipboard'
 import { register as registerManifest } from './handlers/manifest'
 import { refreshManifest } from './manifest'
 import {
@@ -64,7 +66,9 @@ import {
   registerCheatSheetsOverlay,
   applyCheatSheetHotkeys,
   setCheatSheetsBeforeShow,
+  getCheatSheetsOverlay,
 } from './cheat-sheets'
+import { registerWhiteboardOverlay, toggleWhiteboard } from './whiteboard'
 import {
   hideAllOnPoeBlur,
   restoreAllOnPoeFocus,
@@ -206,6 +210,8 @@ versionsHandlers.register(store)
 onlineSyncHandlers.register(store)
 pricesHandlers.register(store)
 registerCheatSheets()
+registerWhiteboard()
+registerClipboard()
 registerManifest()
 
 ipcMain.on('close-overlay', () => hideOverlay())
@@ -370,6 +376,13 @@ app.whenReady().then(() => {
       hideOverlay()
       return
     }
+    if (action === 'toggleWhiteboard') {
+      const main = getOverlayWindow()
+      if (main && !main.isDestroyed() && main.isVisible()) hideOverlay()
+      getCheatSheetsOverlay()?.hide()
+      toggleWhiteboard()
+      return
+    }
     const overlayWin = getOverlayWindow()
     if (!overlayWin || overlayWin.isDestroyed()) return
     if (action === 'openAudit') {
@@ -408,6 +421,7 @@ app.whenReady().then(() => {
   // the user hotkeys the cheat sheet while the main overlay was open).
   setCheatSheetsBeforeShow(() => hideOverlay())
   applyCheatSheetHotkeys(store.get('cheatSheets'))
+  registerWhiteboardOverlay()
   setStashScrollEnabled(store.get('stashScrollEnabled') ?? false)
   setOpenSide(store.get('openSide') ?? 'both')
 

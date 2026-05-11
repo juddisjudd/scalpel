@@ -21,4 +21,5 @@ export interface MapModsTokenOption {
   scary: number
   nm: boolean
   prefix: boolean
+  rewards?: string[]
 }

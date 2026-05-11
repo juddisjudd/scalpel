@@ -770,7 +770,7 @@ export const regexMapModsJAPANESE: Regex<MapModsTokenOption> = {
       id: 1541760497,
       regex: 'ンを',
       rawText: 'モンスターはスタンを受けることがない|モンスターのライフが(15-30)%上昇する',
-      generalizedText: '^モンスターはスタンを受けることがない$|^モンスターのライフが#%上昇する$',
+      generalizedText: '^���ンスターはスタンを受けることがない$|^モンスターのライフが#%上昇する$',
       options: { scary: 100, nm: false, prefix: true },
     },
     {
@@ -1621,7 +1621,7 @@ export const regexMapModsJAPANESE: Regex<MapModsTokenOption> = {
     },
     '-1430865583:-645418310:-26777606:10729340:127168403:1799781772:2132856290': {
       ids: [-1430865583, -645418310, -26777606, 10729340, 127168403, 1799781772, 2132856290],
-      regex: 'メージの',
+      regex: 'メー���の',
       weight: 4,
       count: 7,
     },

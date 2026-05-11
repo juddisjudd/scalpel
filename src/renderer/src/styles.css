@@ -39,7 +39,7 @@
   --hide-color: #ef5350;
   --show-color: #4caf50;
   --minimal-color: #7e57c2;
-  --radius: 6px;
+  --radius: 10px;
   --font-mono: 'Consolas', 'Cascadia Code', monospace;
 }
 
@@ -84,16 +84,54 @@ button {
   padding: 4px 10px;
   font-size: 12px;
   line-height: 1.2;
-  transition: background 0.15s;
+  transition: background 0.12s;
   outline: none;
 }
 button:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--bg-hover);
+}
+button[aria-pressed='true'] {
+  background: var(--bg-hover);
+}
+button:active {
+  background: var(--bg-hover);
+}
+
+/* Click bounce, opt-in via class. While the button is held down it scales up
+ * slightly; on release the spring transition snaps it back with a subtle
+ * overshoot. Reserved for SQUARE icon buttons (toolbar tools, title-bar
+ * tabs) — wide/text buttons get the bg flash but no scale, since 1.18× on
+ * a long pill looks goofy. */
+button.btn-bounce {
+  transition:
+    background 0.12s,
+    transform 380ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+button.btn-bounce:active {
+  transform: scale(1.18);
+}
+
+/* Ghost variant: no idle bg, opaque hover/selected. Used for the whiteboard
+ * toolbar's tool buttons, where the toolbar pill itself provides the surface
+ * and tool buttons should melt into it until interacted with. */
+button.btn-ghost {
+  background: transparent;
+}
+button.btn-ghost:hover {
+  background: var(--bg-hover);
+}
+button.btn-ghost[aria-pressed='true'] {
+  background: var(--bg-hover);
 }
 /* Accent-colored buttons (Tailwind bg-accent) need a brighter gold on hover, else the
  * default gray-overlay hover above washes them out and loses the toggle feedback. */
 button.bg-accent:hover {
   background: #d4b87a;
+}
+/* Match-colored buttons (Tailwind bg-match) get the same hover treatment for the
+ * same reason - the default gray overlay would mask the green. */
+button.bg-match:hover {
+  background: #5cba60;
 }
 button:focus,
 button:focus-visible {
@@ -277,6 +315,66 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 /* ─── Animations (outside layers, always available) ──────────────────────────── */
+
+/* Whiteboard FigJam-style pop-in for contextual pills and dialogs. */
+@keyframes wb-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.wb-pop-in {
+  animation: wb-pop-in 220ms cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+.wb-spring {
+  transition-timing-function: cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* Toolbar entrance: snappy bounce-and-scale, Apple-style spring. The
+ * cubic-bezier overshoots past scale(1) and translateY(0) before settling,
+ * so the curve does the bounce - no extra keyframe needed. Applied to the
+ * main toolbar pill only; contextual pills above it use wb-pop-in.
+ *
+ * `.wb-toolbar-hidden` is the FROM-state held statically when the window
+ * is hidden, so when it becomes visible the toolbar starts at the
+ * entrance-start state (no flash of the settled toolbar before the
+ * animation kicks in). `.wb-toolbar-enter` runs the animation; fill-mode
+ * forwards keeps it at the TO state once it completes. */
+.wb-toolbar-hidden,
+.wb-toolbar-enter {
+  transform-origin: 50% 100%;
+}
+.wb-toolbar-hidden {
+  opacity: 0;
+  transform: translateY(28px) scale(0.78);
+}
+@keyframes wb-toolbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.78);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.wb-toolbar-enter {
+  animation: wb-toolbar-enter 380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Ink-picker cropped 3D icon: sits low in the slot, rises on hover/active.
+ * Variables let the host element configure both bottom positions. */
+.wb-ink-slot .wb-ink-icon {
+  bottom: var(--ink-bottom, -28px);
+  transition: bottom 220ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.wb-ink-slot:hover .wb-ink-icon {
+  bottom: var(--ink-bottom-hover, -22px);
+}
 
 @keyframes panel-slide-in {
   0% {

@@ -31,7 +31,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'k at',
       rawText: 'Monsters have +50% Chance to Block Attack Damage',
       generalizedText: '^monsters have #% chance to block attack damage$',
-      options: { scary: 1001, nm: true, prefix: true },
+      options: { scary: 1001, nm: true, prefix: true, rewards: ['Currency'] },
     },
     {
       id: -1934587276,
@@ -73,7 +73,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'mum f',
       rawText: 'Monsters gain a Frenzy Charge on Hit|Monsters have +1 to Maximum Frenzy Charges',
       generalizedText: '^monsters gain a frenzy charge on hit$|^monsters have # to maximum frenzy charges$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Maps'] },
     },
     {
       id: -1616686189,
@@ -94,7 +94,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'f ph',
       rawText: 'Monsters reflect 20% of Physical Damage|Monsters reflect 20% of Elemental Damage',
       generalizedText: '^monsters reflect #% of physical damage$|^monsters reflect #% of elemental damage$',
-      options: { scary: 1001, nm: true, prefix: true },
+      options: { scary: 1001, nm: true, prefix: true, rewards: ['Currency'] },
     },
     {
       id: -1358177810,
@@ -196,7 +196,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'vine',
       rawText: 'Monsters inflict 2 Grasping Vines on Hit',
       generalizedText: '^monsters inflict # grasping vines on hit$',
-      options: { scary: 1001, nm: true, prefix: true },
+      options: { scary: 1001, nm: true, prefix: true, rewards: ['Maps'] },
     },
     {
       id: -887278806,
@@ -352,7 +352,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'hock$',
       rawText: 'Monsters Ignite, Freeze and Shock on Hit|All Monster Damage can Ignite, Freeze and Shock',
       generalizedText: '^monsters ignite, freeze and shock on hit$|^all monster damage can ignite, freeze and shock$',
-      options: { scary: 1001, nm: true, prefix: true },
+      options: { scary: 1001, nm: true, prefix: true, rewards: ['Scarabs'] },
     },
     {
       id: -114660370,
@@ -380,7 +380,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'sks',
       rawText: 'Players have 40% less effect of Flasks applied to them',
       generalizedText: '^players have #% less effect of flasks applied to them$',
-      options: { scary: 1001, nm: true, prefix: true },
+      options: { scary: 1001, nm: true, prefix: true, rewards: ['Currency'] },
     },
     {
       id: -80588106,
@@ -492,7 +492,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'm end',
       rawText: 'Monsters have +1 to Maximum Endurance Charges|Monsters gain an Endurance Charge when hit',
       generalizedText: '^monsters have # to maximum endurance charges$|^monsters gain an endurance charge when hit$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Maps'] },
     },
     {
       id: 472035128,
@@ -513,7 +513,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'ff$',
       rawText: 'Unique Monsters have a random Shrine Buff',
       generalizedText: '^unique monsters have a random shrine buff$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Maps'] },
     },
     {
       id: 647925005,
@@ -596,7 +596,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'wb',
       rawText: 'Players are assaulted by Bloodstained Sawblades',
       generalizedText: '^players are assaulted by bloodstained sawblades$',
-      options: { scary: 1001, nm: true, prefix: true },
+      options: { scary: 1001, nm: true, prefix: true, rewards: ['Currency'] },
     },
     {
       id: 1062763755,
@@ -631,7 +631,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'deb',
       rawText: 'Debuffs on Monsters expire 100% faster',
       generalizedText: '^debuffs on monsters expire #% faster$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Currency'] },
     },
     {
       id: 1202132179,
@@ -682,7 +682,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'get',
       rawText: 'Players are targeted by a Meteor when they use a Flask',
       generalizedText: '^players are targeted by a meteor when they use a flask$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Currency'] },
     },
     {
       id: 1424047266,
@@ -703,7 +703,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'efe',
       rawText: 'Players have (30-25)% less Defences',
       generalizedText: '^players have #% less defences$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Scarabs'] },
     },
     {
       id: 1469490158,
@@ -717,7 +717,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'mum p',
       rawText: 'Monsters gain a Power Charge on Hit|Monsters have +1 to Maximum Power Charges',
       generalizedText: '^monsters gain a power charge on hit$|^monsters have # to maximum power charges$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Maps'] },
     },
     {
       id: 1538178254,
@@ -766,7 +766,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'res$',
       rawText: 'Rare Monsters have Volatile Cores',
       generalizedText: '^rare monsters have volatile cores$',
-      options: { scary: 1001, nm: true, prefix: true },
+      options: { scary: 1001, nm: true, prefix: true, rewards: ['Scarabs'] },
     },
     {
       id: 1723792253,
@@ -822,7 +822,7 @@ export const regexMapModsENGLISH: Regex<MapModsTokenOption> = {
       regex: 'ovi',
       rawText: 'Area contains patches of moving Marked Ground, inflicting random Marks',
       generalizedText: '^area contains patches of moving marked ground, inflicting random marks$',
-      options: { scary: 1001, nm: true, prefix: false },
+      options: { scary: 1001, nm: true, prefix: false, rewards: ['Scarabs'] },
     },
     {
       id: 2080363489,

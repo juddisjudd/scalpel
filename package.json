@@ -31,9 +31,12 @@
     "active-win": "^9.0.0",
     "electron-overlay-window": "^4.0.2",
     "electron-store": "^8.2.0",
+    "konva": "^9.3.22",
+    "react-konva": "^18.2.14",
     "react-sortablejs": "^6.1.4",
     "sortablejs": "^1.15.7",
-    "uiohook-napi": "^1.5.4"
+    "uiohook-napi": "^1.5.4",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@electron/asar": "^4.1.1",

@@ -47,6 +47,7 @@ export const APP_MACRO_DEFS = [
   { id: 'pasteRegex', label: 'Paste Current Regex' },
   { id: 'useSavedRegex', label: 'Use Saved Regex' },
   { id: 'closeOverlay', label: 'Close Overlay' },
+  { id: 'toggleWhiteboard', label: 'Toggle Whiteboard' },
 ] as const
 
 export function generateClientCategoryId(): string {

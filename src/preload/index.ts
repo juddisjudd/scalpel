@@ -9,6 +9,7 @@ import type {
   OverlayData,
 } from '../shared/types'
 import type { ExternalLinkTarget } from '../shared/external-link'
+import type { BoardLibrary, BoardSnapshot, BoardState } from '../shared/whiteboard-types'
 
 export const api = {
   // Manifest
@@ -576,6 +577,49 @@ export const api = {
     const handler = (_: Electron.IpcRendererEvent, info: { version: string; message: string | null }): void => cb(info)
     ipcRenderer.on('bricked-release', handler)
     return () => ipcRenderer.removeListener('bricked-release', handler)
+  },
+
+  // Clipboard (system, not whiteboard-specific). Image reads go through main
+  // because `navigator.clipboard.read()` in the renderer needs a permission
+  // grant Scalpel doesn't issue.
+  clipboardReadImage: (): Promise<{ src: string } | null> => ipcRenderer.invoke('clipboard:read-image'),
+
+  // Whiteboard
+  whiteboard: {
+    requestClose: (): void => ipcRenderer.send('whiteboard:request-close'),
+    setMode: (mode: 'edit' | 'play'): void => ipcRenderer.send('whiteboard:set-mode', mode),
+    reportToolbarRects: (rects: Array<{ left: number; top: number; width: number; height: number }>): void =>
+      ipcRenderer.send('report-panel-rect', rects),
+    clearToolbarRect: (): void => ipcRenderer.send('clear-panel-rect'),
+    load: (version: 1 | 2, gameSize: { w: number; h: number }): Promise<BoardLibrary> =>
+      ipcRenderer.invoke('whiteboard:load', version, gameSize),
+    saveActive: (version: 1 | 2, state: BoardState): void => ipcRenderer.send('whiteboard:save-active', version, state),
+    saveAsSnapshot: (version: 1 | 2, name: string, state: BoardState): Promise<{ id: string }> =>
+      ipcRenderer.invoke('whiteboard:save-as-snapshot', version, { name, state }),
+    deleteSnapshot: (version: 1 | 2, id: string): Promise<BoardSnapshot[]> =>
+      ipcRenderer.invoke('whiteboard:delete-snapshot', version, { id }),
+    renameSnapshot: (version: 1 | 2, id: string, name: string): Promise<BoardSnapshot[]> =>
+      ipcRenderer.invoke('whiteboard:rename-snapshot', version, { id, name }),
+    onPleaseFlush: (cb: () => void): (() => void) => {
+      const handler = (): void => cb()
+      ipcRenderer.on('whiteboard:please-flush', handler)
+      return () => ipcRenderer.removeListener('whiteboard:please-flush', handler)
+    },
+    onShown: (cb: () => void): (() => void) => {
+      const handler = (): void => cb()
+      ipcRenderer.on('whiteboard:shown', handler)
+      return () => ipcRenderer.removeListener('whiteboard:shown', handler)
+    },
+    onHidden: (cb: () => void): (() => void) => {
+      const handler = (): void => cb()
+      ipcRenderer.on('whiteboard:hidden', handler)
+      return () => ipcRenderer.removeListener('whiteboard:hidden', handler)
+    },
+    /** Ask main to re-fire `whiteboard:shown` if the window is currently
+     *  visible. Lets a late-mounting renderer (e.g. the Toolbar, which only
+     *  mounts after an async version probe) pull the show event when it
+     *  missed the original push. */
+    requestShownState: (): void => ipcRenderer.send('whiteboard:request-shown-state'),
   },
 }
 

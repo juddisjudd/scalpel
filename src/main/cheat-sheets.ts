@@ -87,6 +87,12 @@ export function toggleCheatSheets(categoryId?: string): void {
     overlay.send('cheat-sheet:focus-category', categoryId)
     return
   }
+  // Mutual exclusion: hide the whiteboard before showing the cheat sheet.
+  if (!wasVisible) {
+    import('./whiteboard').then(({ getWhiteboardOverlay }) => {
+      getWhiteboardOverlay()?.hide()
+    })
+  }
   // First open of the session creates the window asynchronously; stash the
   // category so onFirstShow can deliver it after did-finish-load. For
   // already-loaded windows the send below delivers immediately.

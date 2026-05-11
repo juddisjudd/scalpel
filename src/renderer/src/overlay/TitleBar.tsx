@@ -63,7 +63,7 @@ export function TitleBar({
           <button
             onClick={() => onSetView('tools')}
             title="Tools"
-            className="w-[30px] h-[30px] flex items-center justify-center bg-accent text-[#171821]"
+            className="btn-bounce w-[30px] h-[30px] flex items-center justify-center bg-accent text-[#171821]"
           >
             <Flask size={16} {...IP} />
           </button>
@@ -75,7 +75,7 @@ export function TitleBar({
           <button
             onClick={() => onSetView('audit')}
             title="Price Audit"
-            className="w-[30px] h-[30px] flex items-center justify-center bg-accent text-[#171821]"
+            className="btn-bounce w-[30px] h-[30px] flex items-center justify-center bg-accent text-[#171821]"
           >
             <ChartHistogram size={16} {...IP} />
           </button>
@@ -87,7 +87,7 @@ export function TitleBar({
               if (overlayData) onSetView('item')
             }}
             title="Filter Editor"
-            className="p-0.5 w-[30px] h-[30px] flex items-center justify-center"
+            className="btn-bounce p-0.5 w-[30px] h-[30px] flex items-center justify-center"
             style={{
               background: view === 'item' ? 'var(--accent)' : undefined,
               color: view === 'item' ? '#171821' : undefined,
@@ -124,7 +124,7 @@ export function TitleBar({
             onClick={() => hasPriceCheckData && onSetView('pricecheck')}
             disabled={!hasPriceCheckData}
             title={hasPriceCheckData ? 'Price Checker' : 'Price Checker (no item checked yet)'}
-            className="w-[30px] h-[30px] flex items-center justify-center disabled:cursor-default"
+            className="btn-bounce w-[30px] h-[30px] flex items-center justify-center disabled:cursor-default"
             style={{
               background: view === 'pricecheck' ? 'var(--accent)' : undefined,
               color: view === 'pricecheck' ? '#171821' : undefined,
@@ -138,7 +138,7 @@ export function TitleBar({
           <button
             onClick={() => onSetView('dust')}
             title="Dust Explorer"
-            className="w-[30px] h-[30px] flex items-center justify-center p-0.5"
+            className="btn-bounce w-[30px] h-[30px] flex items-center justify-center p-0.5"
             style={{
               background: view === 'dust' ? 'var(--accent)' : undefined,
             }}
@@ -150,7 +150,7 @@ export function TitleBar({
           <button
             onClick={() => onSetView('divcards')}
             title="Div Card Explorer"
-            className="w-[30px] h-[30px] flex items-center justify-center p-0.5 text-[15px]"
+            className="btn-bounce w-[30px] h-[30px] flex items-center justify-center p-0.5 text-[15px]"
             style={{
               background: view === 'divcards' ? 'var(--accent)' : undefined,
             }}
@@ -162,7 +162,7 @@ export function TitleBar({
           <button
             onClick={() => onSetView('regex')}
             title="Regex Tool"
-            className="w-[30px] h-[30px] flex items-center justify-center p-0.5"
+            className="btn-bounce w-[30px] h-[30px] flex items-center justify-center p-0.5"
             style={{
               background: view === 'regex' ? 'var(--accent)' : undefined,
             }}
@@ -177,7 +177,7 @@ export function TitleBar({
         )}
         <button
           onClick={() => onSetView('setup')}
-          className="w-[30px] h-[30px] flex items-center justify-center"
+          className="btn-bounce w-[30px] h-[30px] flex items-center justify-center"
           style={{
             background: view === 'setup' ? 'var(--accent)' : undefined,
             color: view === 'setup' ? '#171821' : undefined,
@@ -185,7 +185,7 @@ export function TitleBar({
         >
           <Setting size={16} {...IP} />
         </button>
-        <button onClick={onClose} className="w-[30px] h-[30px] flex items-center justify-center">
+        <button onClick={onClose} className="btn-bounce w-[30px] h-[30px] flex items-center justify-center">
           <CloseSmall size={16} {...IP} />
         </button>
       </div>
