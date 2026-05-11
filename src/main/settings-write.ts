@@ -67,7 +67,7 @@ export function applySetting<K extends keyof AppSettings>(
   if (key === 'stashScrollEnabled') setStashScrollEnabled(value as boolean)
   if (key === 'openSide') setOpenSide(value as AppSettings['openSide'])
   if (key === 'updateChannel') setUpdateChannel(value as string)
-  if (key === 'useCurrentZoneAreaLevel') reEvaluateLastItem()
+  if (key === 'useCurrentZoneAreaLevel' && value !== prev) reEvaluateLastItem()
   if (key === 'cheatSheets') applyCheatSheetHotkeys(value as AppSettings['cheatSheets'])
 
   broadcastSettingUpdate(sender, key, value)
