@@ -19,16 +19,27 @@ export function startClientLogWatcher(overlayWindow: BrowserWindow): void {
     const parsed = parseClientLogLine(line)
     if (parsed) ingestZoneEvent(parsed)
   })
-  onZoneChanged((zone) => {
-    if (overlayWindow.isDestroyed()) return
-    overlayWindow.webContents.send('zone-changed', zone)
-  })
-  // Send the current state immediately so a renderer that mounts after
-  // the first zone change picks up the existing state instead of waiting
-  // for the next one.
-  if (!overlayWindow.isDestroyed()) {
-    overlayWindow.webContents.send('zone-changed', getCurrentZone())
-  }
+  forwardZoneChangesTo(() => overlayWindow)
+  sendCurrentZoneTo(overlayWindow)
 }
 
-export { getCurrentZone } from './zone-state'
+export { getCurrentZone, onZoneChanged } from './zone-state'
+
+/** Wire a window to receive `zone-changed` IPCs on every Client.txt zone
+ *  change. The getter lets the secondary-overlay system register its forwarder
+ *  before the window is lazily created on first show. Used by every overlay
+ *  that reacts to the player's zone. */
+export function forwardZoneChangesTo(getWin: () => BrowserWindow | null): void {
+  onZoneChanged((zone) => {
+    const win = getWin()
+    if (!win || win.isDestroyed()) return
+    win.webContents.send('zone-changed', zone)
+  })
+}
+
+/** Send the current zone to a window once. Pair with `onFirstShow` so the
+ *  renderer reflects state immediately rather than waiting for the next
+ *  Client.txt event. */
+export function sendCurrentZoneTo(win: BrowserWindow): void {
+  if (!win.isDestroyed()) win.webContents.send('zone-changed', getCurrentZone())
+}

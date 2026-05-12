@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import { GridFour, GridNine, GridSixteen } from '@icon-park/react'
+import { useEffect, useRef, useState } from 'react'
+import { GridFour, GridNine, GridSixteen, Pin } from '@icon-park/react'
 import type { CheatSheetsSettings, CheatSheetCategory } from '../../../shared/types'
 import { Chrome } from '../secondary-overlay/Chrome'
+import { useStickyZone } from '../shared/use-current-zone'
 
 /** Three thumbnail sizes the user can flip between via the header icons. The
  *  3:2 aspect ratio is preserved so thumb sources don't need re-cropping. */
@@ -31,6 +32,7 @@ export function App(): JSX.Element {
   const [settings, setSettings] = useState<CheatSheetsSettings | null>(null)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const [thumbSize, setThumbSize] = useState<ThumbSize>(loadThumbSize)
+  const currentZone = useStickyZone()
 
   useEffect(() => {
     void window.api.getSettings().then((s) => {
@@ -59,8 +61,18 @@ export function App(): JSX.Element {
 
   if (!settings) return <div />
 
+  const pinned = settings.pinned === true
   const onClose = (): void => window.api.closeCheatSheets()
-  const sizeControls = <SizeControls value={thumbSize} onChange={setThumbSize} />
+  const togglePin = (): void => {
+    // Optimistic local update: broadcastSettingUpdate skips the sender, so we
+    // never get our own echo back. Update local state immediately, then persist.
+    const next: CheatSheetsSettings = { ...settings, pinned: !pinned }
+    setSettings(next)
+    void window.api.setSetting('cheatSheets', next)
+  }
+  const sizeControls = (
+    <SizeControls value={thumbSize} onChange={setThumbSize} pinned={pinned} onTogglePin={togglePin} />
+  )
 
   if (settings.categories.length === 0) {
     return (
@@ -88,7 +100,14 @@ export function App(): JSX.Element {
     <Chrome onClose={onClose} headerContent={tabs} headerEnd={sizeControls}>
       <div className="flex-1 overflow-y-auto p-2 flex flex-wrap gap-2 content-start">
         {active.sheets.map((sheet) => (
-          <Thumbnail key={sheet.id} categoryId={active.id} sheet={sheet} width={dims.w} height={dims.h} />
+          <Thumbnail
+            key={sheet.id}
+            categoryId={active.id}
+            sheet={sheet}
+            width={dims.w}
+            height={dims.h}
+            isCurrentZone={!!currentZone && (sheet.areaCodes?.includes(currentZone.areaCode) ?? false)}
+          />
         ))}
       </div>
     </Chrome>
@@ -119,7 +138,17 @@ function CategoryTabs({
   )
 }
 
-function SizeControls({ value, onChange }: { value: ThumbSize; onChange: (s: ThumbSize) => void }): JSX.Element {
+function SizeControls({
+  value,
+  onChange,
+  pinned,
+  onTogglePin,
+}: {
+  value: ThumbSize
+  onChange: (s: ThumbSize) => void
+  pinned: boolean
+  onTogglePin: () => void
+}): JSX.Element {
   // Order matches the visual progression on screen: GridFour = fewest cells in
   // the icon = largest thumbs in the grid. Hover bumps inactive icons to full
   // white; active stays gold.
@@ -128,12 +157,22 @@ function SizeControls({ value, onChange }: { value: ThumbSize; onChange: (s: Thu
     { key: 'medium', Icon: GridNine, title: 'Medium thumbnails' },
     { key: 'small', Icon: GridSixteen, title: 'Small thumbnails' },
   ]
+  // lineHeight:0 strips the inline baseline padding the icon-park <span>
+  // wrapper inherits, so the glyph optically centers in the 24x24 box.
+  const pinStyle: React.CSSProperties = { lineHeight: 0, color: pinned ? ACTIVE_COLOR : undefined }
   return (
     <>
+      <button
+        type="button"
+        onClick={onTogglePin}
+        title="Pin current zone overlay"
+        className={`w-6 h-6 flex items-center justify-center transition-colors ${pinned ? '' : 'text-text-dim hover:text-text'}`}
+        style={pinStyle}
+      >
+        <Pin size={15} theme="outline" fill="currentColor" />
+      </button>
       {buttons.map(({ key, Icon, title }) => {
         const active = value === key
-        // lineHeight:0 strips the inline baseline padding the icon-park <span>
-        // wrapper inherits, so the glyph optically centers in the 24x24 box.
         const baseStyle: React.CSSProperties = { lineHeight: 0 }
         const style = active ? { ...baseStyle, color: ACTIVE_COLOR } : baseStyle
         return (
@@ -158,18 +197,33 @@ function Thumbnail({
   sheet,
   width,
   height,
+  isCurrentZone,
 }: {
   categoryId: string
-  sheet: { id: string; ext: string }
+  sheet: { id: string; ext: string; areaCodes?: string[] }
   width: number
   height: number
+  isCurrentZone: boolean
 }): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
   const fullSrc = `cheatsheet://${categoryId}/${sheet.id}.${sheet.ext}`
   const thumbSrc = `${fullSrc}?thumb=1`
+
+  useEffect(() => {
+    if (isCurrentZone) {
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
+  }, [isCurrentZone])
+
+  const ringStyle: React.CSSProperties = isCurrentZone
+    ? { boxShadow: '0 0 0 2px #fbbf24, 0 0 8px rgba(251, 191, 36, 0.6)' }
+    : {}
+
   return (
     <div
+      ref={ref}
       className="relative rounded overflow-hidden bg-black/30 cursor-pointer transition-[width,height] duration-150"
-      style={{ width, height }}
+      style={{ width, height, ...ringStyle }}
       onMouseEnter={() => window.api.showCheatSheetPreview(fullSrc)}
       onMouseLeave={() => window.api.hideCheatSheetPreview()}
     >

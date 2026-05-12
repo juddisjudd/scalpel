@@ -1,16 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-vi.mock('../game-state', () => ({
-  getPoeVersion: vi.fn(() => 1 as 1 | 2),
-}))
-
-import { getPoeVersion } from '../game-state'
 import { getCurrentZone, onZoneChanged, ingestZoneEvent, _resetForTests } from './zone-state'
 
 describe('zone-state', () => {
   beforeEach(() => {
     _resetForTests()
-    vi.mocked(getPoeVersion).mockReturnValue(1)
   })
 
   it('starts with null current zone', () => {
@@ -22,10 +16,10 @@ describe('zone-state', () => {
     expect(getCurrentZone()).toEqual({ areaLevel: 68, areaCode: 'MapWorldsAtoll' })
   })
 
-  it('clears current zone on town/hideout event', () => {
+  it('stores town/hideout events verbatim', () => {
     ingestZoneEvent({ areaLevel: 68, areaCode: 'MapWorldsAtoll' })
     ingestZoneEvent({ areaLevel: 1, areaCode: 'HideoutLuxurious' })
-    expect(getCurrentZone()).toBeNull()
+    expect(getCurrentZone()).toEqual({ areaLevel: 1, areaCode: 'HideoutLuxurious' })
   })
 
   it('emits to subscribers on real zone change', () => {
@@ -36,11 +30,11 @@ describe('zone-state', () => {
     expect(cb).toHaveBeenCalledWith({ areaLevel: 68, areaCode: 'MapWorldsAtoll' })
   })
 
-  it('emits null to subscribers on town/hideout', () => {
+  it('emits town/hideout events verbatim to subscribers', () => {
     const cb = vi.fn()
     onZoneChanged(cb)
     ingestZoneEvent({ areaLevel: 1, areaCode: '3_town' })
-    expect(cb).toHaveBeenCalledWith(null)
+    expect(cb).toHaveBeenCalledWith({ areaLevel: 1, areaCode: '3_town' })
   })
 
   it('unsubscribe stops further emissions', () => {
@@ -49,11 +43,5 @@ describe('zone-state', () => {
     off()
     ingestZoneEvent({ areaLevel: 68, areaCode: 'MapWorldsAtoll' })
     expect(cb).not.toHaveBeenCalled()
-  })
-
-  it('uses game-state to pick the right town list', () => {
-    vi.mocked(getPoeVersion).mockReturnValue(2)
-    ingestZoneEvent({ areaLevel: 1, areaCode: 'G1_town' })
-    expect(getCurrentZone()).toBeNull()
   })
 })

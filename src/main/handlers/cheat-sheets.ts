@@ -12,6 +12,7 @@ import {
   showPreview,
   hidePreview,
 } from '../cheat-sheets'
+import { setPinnedZoneRendererVisible, setPinnedZoneContentHeight } from '../pinned-zone'
 import { getOverlayWindow, showOverlay } from '../overlay'
 import { aroundNativeDialog } from '../windowing'
 import { PREFAB_PACKS } from '../../shared/data/cheat-sheet-prefabs'
@@ -62,16 +63,19 @@ export function register(): void {
    *  contract so the same renderer plumbing handles both. */
   ipcMain.handle(
     'cheat-sheet:import-prefab',
-    async (_event, slug: string): Promise<{ categoryId: string; sheets: Array<{ id: string; ext: string }> }> => {
+    async (
+      _event,
+      slug: string,
+    ): Promise<{ categoryId: string; sheets: Array<{ id: string; ext: string; areaCodes?: string[] }> }> => {
       const pack = PREFAB_PACKS.find((p) => p.slug === slug)
       if (!pack) throw new Error(`Unknown prefab pack: ${slug}`)
       const categoryId = generateCategoryId()
-      const sheets: Array<{ id: string; ext: string }> = []
-      for (const relPath of pack.images) {
-        const { buffer, ext } = await fetchImageBuffer(CHEAT_SHEET_PREFAB_BASE_URL + relPath)
+      const sheets: Array<{ id: string; ext: string; areaCodes?: string[] }> = []
+      for (const img of pack.images) {
+        const { buffer, ext } = await fetchImageBuffer(CHEAT_SHEET_PREFAB_BASE_URL + img.path)
         const id = generateSheetId()
         saveSheetBuffer(categoryId, id, ext, buffer)
-        sheets.push({ id, ext })
+        sheets.push({ id, ext, areaCodes: img.areaCodes.length > 0 ? img.areaCodes : undefined })
       }
       return { categoryId, sheets }
     },
@@ -115,4 +119,12 @@ export function register(): void {
   ipcMain.on('cheat-sheet-preview:show', (_e, src: string) => showPreview(src))
 
   ipcMain.on('cheat-sheet-preview:hide', () => hidePreview())
+
+  ipcMain.on('pinned-zone:set-visible', (_e, visible: boolean) => {
+    setPinnedZoneRendererVisible(visible)
+  })
+
+  ipcMain.on('pinned-zone:set-content-height', (_e, height: number) => {
+    setPinnedZoneContentHeight(height)
+  })
 }

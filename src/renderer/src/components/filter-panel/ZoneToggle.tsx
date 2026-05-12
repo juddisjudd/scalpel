@@ -1,4 +1,6 @@
 import type { Zone } from '../../../../shared/types'
+import { isTownOrHideout } from '../../../../shared/is-town-or-hideout'
+import { usePoeVersion } from '../../shared/poe-version-context'
 import { Toggle } from '../Toggle'
 
 interface ZoneToggleProps {
@@ -18,11 +20,13 @@ const ZONE_TOGGLE_LEVEL_CAP = 75
 /** Row that lets the user opt in to overriding the displayed item's
  *  areaLevel with the live zone level from Client.txt. Designed to be
  *  rendered inside ItemSummary's `extraRow` slot. Returns null when the
- *  player isn't in a real drop zone (town, hideout, or no zone seen
- *  yet) or is already in a high-tier map, so the call site doesn't
- *  need to guard. */
+ *  player is in a town or hideout (filtered here, not in the zone watcher),
+ *  when no zone has been seen yet, or when already in a high-tier map, so
+ *  the call site doesn't need to guard. */
 export function ZoneToggle({ currentZone, enabled, onChange }: ZoneToggleProps): JSX.Element | null {
+  const poeVersion = usePoeVersion()
   if (!currentZone) return null
+  if (isTownOrHideout(currentZone.areaCode, poeVersion)) return null
   if (currentZone.areaLevel > ZONE_TOGGLE_LEVEL_CAP) return null
   return (
     <div className="flex mt-0.5">

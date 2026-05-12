@@ -12,6 +12,7 @@ import { loadFilter } from './filter-state'
 import { getOverlayWindow, setCloseOnClickOutside } from './overlay'
 import { getAppWindow } from './app-window'
 import { applyCheatSheetHotkeys, getCheatSheetsOverlay } from './cheat-sheets'
+import { applyPinnedZoneEnabled, getPinnedZoneOverlay } from './pinned-zone'
 import { setHotkey, setPriceCheckHotkey, setChatCommands, setAppMacros, setStashScrollEnabled } from './hotkeys'
 import { setOpenSide, reEvaluateLastItem } from './evaluation'
 import { refreshPrices } from './trade/prices'
@@ -33,7 +34,8 @@ const MIRROR_KEYS = {
 /** Send `setting-updated` to every window except the sender. */
 export function broadcastSettingUpdate(sender: WebContents | null, key: keyof AppSettings, value: unknown): void {
   const csWin = getCheatSheetsOverlay()?.getWindow() ?? null
-  for (const win of [getOverlayWindow(), getAppWindow(), csWin]) {
+  const pinnedWin = getPinnedZoneOverlay()?.getWindow() ?? null
+  for (const win of [getOverlayWindow(), getAppWindow(), csWin, pinnedWin]) {
     if (win && win.webContents !== sender) {
       win.webContents.send('setting-updated', key, value)
     }
@@ -68,7 +70,14 @@ export function applySetting<K extends keyof AppSettings>(
   if (key === 'openSide') setOpenSide(value as AppSettings['openSide'])
   if (key === 'updateChannel') setUpdateChannel(value as string)
   if (key === 'useCurrentZoneAreaLevel' && value !== prev) reEvaluateLastItem()
-  if (key === 'cheatSheets') applyCheatSheetHotkeys(value as AppSettings['cheatSheets'])
+  if (key === 'cheatSheets') {
+    const next = value as AppSettings['cheatSheets']
+    applyCheatSheetHotkeys(next)
+    const prevCs = prev as AppSettings['cheatSheets'] | undefined
+    if ((next?.pinned ?? false) !== (prevCs?.pinned ?? false)) {
+      applyPinnedZoneEnabled(next?.pinned === true)
+    }
+  }
 
   broadcastSettingUpdate(sender, key, value)
 }

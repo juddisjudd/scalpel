@@ -23,6 +23,7 @@ export default defineConfig({
           cheatSheetsGrid: resolve(__dirname, 'src/renderer/cheat-sheets-grid.html'),
           secondaryOverlayCanvas: resolve(__dirname, 'src/renderer/secondary-overlay-canvas.html'),
           whiteboard: resolve(__dirname, 'src/renderer/whiteboard.html'),
+          pinnedZone: resolve(__dirname, 'src/renderer/pinned-zone.html'),
         }
       }
     }

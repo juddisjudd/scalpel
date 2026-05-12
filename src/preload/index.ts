@@ -189,8 +189,12 @@ export const api = {
     ipcRenderer.invoke('cheat-sheet:remove-category', categoryId),
   listCheatSheetPrefabs: (): Promise<Array<{ slug: string; name: string; imageCount: number; poeVersion?: 1 | 2 }>> =>
     ipcRenderer.invoke('cheat-sheet:list-prefabs'),
-  importCheatSheetPrefab: (slug: string): Promise<{ categoryId: string; sheets: Array<{ id: string; ext: string }> }> =>
+  importCheatSheetPrefab: (
+    slug: string,
+  ): Promise<{ categoryId: string; sheets: Array<{ id: string; ext: string; areaCodes?: string[] }> }> =>
     ipcRenderer.invoke('cheat-sheet:import-prefab', slug),
+  pinnedZoneSetVisible: (visible: boolean): void => ipcRenderer.send('pinned-zone:set-visible', visible),
+  pinnedZoneSetContentHeight: (height: number): void => ipcRenderer.send('pinned-zone:set-content-height', height),
   closeCheatSheets: (): void => ipcRenderer.send('cheat-sheet:close'),
   openSettingsTab: (tab: string): void => ipcRenderer.send('open-settings-tab', tab),
   showCheatSheetPreview: (src: string): void => ipcRenderer.send('cheat-sheet-preview:show', src),

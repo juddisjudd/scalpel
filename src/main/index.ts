@@ -69,6 +69,7 @@ import {
   getCheatSheetsOverlay,
 } from './cheat-sheets'
 import { registerWhiteboardOverlay, toggleWhiteboard } from './whiteboard'
+import { registerPinnedZoneOverlay, applyPinnedZoneEnabled } from './pinned-zone'
 import {
   hideAllOnPoeBlur,
   restoreAllOnPoeFocus,
@@ -77,7 +78,7 @@ import {
   setOnLeaveScalpel,
   subscribeToPoeMoves,
 } from './windowing'
-import type { AppSettings, RegexPreset } from '../shared/types'
+import type { AppSettings, CheatSheetsSettings, RegexPreset } from '../shared/types'
 
 // ---- Elevation detection ---------------------------------------------------
 
@@ -122,9 +123,9 @@ const store = new Store<AppSettings>({
     tradeDefaultToBase: false,
     chatCommands: [],
     appMacros: [],
-    cheatSheets: { globalHotkey: '', categories: [] },
-    cheatSheetsPoe1: { globalHotkey: '', categories: [] },
-    cheatSheetsPoe2: { globalHotkey: '', categories: [] },
+    cheatSheets: { globalHotkey: '', categories: [], pinned: false },
+    cheatSheetsPoe1: { globalHotkey: '', categories: [], pinned: false },
+    cheatSheetsPoe2: { globalHotkey: '', categories: [], pinned: false },
     stashScrollEnabled: false,
     poeVersion: 1,
     regexPresetsPoe1: [],
@@ -408,25 +409,32 @@ app.whenReady().then(() => {
   // anchor persists into settings.cheatSheets.windowAnchor; the system handles
   // window lifecycle, snap, alt-tab guard, etc. and the wireCheatSheetHotkeys
   // helper below feeds the global + per-category hotkeys into the shared system.
+  // Persist a partial cheatSheets update from a main-side callback (anchor
+  // drag, etc.). Mirrors the flat write to the active game's per-version slot
+  // so the user's change survives a game switch. The IPC settings path
+  // (set-setting -> applySetting) does this via MIRROR_KEYS for renderer-
+  // initiated writes; this is the parallel path for main-initiated ones.
+  const patchCheatSheets = (patch: Partial<CheatSheetsSettings>): void => {
+    const cs = store.get('cheatSheets') ?? { globalHotkey: '', categories: [], pinned: false }
+    const next: CheatSheetsSettings = { ...cs, ...patch }
+    store.set('cheatSheets', next)
+    const v = store.get('poeVersion')
+    store.set(v === 2 ? 'cheatSheetsPoe2' : 'cheatSheetsPoe1', next)
+  }
   registerCheatSheetsOverlay({
     storedAnchor: () => store.get('cheatSheets')?.windowAnchor,
-    onAnchorChanged: (anchor) => {
-      const cs = store.get('cheatSheets') ?? { globalHotkey: '', categories: [] }
-      const next = { ...cs, windowAnchor: anchor }
-      store.set('cheatSheets', next)
-      // Mirror to the per-game slot too. The IPC settings path (set-setting)
-      // does this via MIRROR_KEYS, but anchor writes go through this direct
-      // store.set callback - without the mirror, the user's repositioned anchor
-      // would revert on the next game switch.
-      const v = store.get('poeVersion')
-      store.set(v === 2 ? 'cheatSheetsPoe2' : 'cheatSheetsPoe1', next)
-    },
+    onAnchorChanged: (anchor) => patchCheatSheets({ windowAnchor: anchor }),
   })
   // Hide the main overlay before showing the cheat sheet (keeps things tidy if
   // the user hotkeys the cheat sheet while the main overlay was open).
   setCheatSheetsBeforeShow(() => hideOverlay())
   applyCheatSheetHotkeys(store.get('cheatSheets'))
   registerWhiteboardOverlay()
+  registerPinnedZoneOverlay({
+    storedAnchor: () => store.get('cheatSheets')?.pinnedAnchor,
+    onAnchorChanged: (anchor) => patchCheatSheets({ pinnedAnchor: anchor }),
+  })
+  applyPinnedZoneEnabled(store.get('cheatSheets')?.pinned === true)
   subscribeToPoeMoves()
   setStashScrollEnabled(store.get('stashScrollEnabled') ?? false)
   setOpenSide(store.get('openSide') ?? 'both')

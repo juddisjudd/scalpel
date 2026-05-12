@@ -30,9 +30,9 @@ const POE2_TOWNS: ReadonlySet<string> = new Set([
 
 const HIDEOUT_PATTERN = /hideout/i
 
-/** True for any area where items don't drop (towns or hideouts). The
- *  FilterPanel uses this to decide whether the "Use Current Zone" toggle
- *  should be visible. */
+/** True for any area where items don't drop (towns or hideouts). Consumers
+ *  use this to decide whether to suppress zone-level overrides or hide
+ *  zone-related UI. */
 export function isTownOrHideout(areaCode: string, version: 1 | 2): boolean {
   if (HIDEOUT_PATTERN.test(areaCode)) return true
   return (version === 2 ? POE2_TOWNS : POE1_TOWNS).has(areaCode)

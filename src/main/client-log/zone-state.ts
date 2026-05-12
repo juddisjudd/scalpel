@@ -1,35 +1,30 @@
 import { EventEmitter } from 'node:events'
 import type { Zone } from '../../shared/types'
-import { getPoeVersion } from '../game-state'
-import { isTownOrHideout } from './is-town-or-hideout'
 
 let currentZone: Zone | null = null
+// Default max listeners (10) is generous: three production subscribers today
+// (client-log/index.ts -> primary overlay, cheat-sheets.ts, pinned-zone.ts)
+// plus headroom. Leaving the default keeps Node's leak warning available as
+// a tripwire when something forgets to unsubscribe.
 const emitter = new EventEmitter()
-emitter.setMaxListeners(3)
 
-/** Latest known real (non-town, non-hideout) zone. Null at startup and
- *  whenever the player enters a town or hideout. */
+/** Latest known zone. Null at startup only. Towns and hideouts are stored
+ *  as-is; consumers that want to filter them call isTownOrHideout themselves. */
 export function getCurrentZone(): Zone | null {
   return currentZone
 }
 
-/** Subscribe to zone-state changes. Fires with the new value on every
- *  ingest, including null when entering a town/hideout. Returns an
- *  unsubscribe function. */
+/** Subscribe to zone-state changes. Fires with the new zone value on every
+ *  ingest, including towns and hideouts. Returns an unsubscribe function. */
 export function onZoneChanged(cb: (zone: Zone | null) => void): () => void {
   emitter.on('change', cb)
   return () => emitter.off('change', cb)
 }
 
 /** Watcher-facing entry point. Called once per parsed Client.txt
- *  "Generating level ..." line. Filters towns and hideouts to null;
- *  stores and broadcasts real zones unchanged. */
+ *  "Generating level ..." line. Stores the zone verbatim and broadcasts it. */
 export function ingestZoneEvent(parsed: Zone): void {
-  if (isTownOrHideout(parsed.areaCode, getPoeVersion())) {
-    currentZone = null
-  } else {
-    currentZone = parsed
-  }
+  currentZone = parsed
   emitter.emit('change', currentZone)
 }
 

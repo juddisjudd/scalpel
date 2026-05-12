@@ -108,7 +108,11 @@ export function CategoryCard({
         <PlaceholderTile onClickFile={addFromFile} onClickUrl={() => setUrlInput('')} />
         <ReactSortable
           list={category.sheets.map((s) => ({ ...s }))}
-          setList={(next) => onUpdate({ ...category, sheets: next.map((s) => ({ id: s.id, ext: s.ext })) })}
+          // The list items are shallow copies of CheatSheet, so we can spread
+          // them straight back without picking specific fields. Picking only
+          // id+ext here previously stripped optional fields like areaCodes,
+          // which fires on every mount even without a user drag.
+          setList={(next) => onUpdate({ ...category, sheets: next.map((s) => ({ ...s })) })}
           animation={150}
           handle=".sheet-grab"
           className="contents"

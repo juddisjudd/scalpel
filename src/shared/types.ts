@@ -313,6 +313,10 @@ export interface CheatSheet {
   label?: string
   /** Filename extension stored separately from id so we can reconstruct the on-disk path. */
   ext: string
+  /** Area codes from Client.txt that this sheet's zone matches. Populated
+   *  only for prefab-imported sheets; user-uploaded sheets have no
+   *  zone metadata. */
+  areaCodes?: string[]
 }
 
 export interface CheatSheetCategory {
@@ -338,6 +342,12 @@ export interface CheatSheetsSettings {
   globalHotkey: string
   categories: CheatSheetCategory[]
   windowAnchor?: OverlayAnchor
+  /** True when the user has the pinned-zone mini-overlay enabled. */
+  pinned?: boolean
+  /** Anchor for the pinned-zone overlay window. The fracH is content-driven
+   *  at runtime and may not match what's persisted here; only fracX/Y/W are
+   *  authoritative across restarts. */
+  pinnedAnchor?: OverlayAnchor
 }
 
 export interface AppSettings {

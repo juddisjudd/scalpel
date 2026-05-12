@@ -4,6 +4,7 @@ import { OverlayController } from 'electron-overlay-window'
 import { getCurrentFilter } from './filter-state'
 import { readItemFromClipboard } from './trade/clipboard'
 import { getCurrentZone } from './client-log'
+import { isTownOrHideout } from '../shared/is-town-or-hideout'
 import {
   findMatchingBlocks,
   findStackSizeBreakpoints,
@@ -117,6 +118,7 @@ function applyZoneAreaLevel(item: PoeItem): PoeItem {
   if (!storeRef?.get('useCurrentZoneAreaLevel')) return item
   const zone = getCurrentZone()
   if (!zone) return item
+  if (isTownOrHideout(zone.areaCode, getPoeVersion())) return item
   return { ...item, areaLevel: zone.areaLevel }
 }
 

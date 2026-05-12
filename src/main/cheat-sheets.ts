@@ -2,6 +2,7 @@ import { screen } from 'electron'
 import { OverlayController } from 'electron-overlay-window'
 import { registerSecondaryOverlay, sendCanvasIpc, moveCanvasTop, type SecondaryOverlay } from './windowing'
 import { setSecondaryOverlayHotkeys } from './hotkeys'
+import { forwardZoneChangesTo, sendCurrentZoneTo } from './client-log'
 import type { AppSettings, OverlayAnchor } from '../shared/types'
 
 // Re-export the pure storage / image-fetch helpers so consumers (handlers,
@@ -59,8 +60,10 @@ export function registerCheatSheetsOverlay(deps: {
       // dropped, so we wait until now to flush it.
       win.webContents.send('cheat-sheet:focus-category', pendingFocusCategory)
       pendingFocusCategory = undefined
+      sendCurrentZoneTo(win)
     },
   })
+  forwardZoneChangesTo(() => overlay?.getWindow() ?? null)
   return overlay
 }
 
