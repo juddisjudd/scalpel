@@ -28,9 +28,13 @@ export {
 
 // ---- Overlay registration ---------------------------------------------------
 
+// Mount point: horizontally centered, bottom edge 17/1080 above the game's
+// bottom (just above PoE's XP bar at 1080p). fracX = (1 - fracW)/2 places the
+// default-sized rect's center on the game's horizontal center; fracY is set
+// so fracY + fracH = 1 - 17/1080 = ~0.9843.
 const DEFAULT_ANCHOR: OverlayAnchor = {
   fracX: 0.2695,
-  fracY: 0.8343,
+  fracY: 0.8463,
   fracW: 0.4609,
   fracH: 0.138,
 }
@@ -59,6 +63,15 @@ export function registerCheatSheetsOverlay(deps: {
     defaultAnchor: () => DEFAULT_ANCHOR,
     storedAnchor: () => storedAnchorGetter(),
     onAnchorChanged: (a) => onAnchorChangedFn?.(a),
+    // Re-center horizontally and bottom-align against the default rect so the
+    // snap ghost tracks the user's resize - dragging a narrower or shorter
+    // window near the mount still snaps it centered and just above the XP bar.
+    snapTarget: (defaultRect, cur) => ({
+      x: Math.round(defaultRect.x + defaultRect.width / 2 - cur.width / 2),
+      y: defaultRect.y + defaultRect.height - cur.height,
+      width: cur.width,
+      height: cur.height,
+    }),
     onFirstShow: (win) => {
       // Deliver any focus-category IPC that arrived during the first window
       // creation - webContents.send before did-finish-load is silently

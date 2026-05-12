@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { GridFour, GridNine, GridSixteen, Pin } from '@icon-park/react'
+import { GridFour, GridNine, GridSixteen } from '@icon-park/react'
 import type { CheatSheetsSettings, CheatSheetCategory } from '../../../shared/types'
 import { CHEAT_SHEET_MINIMIZED_HEIGHT, CHEAT_SHEET_MINIMIZED_SLACK } from '../../../shared/cheat-sheet-window'
 import { Chrome } from '../secondary-overlay/Chrome'
@@ -218,11 +218,34 @@ function SizeControls({
       <button
         type="button"
         onClick={onTogglePin}
-        title="Pin current zone overlay"
+        title="Pin zone map to side"
         className={`w-6 h-6 flex items-center justify-center transition-colors ${pinned ? '' : 'text-text-dim hover:text-text'}`}
         style={pinStyle}
       >
-        <Pin size={15} theme="outline" fill="currentColor" />
+        {/* Stripped-down @icon-park `moving-picture` glyph: kept the framed
+            image rect (with its inner horizon line) and the diagonal arrow,
+            culled the eight dotted-border circles. Inline-flex wrapper gives
+            the SVG an intrinsic-sized bounding box that the parent flex
+            container respects (raw <svg> would otherwise be squeezed by the
+            button's global horizontal padding). Rotated -90deg so the arrow
+            points up-and-to-the-left, mirroring "pin map to the side." */}
+        <span style={{ display: 'inline-flex', transform: 'rotate(-90deg)' }}>
+          <svg
+            width={15}
+            height={15}
+            viewBox="0 0 48 48"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="6" y="22" width="20" height="20" rx="3" />
+            <path d="M6 34L12.1195 29.4103C13.2239 28.5821 14.7509 28.6143 15.8192 29.4885L25 37" />
+            <path d="M30 6L42 6L42 18" />
+            <path d="M42 6L30 18" />
+          </svg>
+        </span>
       </button>
       <div ref={wrapRef} className="relative">
         <button

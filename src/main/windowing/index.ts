@@ -3,7 +3,7 @@ import { OverlayController } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
 import { createOverlayWindow } from './window'
 import { prewarmSnapCanvas, setSnapGhost, type Rect } from './snap-canvas'
-import { isAnyScalpelWindowFocused } from './focus'
+import { hideAllOnPoeBlur, isAnyScalpelWindowFocused } from './focus'
 import { fireOnLeaveScalpel, overlays, type OverlayState } from './state'
 
 // Public re-exports - this module is the public face of the windowing system.
@@ -35,6 +35,13 @@ export interface OverlaySpec {
   storedAnchor?: () => OverlayAnchor | undefined
   /** Optional: fired when the user moves or resizes the window. Persist here. */
   onAnchorChanged?: (anchor: OverlayAnchor) => void
+  /** Optional override for how the snap-back rect is derived from the spec's
+   *  default-anchor rect and the window's current size. When omitted, the
+   *  snap target uses the default rect's top-left with the window's current
+   *  size - good when the mount point is the top-left corner. Specs whose
+   *  mount point is conceptually elsewhere (center+bottom, etc.) supply this
+   *  so the ghost (and snap commit) tracks the user's resize. */
+  snapTarget?: (defaultRect: Rect, cur: Rect) => Rect
   /** Fired once after did-finish-load + the very first show. The earliest
    *  safe point to deliver IPCs whose payload was known at registration time
    *  but couldn't be sent during window creation (renderer wasn't mounted
@@ -119,6 +126,7 @@ function snapTargetFor(state: OverlayState, cur: Rect): Rect | null {
   if (!state.win || state.win.isDestroyed()) return null
   const defaultRect = anchorToDipBounds(state.win, state.spec.defaultAnchor())
   if (!defaultRect) return null
+  if (state.spec.snapTarget) return state.spec.snapTarget(defaultRect, cur)
   return { x: defaultRect.x, y: defaultRect.y, width: cur.width, height: cur.height }
 }
 
@@ -314,11 +322,12 @@ function wireWindowEvents(state: OverlayState, win: BrowserWindow): void {
       // (main overlay or sibling secondary) does too. Only hide when focus
       // genuinely left the app.
       if (OverlayController.targetHasFocus || isAnyScalpelWindowFocused()) return
-      if (state.win.isVisible()) {
-        state.wasVisibleBeforeFocusLoss = true
-        state.win.hide()
-      }
-      setSnapGhost(null)
+      // Hide every visible secondary overlay, not just the blurred one. The
+      // user could have clicked an overlay (focusing it) then alt-tabbed away
+      // - the unfocused siblings (e.g. pinned-zone) never got a blur event of
+      // their own, so without this they'd stay floating above the destination
+      // app's window.
+      hideAllOnPoeBlur()
       // Focus left every Scalpel surface. The PoE-blur handler in main can't
       // fire here because PoE was already blurred when focus moved into this
       // overlay; without this hook, hotkeys would stay armed in the
