@@ -1,8 +1,13 @@
 import { screen } from 'electron'
 import { OverlayController } from 'electron-overlay-window'
-import { registerSecondaryOverlay, sendCanvasIpc, moveCanvasTop, type SecondaryOverlay } from './windowing'
+import { registerSecondaryOverlay, sendCanvasIpc, moveCanvasTop, type Rect, type SecondaryOverlay } from './windowing'
 import { setSecondaryOverlayHotkeys } from './hotkeys'
 import { forwardZoneChangesTo, sendCurrentZoneTo } from './client-log'
+import {
+  CHEAT_SHEET_MINIMIZED_WIDTH,
+  CHEAT_SHEET_MINIMIZED_HEIGHT,
+  CHEAT_SHEET_MINIMIZED_SLACK,
+} from '../shared/cheat-sheet-window'
 import type { AppSettings, OverlayAnchor } from '../shared/types'
 
 // Re-export the pure storage / image-fetch helpers so consumers (handlers,
@@ -61,6 +66,9 @@ export function registerCheatSheetsOverlay(deps: {
       win.webContents.send('cheat-sheet:focus-category', pendingFocusCategory)
       pendingFocusCategory = undefined
       sendCurrentZoneTo(win)
+      // Floor drag-resize at the minimized footprint so the user can't
+      // shrink past the header strip.
+      win.setMinimumSize(CHEAT_SHEET_MINIMIZED_WIDTH, CHEAT_SHEET_MINIMIZED_HEIGHT)
     },
   })
   forwardZoneChangesTo(() => overlay?.getWindow() ?? null)
@@ -132,6 +140,102 @@ export function applyCheatSheetHotkeys(cs: AppSettings['cheatSheets']): void {
     hotkeys.push({ accelerator: cat.hotkey, handler: () => fire(id) })
   }
   setSecondaryOverlayHotkeys(hotkeys)
+}
+
+// ---- Minimize / restore ---------------------------------------------------
+
+const ANIMATION_DURATION_MS = 200
+const ANIMATION_FRAME_MS = 16
+/** Default size used when expand is requested but we don't have saved
+ *  pre-minimize bounds (e.g. the user shrank the window manually, or the app
+ *  was restarted while the window was at its minimized footprint). The user
+ *  can resize from there. */
+const DEFAULT_EXPANDED_WIDTH = 460
+const DEFAULT_EXPANDED_HEIGHT = 270
+
+/** Bounds the window had immediately before the user pressed minimize.
+ *  Restored verbatim on un-minimize. Cleared once the restore tween starts
+ *  so a stale entry doesn't outlive its usefulness. */
+let preMinimizeBounds: Rect | null = null
+let animationTimer: NodeJS.Timeout | null = null
+
+function clearAnimationTimer(): void {
+  if (animationTimer) {
+    clearInterval(animationTimer)
+    animationTimer = null
+  }
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
+
+function animateBoundsTo(target: Rect): void {
+  const win = overlay?.getWindow()
+  if (!win || win.isDestroyed()) return
+  clearAnimationTimer()
+  const start = win.getBounds()
+  const startTime = Date.now()
+  animationTimer = setInterval(() => {
+    // Window died mid-animation (close, app shutdown). Stop ticking; the
+    // setBoundsProgrammatic call below would no-op but the timer would leak
+    // until the t>=1 branch otherwise.
+    const liveWin = overlay?.getWindow()
+    if (!liveWin || liveWin.isDestroyed()) {
+      clearAnimationTimer()
+      return
+    }
+    const t = Math.min(1, (Date.now() - startTime) / ANIMATION_DURATION_MS)
+    const k = easeOutCubic(t)
+    overlay?.setBoundsProgrammatic({
+      x: Math.round(start.x + (target.x - start.x) * k),
+      y: Math.round(start.y + (target.y - start.y) * k),
+      width: Math.round(start.width + (target.width - start.width) * k),
+      height: Math.round(start.height + (target.height - start.height) * k),
+    })
+    if (t >= 1) clearAnimationTimer()
+  }, ANIMATION_FRAME_MS)
+}
+
+/** Collapse the cheat-sheets window to a header-only strip anchored to the
+ *  bottom-right of its current bounds. Idempotent based on actual window
+ *  height: a second call while already small is a no-op, but a call after
+ *  the user has drag-expanded the window will save the new bounds and shrink
+ *  again. (The previous version gated on `preMinimizeBounds` set/null, which
+ *  silently dropped re-minimize requests after a manual resize.) */
+export function minimizeCheatSheets(): void {
+  const win = overlay?.getWindow()
+  if (!win || win.isDestroyed()) return
+  const cur = win.getBounds()
+  if (cur.height <= CHEAT_SHEET_MINIMIZED_HEIGHT + CHEAT_SHEET_MINIMIZED_SLACK) return
+  preMinimizeBounds = cur
+  animateBoundsTo({
+    x: cur.x + cur.width - CHEAT_SHEET_MINIMIZED_WIDTH,
+    y: cur.y + cur.height - CHEAT_SHEET_MINIMIZED_HEIGHT,
+    width: CHEAT_SHEET_MINIMIZED_WIDTH,
+    height: CHEAT_SHEET_MINIMIZED_HEIGHT,
+  })
+}
+
+/** Restore the cheat-sheets window. If we recorded a pre-minimize size (this
+ *  session), animate back to it. Otherwise expand from the current bottom-
+ *  right anchor to a default size so the window grows into the screen rather
+ *  than off the right edge. */
+export function restoreCheatSheets(): void {
+  const win = overlay?.getWindow()
+  if (!win || win.isDestroyed()) return
+  let target = preMinimizeBounds
+  if (!target) {
+    const cur = win.getBounds()
+    target = {
+      x: cur.x + cur.width - DEFAULT_EXPANDED_WIDTH,
+      y: cur.y + cur.height - DEFAULT_EXPANDED_HEIGHT,
+      width: DEFAULT_EXPANDED_WIDTH,
+      height: DEFAULT_EXPANDED_HEIGHT,
+    }
+  }
+  preMinimizeBounds = null
+  animateBoundsTo(target)
 }
 
 // ---- Hover preview (cheat-sheet specific, renders on the shared canvas) ----

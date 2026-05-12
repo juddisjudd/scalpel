@@ -11,6 +11,8 @@ import {
   getCheatSheetsOverlay,
   showPreview,
   hidePreview,
+  minimizeCheatSheets,
+  restoreCheatSheets,
 } from '../cheat-sheets'
 import { setPinnedZoneRendererVisible, setPinnedZoneContentHeight } from '../pinned-zone'
 import { getOverlayWindow, showOverlay } from '../overlay'
@@ -102,6 +104,9 @@ export function register(): void {
   })
 
   ipcMain.on('cheat-sheet:close', () => getCheatSheetsOverlay()?.hide())
+
+  ipcMain.on('cheat-sheet:minimize', () => minimizeCheatSheets())
+  ipcMain.on('cheat-sheet:restore', () => restoreCheatSheets())
 
   ipcMain.on('open-settings-tab', (_e, tab: string) => {
     const overlay = getOverlayWindow()

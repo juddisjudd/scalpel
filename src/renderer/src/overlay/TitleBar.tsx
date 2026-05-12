@@ -185,7 +185,7 @@ export function TitleBar({
         >
           <Setting size={16} {...IP} />
         </button>
-        <button onClick={onClose} className="btn-bounce w-[30px] h-[30px] flex items-center justify-center">
+        <button onClick={onClose} className="btn-bounce btn-ghost w-[30px] h-[30px] flex items-center justify-center">
           <CloseSmall size={16} {...IP} />
         </button>
       </div>

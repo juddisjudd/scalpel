@@ -94,6 +94,11 @@ export interface SecondaryOverlay {
    *  created lazily so we don't spawn renderers for overlays the user never
    *  touches in a session). */
   getWindow(): BrowserWindow | null
+  /** Set window bounds without triggering the anchor-persist callback that
+   *  user-driven drags fire. Use for programmatic resize/move flows (minimize
+   *  animation, content-driven height) that shouldn't pollute the stored
+   *  anchor. No-op if the window hasn't been created. */
+  setBoundsProgrammatic(target: Rect): void
 }
 
 const SNAP_RANGE = 80
@@ -195,6 +200,10 @@ function makeOverlayApi(state: OverlayState): SecondaryOverlay {
     isVisible: () => !!state.win && !state.win.isDestroyed() && state.win.isVisible(),
     send: (channel, ...args) => {
       if (state.win && !state.win.isDestroyed()) state.win.webContents.send(channel, ...args)
+    },
+    setBoundsProgrammatic: (target) => {
+      if (!state.win || state.win.isDestroyed()) return
+      setBoundsProgrammatic(state, target)
     },
     getWindow: () => (state.win && !state.win.isDestroyed() ? state.win : null),
   }

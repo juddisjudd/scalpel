@@ -123,6 +123,17 @@ button.btn-ghost:hover {
 button.btn-ghost[aria-pressed='true'] {
   background: var(--bg-hover);
 }
+
+/* Flat list-item button for dropdown menu rows. No chip background or
+ * rounding; hover/active styling lives on the caller via Tailwind utilities
+ * (typically text-* color swaps). */
+button.menu-row {
+  background: transparent;
+  border-radius: 0;
+}
+button.menu-row:hover {
+  background: transparent;
+}
 /* Accent-colored buttons (Tailwind bg-accent) need a brighter gold on hover, else the
  * default gray-overlay hover above washes them out and loses the toggle feedback. */
 button.bg-accent:hover {

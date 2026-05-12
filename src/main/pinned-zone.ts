@@ -65,10 +65,11 @@ export function setPinnedZoneRendererVisible(visible: boolean): void {
 }
 
 /** Called from the renderer when its content height changes. Updates the
- *  window's height while keeping its x/y/width persisted bounds. */
+ *  window's height while keeping its x/y/width persisted bounds. Uses the
+ *  programmatic path so anchor-persist listeners stay quiet. */
 export function setPinnedZoneContentHeight(height: number): void {
   const win = overlay?.getWindow()
   if (!win || win.isDestroyed()) return
   const cur = win.getBounds()
-  win.setBounds({ x: cur.x, y: cur.y, width: cur.width, height: Math.max(1, Math.round(height)) })
+  overlay?.setBoundsProgrammatic({ x: cur.x, y: cur.y, width: cur.width, height: Math.max(1, Math.round(height)) })
 }

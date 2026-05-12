@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { GridFour, GridNine, GridSixteen, Pin } from '@icon-park/react'
 import type { CheatSheetsSettings, CheatSheetCategory } from '../../../shared/types'
+import { CHEAT_SHEET_MINIMIZED_HEIGHT, CHEAT_SHEET_MINIMIZED_SLACK } from '../../../shared/cheat-sheet-window'
 import { Chrome } from '../secondary-overlay/Chrome'
 import { useStickyZone } from '../shared/use-current-zone'
 
@@ -17,6 +18,11 @@ const STORAGE_KEY = 'scalpel:cheatsheets:thumbnailSize'
 const DEFAULT_SIZE: ThumbSize = 'large'
 /** Active-icon gold -- matches the league/badge gold used elsewhere. */
 const ACTIVE_COLOR = '#fbbf24'
+/** Window inner height at or below which we consider the cheat-sheet window
+ *  "collapsed" - drives the maximize-vs-minimize icon. Matches the slack the
+ *  main process uses to detect "already minimized" so the two sides agree
+ *  on what counts as the minimized footprint. */
+const COLLAPSED_HEIGHT_THRESHOLD = CHEAT_SHEET_MINIMIZED_HEIGHT + CHEAT_SHEET_MINIMIZED_SLACK
 
 function loadThumbSize(): ThumbSize {
   try {
@@ -32,6 +38,16 @@ export function App(): JSX.Element {
   const [settings, setSettings] = useState<CheatSheetsSettings | null>(null)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const [thumbSize, setThumbSize] = useState<ThumbSize>(loadThumbSize)
+  // Derive collapsed state from the live window height so the icon stays
+  // correct across drag-resizes and app restarts (where react state would
+  // be lost but the window itself may still be small).
+  const [windowHeight, setWindowHeight] = useState(() => window.innerHeight)
+  useEffect(() => {
+    const onResize = (): void => setWindowHeight(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const minimized = windowHeight <= COLLAPSED_HEIGHT_THRESHOLD
   const currentZone = useStickyZone()
 
   useEffect(() => {
@@ -63,6 +79,13 @@ export function App(): JSX.Element {
 
   const pinned = settings.pinned === true
   const onClose = (): void => window.api.closeCheatSheets()
+  const toggleMinimize = (): void => {
+    if (minimized) {
+      window.api.restoreCheatSheets()
+    } else {
+      window.api.minimizeCheatSheets()
+    }
+  }
   const togglePin = (): void => {
     // Optimistic local update: broadcastSettingUpdate skips the sender, so we
     // never get our own echo back. Update local state immediately, then persist.
@@ -76,7 +99,7 @@ export function App(): JSX.Element {
 
   if (settings.categories.length === 0) {
     return (
-      <Chrome onClose={onClose} headerEnd={sizeControls}>
+      <Chrome onClose={onClose} onMinimize={toggleMinimize} minimized={minimized} headerEnd={sizeControls}>
         <div className="flex-1 flex flex-col items-center justify-center gap-2 px-4 text-center">
           <span className="text-[11px] text-text-dim">You didn&apos;t add any cheat sheets. Add some in Settings</span>
           <button onClick={() => window.api.openSettingsTab('cheatsheets')} className="text-[11px] px-3 py-1.5">
@@ -97,7 +120,13 @@ export function App(): JSX.Element {
 
   const dims = THUMB_SIZES[thumbSize]
   return (
-    <Chrome onClose={onClose} headerContent={tabs} headerEnd={sizeControls}>
+    <Chrome
+      onClose={onClose}
+      onMinimize={toggleMinimize}
+      minimized={minimized}
+      headerContent={tabs}
+      headerEnd={sizeControls}
+    >
       <div className="flex-1 overflow-y-auto p-2 flex flex-wrap gap-2 content-start">
         {active.sheets.map((sheet) => (
           <Thumbnail
@@ -138,6 +167,22 @@ function CategoryTabs({
   )
 }
 
+/** Display labels for each thumb size, ordered large -> small so the menu
+ *  reads top-down at the same cadence as the trigger-icon progression
+ *  (GridFour = fewest cells = largest thumbs). */
+const SIZE_OPTIONS: ReadonlyArray<{ key: ThumbSize; label: string }> = [
+  { key: 'large', label: 'Large' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'small', label: 'Small' },
+]
+/** Icon shown on the trigger button for each thumb size. Kept separate from
+ *  SIZE_OPTIONS since the dropdown rows are label-only. */
+const SIZE_TRIGGER_ICONS: Record<ThumbSize, typeof GridFour> = {
+  large: GridFour,
+  medium: GridNine,
+  small: GridSixteen,
+}
+
 function SizeControls({
   value,
   onChange,
@@ -149,17 +194,25 @@ function SizeControls({
   pinned: boolean
   onTogglePin: () => void
 }): JSX.Element {
-  // Order matches the visual progression on screen: GridFour = fewest cells in
-  // the icon = largest thumbs in the grid. Hover bumps inactive icons to full
-  // white; active stays gold.
-  const buttons: Array<{ key: ThumbSize; Icon: typeof GridFour; title: string }> = [
-    { key: 'large', Icon: GridFour, title: 'Large thumbnails' },
-    { key: 'medium', Icon: GridNine, title: 'Medium thumbnails' },
-    { key: 'small', Icon: GridSixteen, title: 'Small thumbnails' },
-  ]
+  const [menuOpen, setMenuOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  // Close the menu when the user clicks anywhere outside the wrapper. Clicks
+  // on PoE don't reach this listener (different process), so the only thing
+  // that can dismiss the menu is a click somewhere else inside the overlay.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e: MouseEvent): void => {
+      if (!wrapRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [menuOpen])
+
   // lineHeight:0 strips the inline baseline padding the icon-park <span>
   // wrapper inherits, so the glyph optically centers in the 24x24 box.
   const pinStyle: React.CSSProperties = { lineHeight: 0, color: pinned ? ACTIVE_COLOR : undefined }
+  const ActiveIcon = SIZE_TRIGGER_ICONS[value]
   return (
     <>
       <button
@@ -171,23 +224,42 @@ function SizeControls({
       >
         <Pin size={15} theme="outline" fill="currentColor" />
       </button>
-      {buttons.map(({ key, Icon, title }) => {
-        const active = value === key
-        const baseStyle: React.CSSProperties = { lineHeight: 0 }
-        const style = active ? { ...baseStyle, color: ACTIVE_COLOR } : baseStyle
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onChange(key)}
-            title={title}
-            className={`w-6 h-6 flex items-center justify-center transition-colors ${active ? '' : 'text-text-dim hover:text-text'}`}
-            style={style}
-          >
-            <Icon size={15} theme="outline" fill="currentColor" />
-          </button>
-        )
-      })}
+      <div ref={wrapRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          title="Thumb size"
+          className={`w-6 h-6 flex items-center justify-center transition-colors ${menuOpen ? '' : 'text-text-dim hover:text-text'}`}
+          style={{ lineHeight: 0, color: menuOpen ? ACTIVE_COLOR : undefined }}
+        >
+          <ActiveIcon size={15} theme="outline" fill="currentColor" />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 top-full mt-1 z-10 min-w-[110px] bg-bg-card-translucent border border-border rounded shadow-lg py-1 text-[11px]">
+            {SIZE_OPTIONS.map(({ key, label }, i) => {
+              const active = key === value
+              return (
+                <div key={key}>
+                  {i > 0 && <div className="mx-2 h-px bg-white/5" />}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(key)
+                      setMenuOpen(false)
+                    }}
+                    className={`menu-row w-full text-left px-2 py-1 transition-colors ${
+                      active ? '' : 'text-text-dim hover:text-text'
+                    }`}
+                    style={active ? { color: ACTIVE_COLOR } : undefined}
+                  >
+                    {label}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </>
   )
 }
