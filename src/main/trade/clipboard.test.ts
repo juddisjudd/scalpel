@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseItemText } from './clipboard'
+import { endgameAreaLevel } from '../../shared/poe-item'
+import { getPoeVersion } from '../game-state'
 
 describe('parseItemText', () => {
   // ---------------------------------------------------------------------------
@@ -520,6 +522,44 @@ describe('parseItemText', () => {
       expect(item.itemClass).toBe('Divination Cards')
       expect(item.name).toBe('The Doctor')
       expect(item.stackSize).toBe(1)
+    })
+
+    it('defaults areaLevel to the endgame level for currency with no item level', () => {
+      const text = [
+        'Item Class: Stackable Currency',
+        'Rarity: Currency',
+        'Chromatic Orb',
+        '--------',
+        'Stack Size: 1/20',
+        '--------',
+        'Reforges the colour of sockets on an item',
+        '--------',
+        'Right click this item then left click a socketed item to apply it.',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.itemClass).toBe('Stackable Currency')
+      expect(item.itemLevel).toBe(0)
+      // No item level and no known zone: fall back to endgame so AreaLevel-gated
+      // leveling rules don't win for bulk currency inspected in stash/town.
+      expect(item.areaLevel).toBe(endgameAreaLevel(getPoeVersion()))
+    })
+
+    it('uses item level as areaLevel for gear that has one', () => {
+      const text = [
+        'Item Class: Rings',
+        'Rarity: Rare',
+        'Gloom Knuckle',
+        'Iron Ring',
+        '--------',
+        'Item Level: 75',
+        '--------',
+        'Adds 3 to 7 Physical Damage to Attacks',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.itemLevel).toBe(75)
+      expect(item.areaLevel).toBe(75)
     })
 
     it('parses a Flask', () => {

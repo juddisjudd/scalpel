@@ -26,6 +26,16 @@ export function isSkillGem(item: { itemClass: string }): boolean {
   return SKILL_GEM_CLASSES.has(item.itemClass)
 }
 
+/** Default "assume endgame" area level by game version. PoE1 FilterBlade splits
+ *  campaign vs endgame at AreaLevel 68 and our baseline tier-16 map is area 83.
+ *  PoE2 splits at 65 and the top waystone tier caps near 80. Used for synthetic
+ *  items and as the fallback for clipboard-parsed items that carry no item level
+ *  (currency), so AreaLevel-gated leveling rules don't win for bulk currency
+ *  inspected outside a known zone. */
+export function endgameAreaLevel(version: 1 | 2): number {
+  return version === 2 ? 80 : 83
+}
+
 /** Build a synthetic `PoeItem` with sensible defaults. Used by any code path that needs
  *  to evaluate a filter or run a trade lookup without a real clipboard-parsed item --
  *  e.g. the item-search combobox, sister-overlay click-throughs, tier previews.
@@ -70,7 +80,7 @@ export function defaultPoeItem(overrides: Partial<PoeItem> = {}, version: 1 | 2 
     influence: [],
     explicits: [],
     implicits: [],
-    areaLevel: version === 2 ? 80 : 83,
+    areaLevel: endgameAreaLevel(version),
     isSynthetic: true,
     ...overrides,
   } as PoeItem

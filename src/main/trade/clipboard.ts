@@ -2,7 +2,7 @@ import { clipboard } from 'electron'
 import type { PoeItem, ItemRarity, AdvancedMod } from '../../shared/types'
 import { getItemClasses } from '../../shared/data/items/item-classes'
 import { getPoeVersion } from '../game-state'
-import { SKILL_GEM_CLASSES } from '../../shared/poe-item'
+import { SKILL_GEM_CLASSES, endgameAreaLevel } from '../../shared/poe-item'
 
 // Both base-name and class-size lookups seed lazily from the active game's
 // class sheet -- getPoeVersion() isn't reliable at module load (game-state
@@ -554,9 +554,11 @@ export function parseItemText(text: string): PoeItem | null {
     ...(ultimatumChallenge != null ? { ultimatumChallenge } : {}),
     ...(ultimatumRewardText != null ? { ultimatumRewardText } : {}),
     ...(ultimatumRequired != null ? { ultimatumRequired } : {}),
-    // Default areaLevel to itemLevel - we don't know the actual zone but this prevents
-    // leveling blocks (AreaLevel <= 16) from matching endgame items viewed in stash/town
-    areaLevel: itemLevel > 0 ? itemLevel : undefined,
+    // areaLevel = itemLevel; for items with no item level (currency) fall back to
+    // the endgame default, not undefined: an undefined areaLevel lets the non-strict
+    // matcher treat `AreaLevel <= N` leveling rules as a pass, so bulk currency
+    // wrongly resolves to leveling tiers. The zone override corrects this in-zone.
+    areaLevel: itemLevel > 0 ? itemLevel : endgameAreaLevel(getPoeVersion()),
   }
 }
 
