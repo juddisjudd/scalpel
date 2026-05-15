@@ -59,7 +59,11 @@ import { register as registerCheatSheets } from './handlers/cheat-sheets'
 import { register as registerWhiteboard } from './handlers/whiteboard'
 import { register as registerClipboard } from './handlers/clipboard'
 import { register as registerManifest } from './handlers/manifest'
+import { register as registerPlugins } from './handlers/plugins'
+import { flushAll as flushPluginStorage } from './plugins/storage'
 import { refreshManifest } from './manifest'
+import { registerScalpelInternalProtocol, registerScalpelInternalSchemePrivileges } from './plugins/protocol'
+import { registerScalpelPluginProtocol, registerScalpelPluginSchemePrivileges } from './plugins/plugin-protocol'
 import {
   categoryDir,
   ensureThumb,
@@ -78,6 +82,7 @@ import {
   setOnLeaveScalpel,
   subscribeToPoeMoves,
 } from './windowing'
+import { initAppMacrosRefresh, withPluginHotkeys } from './app-macros'
 import type { AppSettings, CheatSheetsSettings, RegexPreset } from '../shared/types'
 
 // ---- Elevation detection ---------------------------------------------------
@@ -132,6 +137,8 @@ const store = new Store<AppSettings>({
     regexPresetsPoe2: [],
     leaguesPoe1: [],
     leaguesPoe2: [],
+    developerMode: false,
+    pluginRegistryUrl: undefined,
   },
 })
 
@@ -205,6 +212,7 @@ app.whenReady().then(() => {
 })
 
 setEvaluationStore(store)
+initAppMacrosRefresh(() => store.get('appMacros') ?? [])
 
 // ---- Register IPC handlers -------------------------------------------------
 
@@ -219,6 +227,7 @@ registerCheatSheets()
 registerWhiteboard()
 registerClipboard()
 registerManifest()
+registerPlugins(store, isElevated)
 
 ipcMain.on('close-overlay', () => hideOverlay())
 ipcMain.on('open-devtools', (event) => {
@@ -275,6 +284,10 @@ function createTray(): void {
   tray.on('click', () => showAppWindow())
 }
 
+// Must run before app is ready -- registers scheme privileges with Chromium
+registerScalpelInternalSchemePrivileges()
+registerScalpelPluginSchemePrivileges()
+
 // ---- App lifecycle ---------------------------------------------------------
 
 const gotLock = app.requestSingleInstanceLock()
@@ -300,6 +313,15 @@ app.whenReady().then(() => {
   setOnLeaveScalpel(() => suspendHotkeys())
   createAppWindow()
   createTray()
+
+  // Serve plugin-facing built-in modules (React, SDK) via a custom scheme so
+  // plugins can import them without bundling their own copies.
+  registerScalpelInternalProtocol()
+
+  // Serve installed plugin entry files via a custom scheme. Required so the
+  // overlay renderer can dynamic-import() them in dev (where the renderer
+  // lives on http://localhost and Chromium blocks file:// resource loads).
+  registerScalpelPluginProtocol()
 
   // Serve cheat sheet images via a custom protocol so the renderer can load local files.
   // Append ?thumb=1 to get a 360px-max JPEG thumbnail (lazily generated + cached
@@ -389,6 +411,12 @@ app.whenReady().then(() => {
       toggleWhiteboard()
       return
     }
+    if (action.startsWith('plugin:')) {
+      const overlayWin = getOverlayWindow()
+      if (!overlayWin || overlayWin.isDestroyed()) return
+      overlayWin.webContents.send('plugin-macro', action)
+      return
+    }
     const overlayWin = getOverlayWindow()
     if (!overlayWin || overlayWin.isDestroyed()) return
     if (action === 'openAudit') {
@@ -404,7 +432,7 @@ app.whenReady().then(() => {
       showOverlay()
     }
   })
-  setAppMacros(store.get('appMacros') ?? [])
+  setAppMacros(withPluginHotkeys((store.get('appMacros') as AppSettings['appMacros']) ?? []))
   // Register the cheat-sheets overlay with the secondary-overlay system. The
   // anchor persists into settings.cheatSheets.windowAnchor; the system handles
   // window lifecycle, snap, alt-tab guard, etc. and the wireCheatSheetHotkeys
@@ -522,6 +550,14 @@ app.whenReady().then(() => {
   // Show onboarding on first launch, otherwise stay in tray
   if (!filterPath) {
     showAppWindow()
+  }
+})
+
+app.on('before-quit', () => {
+  try {
+    flushPluginStorage()
+  } catch {
+    // best-effort
   }
 })
 
