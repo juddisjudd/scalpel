@@ -12,6 +12,7 @@ import {
 import { FilterChip } from '../price-check/FilterChip'
 import { ModList } from './ModList'
 import { ScrubInput } from './ScrubInput'
+import { RegexSelect } from './RegexSelect'
 import { InfoChip } from '../../shared/InfoChip'
 import { WAYSTONE_MODS } from '../../../../shared/data/regex/waystone-mods'
 import { buildWaystoneRegex, type WaystoneQualifiers, type WaystoneRarity, type WaystoneTier } from './waystone-engine'
@@ -382,18 +383,13 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
               >
                 Waystone drop chance over
               </label>
-              <select
+              <RegexSelect
                 value={dropOverValue}
-                onChange={(e) => setDropOverValue(parseInt(e.target.value))}
+                options={[100, 200, 300, 400, 500, 600, 700]}
+                suffix="%"
                 disabled={!dropOverEnabled}
-                className="text-[11px] bg-black/30 rounded px-1 py-[2px] border-none"
-              >
-                {[100, 200, 300, 400, 500, 600, 700].map((v) => (
-                  <option key={v} value={v}>
-                    {v}%
-                  </option>
-                ))}
-              </select>
+                onChange={setDropOverValue}
+              />
             </div>
             <ToggleRow label="Players in area are #% delirious" checked={delirious} onChange={setDelirious} alt />
             <ToggleRow label="Area contains # of any additional packs" checked={anyPack} onChange={setAnyPack} />

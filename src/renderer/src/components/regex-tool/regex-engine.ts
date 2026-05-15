@@ -2,8 +2,11 @@ import type { MapMod } from '../../../../shared/data/regex/map-mods'
 import { MAP_MOD_OPTIMIZATIONS } from '../../../../shared/data/regex/map-mods'
 import type { TokenOptimization } from '../../../../shared/data/regex/vendor/mapmods/GeneratedTypes'
 
-/** Max character length for PoE's search field */
-export const POE_REGEX_MAX_LENGTH = 250
+/** Max character length for the in-game search field. PoE1's stash/map-device
+ *  search caps at 250; PoE2's caps at 50 (for now). */
+export function poeRegexMaxLength(version: 1 | 2): number {
+  return version === 2 ? 50 : 250
+}
 
 /**
  * Optimize a set of mod regex tokens using the pre-computed optimization table.

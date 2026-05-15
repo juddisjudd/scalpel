@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ReactSortable } from 'react-sortablejs'
 import { CloseSmall, Save } from '@icon-park/react'
 import { DismissibleTip } from '../../shared/DismissibleTip'
-import { POE_REGEX_MAX_LENGTH } from './regex-engine'
+import { poeRegexMaxLength } from './regex-engine'
 import { TagSourceIcon, loadStorage, tagChipStyle, useRegexKey, ensureLegacyRegexKeysMigrated } from './mapmods-helpers'
 import poereIconTight from '../../assets/other/poere-logo-tight.svg'
 import { POE_RE_URL, POE2_RE_URL } from '../../../../shared/endpoints'
@@ -45,6 +45,7 @@ export function RegexGenerator(): JSX.Element {
   ensureLegacyRegexKeysMigrated()
   const key = useRegexKey()
   const poeVersion = usePoeVersion()
+  const maxLength = poeRegexMaxLength(poeVersion)
   const GENERATORS = poeVersion === 2 ? GENERATORS_POE2 : GENERATORS_POE1
   const defaultGenerator = GENERATORS[0].key as GeneratorKey
 
@@ -180,7 +181,7 @@ export function RegexGenerator(): JSX.Element {
     seededRef.current = true
   }, [autoTags, presetTags])
 
-  const isOverLimit = regex.length > POE_REGEX_MAX_LENGTH
+  const isOverLimit = regex.length > maxLength
 
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const macroErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -467,7 +468,7 @@ export function RegexGenerator(): JSX.Element {
           <div className="flex justify-end">
             <InfoChip size="sm" color={isOverLimit ? '#ef5350' : undefined} className="!pr-[3px]">
               <span className="flex items-center gap-1.5">
-                {regex.length} / {POE_REGEX_MAX_LENGTH}
+                {regex.length} / {maxLength}
                 <button
                   onClick={clearAll}
                   disabled={!regex && presetTags.length === 0}
