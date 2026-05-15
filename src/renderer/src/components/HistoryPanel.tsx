@@ -7,12 +7,6 @@ interface Props {
   item?: PoeItem
 }
 
-const ACTION_COLORS: Record<HistoryEntry['action'], string> = {
-  'block-edit': 'var(--accent)',
-  'tier-move': 'var(--secondary-match)',
-  'stack-threshold': '#4fc3f7',
-}
-
 const ACTION_FALLBACK_ICONS: Record<HistoryEntry['action'], string> = {
   'block-edit': '✏',
   'tier-move': '↕',
@@ -110,7 +104,6 @@ export function HistoryPanel({ item }: Props): JSX.Element {
         ) : (
           <div className="flex flex-col gap-0.5 max-h-[360px] overflow-y-auto">
             {entries.map((entry, i) => {
-              const color = ACTION_COLORS[entry.action]
               const isLatest = i === 0
               const itemIconUrl = entry.itemName ? iconMap[entry.itemName] : undefined
               const isUndoing = undoingId === entry.id
@@ -119,13 +112,11 @@ export function HistoryPanel({ item }: Props): JSX.Element {
               return (
                 <div
                   key={entry.id}
-                  className="flex items-center gap-2 rounded transition-opacity duration-150"
-                  style={{
-                    padding: '7px 8px',
-                    background: isLatest ? 'rgba(200,169,110,0.06)' : 'transparent',
-                    borderLeft: isLatest ? '2px solid var(--accent)' : '2px solid transparent',
-                    opacity: isLatest ? 1 : 0.55,
-                  }}
+                  className={
+                    'flex items-center gap-2 rounded' +
+                    (isLatest ? ' transition-colors duration-150 hover:bg-white/[0.06]' : '')
+                  }
+                  style={{ padding: '7px 8px' }}
                 >
                   <div className="w-[22px] h-[22px] shrink-0 flex items-center justify-center">
                     {itemIconUrl ? (
@@ -147,16 +138,10 @@ export function HistoryPanel({ item }: Props): JSX.Element {
                         color: isLatest ? 'var(--text)' : 'var(--text-dim)',
                       }}
                     >
+                      {entry.itemName && <span className="font-bold">{entry.itemName}: </span>}
                       {entry.description}
                     </div>
-                    <div className="text-[9px] text-text-dim mt-px flex gap-[6px] items-center">
-                      <span>{formatTime(entry.timestamp)}</span>
-                      <span
-                        className="inline-block w-[6px] h-[6px] rounded-full shrink-0"
-                        style={{ background: color, opacity: 0.7 }}
-                      />
-                      {entry.itemName && <span style={{ opacity: 0.7 }}>{entry.itemName}</span>}
-                    </div>
+                    <div className="text-[9px] text-text-dim mt-px">{formatTime(entry.timestamp)}</div>
                   </div>
 
                   {isLatest ? (
@@ -233,11 +218,13 @@ export function HistoryPanel({ item }: Props): JSX.Element {
               return (
                 <div
                   key={v.filename}
-                  className="flex items-center gap-2"
+                  className={
+                    'flex items-center gap-2 transition-colors duration-150 hover:bg-white/[0.06]' +
+                    (v.isCheckpoint ? ' bg-[rgba(200,169,110,0.06)]' : '')
+                  }
                   style={{
                     padding: '7px 8px',
                     borderRadius: v.isCheckpoint ? 'var(--radius) 0 0 var(--radius)' : 'var(--radius)',
-                    background: v.isCheckpoint ? 'rgba(200,169,110,0.06)' : 'transparent',
                   }}
                 >
                   <div className="w-[22px] h-[22px] shrink-0 flex items-center justify-center text-xs">
