@@ -1247,6 +1247,58 @@ describe('matchItemMods', () => {
     })
   })
 
+  describe('exposure implicit excluded from resistance pseudo', () => {
+    // Eldritch (Eater of Worlds) "Inflict <Ele> Exposure on Hit, applying
+    // -#% to <Ele> Resistance" is an enemy debuff. Its text contains
+    // "to <Ele> Resistance", so the loose resistance pattern used to sum the
+    // negative roll into the player's Total Elemental Resistance pseudo.
+    it('fire exposure implicit does not subtract from Total Elemental Resistance', () => {
+      _setStatEntriesForTests([
+        {
+          id: 'implicit.stat_fire_exposure',
+          text: 'Inflict Fire Exposure on Hit, applying #% to Fire Resistance',
+          type: 'implicit',
+        },
+        { id: 'explicit.stat_4220027924', text: '#% to Cold Resistance', type: 'explicit' },
+      ])
+      const filters = matchItemMods(
+        ['Inflict Fire Exposure on Hit, applying -11% to Fire Resistance (implicit)', '+36% to Cold Resistance'],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Gloves' }),
+      )
+      const pseudo = filters.find((f) => f.id === 'pseudo.pseudo_total_elemental_resistance')
+      expect(pseudo).toBeDefined()
+      // Only the +36 Cold Res counts; the -11 exposure debuff must not subtract.
+      expect(pseudo!.value).toBe(36)
+    })
+
+    it('cold and lightning exposure implicits are likewise excluded', () => {
+      _setStatEntriesForTests([
+        {
+          id: 'implicit.stat_cold_exposure',
+          text: 'Inflict Cold Exposure on Hit, applying #% to Cold Resistance',
+          type: 'implicit',
+        },
+        {
+          id: 'implicit.stat_lightning_exposure',
+          text: 'Inflict Lightning Exposure on Hit, applying #% to Lightning Resistance',
+          type: 'implicit',
+        },
+      ])
+      const filters = matchItemMods(
+        [
+          'Inflict Cold Exposure on Hit, applying -13% to Cold Resistance (implicit)',
+          'Inflict Lightning Exposure on Hit, applying -12% to Lightning Resistance (implicit)',
+        ],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Gloves' }),
+      )
+      expect(filters.find((f) => f.id === 'pseudo.pseudo_total_elemental_resistance')).toBeUndefined()
+    })
+  })
+
   describe('fractured chip', () => {
     it('generates fractured chip for equipment in "any" state when no fractured mods', () => {
       const filters = matchItemMods(

@@ -280,8 +280,8 @@ export function ItemSummary({
                 <InfoChip label="Drops in" className={onDivExplore ? '!pr-[3px]' : undefined}>
                   {mapNames.slice(0, 2).map((name) => (
                     <span key={name} className="text-white font-semibold inline-flex items-center gap-[3px]">
-                      <span className="relative w-[10px] h-[10px] shrink-0">
-                        <img src={mapFrameIcon} alt="" className="w-[10px] h-[10px]" />
+                      <span className="relative inline-block w-[10px] h-[10px] shrink-0">
+                        <img src={mapFrameIcon} alt="" className="block w-[10px] h-[10px]" />
                         <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-[rgba(180,40,40,0.8)]" />
                       </span>
                       {name.replace(' Map', '')}

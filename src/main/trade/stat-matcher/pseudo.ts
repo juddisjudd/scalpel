@@ -96,6 +96,12 @@ function buildPseudoMap(): void {
   const statEntries = getStatEntries()
   for (const entry of statEntries) {
     if (entry.type !== 'explicit' && entry.type !== 'implicit' && entry.type !== 'crafted') continue
+    // "Inflict <Ele> Exposure on Hit, applying -#% to <Ele> Resistance" is an
+    // enemy debuff, not player resistance. Its text contains "to <Ele>
+    // Resistance" so the loose resistance patterns below would otherwise sum
+    // the negative value into the player's Total Elemental Resistance pseudo.
+    // Exposure mods never feed any player pseudo, so skip them outright.
+    if (/\bExposure\b/i.test(entry.text)) continue
     for (const [pattern, pseudoId, pseudoLabel, multiplier, opts] of pseudoMappings) {
       if (pattern.test(entry.text)) {
         if (!PSEUDO_CONTRIBUTIONS[entry.id]) PSEUDO_CONTRIBUTIONS[entry.id] = []
