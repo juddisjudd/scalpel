@@ -1,5 +1,15 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.8-rc7',
+    notes: [
+      'Fixed installed plugins failing to load after an app update.',
+      'Fixed pseudo stat totals miscounting negative-resistance Eater of Worlds implicits.',
+      'Fixed map name alignment in the divination card info chip.',
+      'Fixed hotkeyed currency not matching filter rules that use item level.',
+      'Cleaned up the Filter tab layout in Settings.',
+    ],
+  },
+  {
     version: '0.9.8-rc6',
     notes: [
       'Added optional "Use Current Zone" toggle that applies zone level to the displayed item. Hidden in towns and hideouts.',
