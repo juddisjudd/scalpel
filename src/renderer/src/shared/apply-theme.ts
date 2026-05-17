@@ -1,4 +1,5 @@
 import type { Api } from '../../../preload/index'
+import type { AppSettings } from '../../../shared/types'
 import type { ThemePalette } from '../../../shared/theme/palette'
 import { resolveCssVars } from '../../../shared/theme/derive'
 import { resolveActivePalette } from '../../../shared/theme/active'
@@ -57,7 +58,12 @@ export async function bootstrapTheme(): Promise<void> {
     applyPalette(resolveActivePalette(snapshot.themeId, snapshot.customThemePalette))
   }
 
-  const settings = await api.getSettings()
+  let settings: AppSettings
+  try {
+    settings = await api.getSettings()
+  } catch {
+    return // IPC unavailable; the cached pre-paint already applied, that is sufficient.
+  }
   snapshot = {
     themeId: settings.themeId ?? 'default',
     customThemePalette: settings.customThemePalette ?? null,
