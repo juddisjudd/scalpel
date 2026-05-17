@@ -657,6 +657,57 @@ describe('parseItemText', () => {
       expect(item.corrupted).toBe(true)
     })
 
+    it('detects Twice Corrupted as twiceCorrupted and corrupted', () => {
+      const item = parseItemText(makeRing(['--------', 'Twice Corrupted']))!
+      expect(item.twiceCorrupted).toBe(true)
+      expect(item.corrupted).toBe(true)
+    })
+
+    it('a plain Corrupted item is not twiceCorrupted', () => {
+      const item = parseItemText(makeRing(['--------', 'Corrupted']))!
+      expect(item.corrupted).toBe(true)
+      expect(item.twiceCorrupted).toBeFalsy()
+    })
+
+    it('does not flag an uncorrupted PoE2 Headhunter (2 natural belt implicits) as corrupted', () => {
+      const text = [
+        'Item Class: Belts',
+        'Rarity: Unique',
+        'Headhunter',
+        'Heavy Belt',
+        '--------',
+        'Requires: Level 50',
+        '--------',
+        'Item Level: 64',
+        '--------',
+        '{ Implicit Modifier }',
+        '27(20-30)% increased Stun Threshold',
+        '{ Implicit Modifier — Charm }',
+        'Has 2(1-3) Charm Slots',
+        '--------',
+        '{ Unique Modifier — Attribute }',
+        '+39(20-40) to Strength',
+        '{ Unique Modifier — Life }',
+        '+46(40-60) to maximum Life',
+        '{ Unique Modifier }',
+        'When you kill a Rare monster, you gain its Modifiers for 60 seconds',
+      ].join('\n')
+      const item = parseItemText(text)!
+      expect(item.corrupted).toBe(false)
+      expect(item.twiceCorrupted).toBeFalsy()
+      expect(item.hasVaalUniqueMod).toBeFalsy()
+    })
+
+    it('detects a Vaal Unique modifier annotation as hasVaalUniqueMod', () => {
+      const item = parseItemText(makeRing(['--------', '{ Vaal Unique Modifier — Attribute }', '+10 to Strength']))!
+      expect(item.hasVaalUniqueMod).toBe(true)
+    })
+
+    it('a plain unique mod is not a vaal unique mod', () => {
+      const item = parseItemText(makeRing(['--------', '{ Unique Modifier }', '+10 to Strength']))!
+      expect(item.hasVaalUniqueMod).toBeFalsy()
+    })
+
     it('detects Mirrored flag', () => {
       const item = parseItemText(makeRing(['--------', 'Mirrored']))!
       expect(item.mirrored).toBe(true)

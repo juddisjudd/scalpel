@@ -319,7 +319,14 @@ export function parseItemText(text: string): PoeItem | null {
   const linkedSockets = computeLinkedSockets(sockets)
 
   // Flags
-  const corrupted = allLines.some((l) => l === 'Corrupted')
+  const twiceCorrupted = allLines.some((l) => l === 'Twice Corrupted')
+  // A twice-corrupted item is also corrupted. PoE2 emits exactly one of these
+  // section lines: "Corrupted" or "Twice Corrupted" (mirrors Exiled Exchange 2).
+  const corrupted = twiceCorrupted || allLines.some((l) => l === 'Corrupted')
+  // PoE2: a Vaal-corrupted unique mod is annotated "{ Vaal Unique Modifier ... }"
+  // (mirrors Exiled Exchange 2; there is no item-level marker). allLines are
+  // already trimmed, so anchor on the brace-wrapped annotation.
+  const hasVaalUniqueMod = allLines.some((l) => /^\{\s*Vaal\s+Unique\s+Modifier\b[^}]*\}$/.test(l))
   const mirrored = allLines.some((l) => l === 'Mirrored')
   const synthesised =
     allLines.some((l) => l.startsWith('Synthesis') || l.startsWith('Synthesised')) ||
@@ -507,6 +514,8 @@ export function parseItemText(text: string): PoeItem | null {
     reqDex,
     reqInt,
     corrupted,
+    twiceCorrupted,
+    hasVaalUniqueMod,
     identified,
     mirrored,
     synthesised,

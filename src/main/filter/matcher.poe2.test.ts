@@ -51,21 +51,38 @@ describe('evaluatePoe2Condition', () => {
     expect(evaluatePoe2Condition(cond('SomeRandomCondition', ['True']), makeItem())).toBe('unknown')
   })
 
-  // The following conditions were declared ahead of parser support; until
-  // clipboard.ts populates the underlying flags the matcher must report
-  // 'unknown' rather than hardcoding 'false', otherwise "X False" filter rules
-  // silently match every item.
-  it('returns "unknown" for IsVaalUnique (parser does not surface the flag yet)', () => {
-    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['True']), makeItem())).toBe('unknown')
-    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['False']), makeItem())).toBe('unknown')
+  it('evaluates HasVaalUniqueMod definitively from item.hasVaalUniqueMod', () => {
+    expect(evaluatePoe2Condition(cond('HasVaalUniqueMod', ['True']), makeItem())).toBe('fail')
+    expect(evaluatePoe2Condition(cond('HasVaalUniqueMod', ['False']), makeItem())).toBe('pass')
+    const v = makeItem({ hasVaalUniqueMod: true })
+    expect(evaluatePoe2Condition(cond('HasVaalUniqueMod', ['True']), v)).toBe('pass')
+    expect(evaluatePoe2Condition(cond('HasVaalUniqueMod', ['False']), v)).toBe('fail')
   })
 
-  it('returns "unknown" for HasVaalUniqueMod', () => {
-    expect(evaluatePoe2Condition(cond('HasVaalUniqueMod', ['True']), makeItem())).toBe('unknown')
+  it('evaluates IsVaalUnique as (rarity Unique AND has a vaal unique mod)', () => {
+    // Reported scenario: a normal/uncorrupted item must FAIL IsVaalUnique True.
+    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['True']), makeItem())).toBe('fail')
+    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['False']), makeItem())).toBe('pass')
+    // Unique but no vaal mod -> not a vaal unique.
+    const uniqueNoVaal = makeItem({ rarity: 'Unique' })
+    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['True']), uniqueNoVaal)).toBe('fail')
+    // Vaal mod but not Unique rarity -> not a vaal unique.
+    const rareWithVaal = makeItem({ rarity: 'Rare', hasVaalUniqueMod: true })
+    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['True']), rareWithVaal)).toBe('fail')
+    // Unique + vaal mod -> vaal unique.
+    const vaalUnique = makeItem({ rarity: 'Unique', hasVaalUniqueMod: true })
+    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['True']), vaalUnique)).toBe('pass')
+    expect(evaluatePoe2Condition(cond('IsVaalUnique', ['False']), vaalUnique)).toBe('fail')
   })
 
-  it('returns "unknown" for TwiceCorrupted', () => {
-    expect(evaluatePoe2Condition(cond('TwiceCorrupted', ['True']), makeItem())).toBe('unknown')
+  it('evaluates TwiceCorrupted definitively from item.twiceCorrupted', () => {
+    // Uncorrupted item (the reported Headhunter scenario): a TwiceCorrupted True
+    // rule must FAIL so the twice-corrupted block does not match it.
+    expect(evaluatePoe2Condition(cond('TwiceCorrupted', ['True']), makeItem())).toBe('fail')
+    expect(evaluatePoe2Condition(cond('TwiceCorrupted', ['False']), makeItem())).toBe('pass')
+    const tc = makeItem({ twiceCorrupted: true })
+    expect(evaluatePoe2Condition(cond('TwiceCorrupted', ['True']), tc)).toBe('pass')
+    expect(evaluatePoe2Condition(cond('TwiceCorrupted', ['False']), tc)).toBe('fail')
   })
 
   describe('UnidentifiedItemTier', () => {

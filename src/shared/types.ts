@@ -99,6 +99,10 @@ export interface PoeItem {
   reqDex: number
   reqInt: number
   corrupted: boolean
+  /** PoE2: clipboard had a "Twice Corrupted" section line. Implies corrupted. */
+  twiceCorrupted?: boolean
+  /** PoE2: clipboard carried a "{ Vaal Unique Modifier ... }" annotation. */
+  hasVaalUniqueMod?: boolean
   identified: boolean
   mirrored: boolean
   synthesised: boolean
@@ -125,10 +129,7 @@ export interface PoeItem {
   memoryStrands?: number
   /** PoE2: unidentified item implicit tier (rough rarity signal on unid drops).
    *  Not currently populated by the clipboard parser -- consumers should treat
-   *  the absence as "unknown", not "tier 0". Same applies to vaal-unique flags
-   *  (isVaalUnique / hasVaalUniqueMod / twiceCorrupted) which were declared
-   *  ahead of parser support and have been removed for now to avoid silently
-   *  evaluating "X False" rules as matching every item. */
+   *  the absence as "unknown", not "tier 0". */
   unidentifiedItemTier?: number
   areaLevel?: number
   advancedMods?: AdvancedMod[]
