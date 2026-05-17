@@ -138,6 +138,8 @@ const store = new Store<AppSettings>({
     leaguesPoe1: [],
     leaguesPoe2: [],
     developerMode: false,
+    themeId: 'default',
+    customThemePalette: null,
     pluginRegistryUrl: undefined,
   },
 })
@@ -148,6 +150,8 @@ if (store.get('useCurrentZoneAreaLevel') === undefined) store.set('useCurrentZon
 if (store.get('stashScrollEnabled') === undefined) store.set('stashScrollEnabled', false)
 if (store.get('openSide') === undefined) store.set('openSide', 'both')
 if ((store.get('tradeStatus') as string) === 'any') store.set('tradeStatus', 'available')
+if (store.get('themeId') === undefined) store.set('themeId', 'default')
+if (store.get('customThemePalette') === undefined) store.set('customThemePalette', null)
 
 // Auto-detect overlay scale on first run (deferred until app ready since screen API requires it)
 app.whenReady().then(() => {

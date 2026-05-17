@@ -1,6 +1,7 @@
 // Type definitions for the IPC and the frontend to talk to eachother. Truly boring stuff.
 
 import type { MacroScope } from './macro-scope'
+import type { ThemePalette } from './theme/palette'
 
 export type Visibility = 'Show' | 'Hide' | 'Minimal'
 export type ComparisonOperator = '>' | '>=' | '=' | '==' | '<=' | '<'
@@ -448,6 +449,11 @@ export interface AppSettings {
    *  filterscalpel/scalpel-plugins-registry repo when undefined. Set to a
    *  file:// URL or a personal-repo raw URL for local plugin testing. */
   pluginRegistryUrl?: string
+  /** Selected theme: a preset id from src/shared/theme/presets.ts, or
+   *  'custom' to use customThemePalette. Global - not mirrored per game. */
+  themeId: string
+  /** User's saved custom palette, used only when themeId === 'custom'. */
+  customThemePalette: ThemePalette | null
 }
 
 /** Title-bar tab keys the user is allowed to hide via View settings. Settings + Close
