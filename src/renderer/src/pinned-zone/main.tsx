@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { PoeVersionRoot } from '../shared/PoeVersionRoot'
 import { App } from './App'
 import '../styles.css'
+import { bootstrapTheme } from '../shared/apply-theme'
+
+void bootstrapTheme()
 
 const root = document.getElementById('root')!
 createRoot(root).render(
