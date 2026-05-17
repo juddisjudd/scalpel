@@ -1,8 +1,11 @@
+import type { Api } from '../../../preload/index'
 import type { ThemePalette } from '../../../shared/theme/palette'
 import { resolveCssVars } from '../../../shared/theme/derive'
 import { resolveActivePalette } from '../../../shared/theme/active'
 
 export const THEME_CACHE_KEY = 'scalpel:theme-vars'
+
+type ThemeApi = Pick<Api, 'getSettings' | 'onSettingUpdated'>
 
 /** Write a resolved palette to :root and cache it for the next cold start. */
 export function applyPalette(palette: ThemePalette): void {
@@ -27,13 +30,16 @@ export function applyCachedVars(): void {
     return
   }
   if (!raw) return
+  let vars: Record<string, string>
   try {
-    const vars = JSON.parse(raw) as Record<string, string>
-    const root = document.documentElement
-    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v)
+    vars = JSON.parse(raw) as Record<string, string>
   } catch {
     // corrupt cache - styles.css default fallback stays in effect.
+    return
   }
+  if (typeof vars !== 'object' || vars === null) return
+  const root = document.documentElement
+  for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v)
 }
 
 /** Run once per renderer entry. Pre-paints from cache, then reconciles with
@@ -41,7 +47,7 @@ export function applyCachedVars(): void {
 export async function bootstrapTheme(): Promise<void> {
   applyCachedVars()
 
-  const apiCandidate = (window as unknown as { api?: ScalpelThemeApi }).api
+  const apiCandidate = (window as unknown as { api?: ThemeApi }).api
   if (!apiCandidate?.getSettings) return
   const api = apiCandidate
 
@@ -51,14 +57,14 @@ export async function bootstrapTheme(): Promise<void> {
     applyPalette(resolveActivePalette(snapshot.themeId, snapshot.customThemePalette))
   }
 
-  const settings = (await api.getSettings()) as Partial<ThemeSettingsSnapshot>
+  const settings = await api.getSettings()
   snapshot = {
     themeId: settings.themeId ?? 'default',
     customThemePalette: settings.customThemePalette ?? null,
   }
   reapply()
 
-  api.onSettingUpdated?.((key, value) => {
+  api.onSettingUpdated((key, value) => {
     if (key === 'themeId') snapshot = { ...snapshot, themeId: value as string }
     else if (key === 'customThemePalette') snapshot = { ...snapshot, customThemePalette: value as ThemePalette | null }
     else return
@@ -69,9 +75,4 @@ export async function bootstrapTheme(): Promise<void> {
 interface ThemeSettingsSnapshot {
   themeId: string
   customThemePalette: ThemePalette | null
-}
-
-interface ScalpelThemeApi {
-  getSettings: () => Promise<unknown>
-  onSettingUpdated?: (cb: (key: string, value: unknown) => void) => () => void
 }

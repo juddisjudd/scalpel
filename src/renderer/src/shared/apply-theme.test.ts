@@ -56,4 +56,21 @@ describe('bootstrapTheme', () => {
       resolveCssVars(PRESETS_BY_ID['mono'].palette)['--accent'],
     )
   })
+
+  it('re-applies on customThemePalette setting-updated', async () => {
+    let updatedCb: ((key: string, value: unknown) => void) | undefined
+    ;(window as unknown as { api: unknown }).api = {
+      getSettings: vi.fn().mockResolvedValue({ themeId: 'custom', customThemePalette: null }),
+      onSettingUpdated: (cb: (k: string, v: unknown) => void) => {
+        updatedCb = cb
+        return () => {}
+      },
+    }
+
+    await bootstrapTheme()
+
+    const customPalette = { ...DEFAULT_PALETTE, accent: '#ff00ff' }
+    updatedCb!('customThemePalette', customPalette)
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe(resolveCssVars(customPalette)['--accent'])
+  })
 })
