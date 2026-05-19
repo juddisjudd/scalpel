@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AppSettings } from '../../../../shared/types'
-import type { ThemePalette } from '../../../../shared/theme/palette'
+import type { ThemePalette, ThemePreset } from '../../../../shared/theme/palette'
 import { PRESETS } from '../../../../shared/theme/presets'
 import { resolveActivePalette } from '../../../../shared/theme/active'
 import { applyPalette } from '../../shared/apply-theme'
@@ -9,6 +9,7 @@ import { CollapsibleSection } from '../../shared/CollapsibleSection'
 interface Props {
   settings: AppSettings
   update: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  updateMany: (patch: Partial<AppSettings>) => void
 }
 
 // Order = how the swatches and color inputs are listed in the editor.
@@ -29,7 +30,7 @@ const FIELDS: Array<{ key: keyof ThemePalette; label: string }> = [
   { key: 'minimalColor', label: 'Filter: Minimal' },
 ]
 
-export function ThemeSettings({ settings, update }: Props): JSX.Element {
+export function ThemeSettings({ settings, update, updateMany }: Props): JSX.Element {
   // Working palette is local; live-applied to THIS window only until saved.
   const [working, setWorking] = useState<ThemePalette>(() =>
     resolveActivePalette(settings.themeId, settings.customThemePalette ?? null),
@@ -58,9 +59,8 @@ export function ThemeSettings({ settings, update }: Props): JSX.Element {
   }
 
   const saveCustom = (): void => {
-    // Persist palette before id so a 'custom' themeId never points at a stale custom palette.
-    update('customThemePalette', working)
-    update('themeId', 'custom')
+    // Atomic write so the in-memory settings mirror gets both keys (avoids a stale-closure clobber that reset the working palette).
+    updateMany({ customThemePalette: working, themeId: 'custom' })
     setDirty(false)
   }
 
@@ -71,6 +71,13 @@ export function ThemeSettings({ settings, update }: Props): JSX.Element {
     applyPalette(base)
   }
 
+  // The saved custom palette shows up as a single "Custom" chip alongside the
+  // built-in presets. customThemePalette is null until the user saves one, and
+  // it is overwritten in place on each save, so there is only ever one "Custom".
+  const presetList: ThemePreset[] = settings.customThemePalette
+    ? [...PRESETS, { id: 'custom', name: 'Custom', palette: settings.customThemePalette }]
+    : PRESETS
+
   return (
     <>
       <div className="settings-section-title mt-3">Theme</div>
@@ -78,7 +85,7 @@ export function ThemeSettings({ settings, update }: Props): JSX.Element {
       <section>
         <label>Presets</label>
         <div className="flex flex-wrap gap-1.5 mt-[6px]">
-          {PRESETS.map((p) => {
+          {presetList.map((p) => {
             const selected = !dirty && settings.themeId === p.id
             return (
               <button
