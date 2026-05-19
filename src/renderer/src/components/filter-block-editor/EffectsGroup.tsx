@@ -11,8 +11,7 @@ import {
   getMinimapIconUrl,
 } from '../../../../shared/data/filter/filter-actions'
 import { Toggle } from '../Toggle'
-import { Down, Right } from '@icon-park/react'
-import { IP } from './constants'
+import { CollapsibleSection } from '../../shared/CollapsibleSection'
 
 export function ActionBox({ title, children }: { title: string; children: React.ReactNode }): JSX.Element {
   return (
@@ -324,8 +323,6 @@ export function EffectsGroup({
   updateAction: (index: number, action: FilterAction) => void
   addAction: (action: FilterAction) => number
 }): JSX.Element {
-  const [expanded, setExpanded] = useState(false)
-
   // Count how many effects are active (have non-empty values)
   const hasIcon = iconAction && iconAction.action.values.length > 0
   const hasBeam = effectAction && effectAction.action.values.length > 0
@@ -334,54 +331,48 @@ export function EffectsGroup({
   const _summary = [hasIcon && 'minimap', hasBeam && 'beam', hasSound && 'sound'].filter(Boolean).join(', ')
 
   return (
-    <div>
-      <div
-        onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-[6px] px-[10px] py-1 cursor-pointer select-none"
-      >
-        <span className="flex -mt-px">{expanded ? <Down size={12} {...IP} /> : <Right size={12} {...IP} />}</span>
-        <span className="text-[11px] text-text-dim">Effects (Minimap, Beam, Sound)</span>
+    <CollapsibleSection
+      title={<span className="text-[11px] text-text-dim">Effects (Minimap, Beam, Sound)</span>}
+      headerClassName="px-[10px] py-1"
+    >
+      <div className="flex flex-col gap-2 px-[10px] pt-[6px] pb-[10px]">
+        <ActionBox title="Minimap Icon">
+          <MinimapIconEditor
+            action={iconAction?.action ?? { type: 'MinimapIcon', values: [] }}
+            onChange={(updated) => {
+              if (iconAction) {
+                updateAction(iconAction.index, updated)
+              } else {
+                addAction(updated)
+              }
+            }}
+          />
+        </ActionBox>
+        <ActionBox title="Beam Effect">
+          <PlayEffectEditor
+            action={effectAction?.action ?? { type: 'PlayEffect', values: [] }}
+            onChange={(updated) => {
+              if (effectAction) {
+                updateAction(effectAction.index, updated)
+              } else {
+                addAction(updated)
+              }
+            }}
+          />
+        </ActionBox>
+        <ActionBox title="Alert Sound">
+          <AlertSoundEditor
+            action={soundAction?.action ?? { type: 'PlayAlertSound', values: [] }}
+            onChange={(updated) => {
+              if (soundAction) {
+                updateAction(soundAction.index, updated)
+              } else {
+                addAction(updated)
+              }
+            }}
+          />
+        </ActionBox>
       </div>
-      {expanded && (
-        <div className="flex flex-col gap-2 px-[10px] pt-[6px] pb-[10px]">
-          <ActionBox title="Minimap Icon">
-            <MinimapIconEditor
-              action={iconAction?.action ?? { type: 'MinimapIcon', values: [] }}
-              onChange={(updated) => {
-                if (iconAction) {
-                  updateAction(iconAction.index, updated)
-                } else {
-                  addAction(updated)
-                }
-              }}
-            />
-          </ActionBox>
-          <ActionBox title="Beam Effect">
-            <PlayEffectEditor
-              action={effectAction?.action ?? { type: 'PlayEffect', values: [] }}
-              onChange={(updated) => {
-                if (effectAction) {
-                  updateAction(effectAction.index, updated)
-                } else {
-                  addAction(updated)
-                }
-              }}
-            />
-          </ActionBox>
-          <ActionBox title="Alert Sound">
-            <AlertSoundEditor
-              action={soundAction?.action ?? { type: 'PlayAlertSound', values: [] }}
-              onChange={(updated) => {
-                if (soundAction) {
-                  updateAction(soundAction.index, updated)
-                } else {
-                  addAction(updated)
-                }
-              }}
-            />
-          </ActionBox>
-        </div>
-      )}
-    </div>
+    </CollapsibleSection>
   )
 }
