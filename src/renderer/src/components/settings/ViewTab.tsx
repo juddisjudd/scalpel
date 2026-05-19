@@ -12,6 +12,7 @@ import poereIcon from '../../assets/other/poere-logo.svg'
 interface Props {
   settings: AppSettings
   update: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  updateMany: (patch: Partial<AppSettings>) => void
 }
 
 const SCALE_PRESETS = [0.75, 1, 1.25, 1.5, 2] as const
@@ -24,7 +25,7 @@ const TAB_FILL_ON = 'var(--accent)'
 const TAB_FILL_OFF = 'rgba(239,83,80,0.85)'
 const TAB_FILL_FIXED = 'rgba(255,255,255,0.12)'
 
-export function ViewTab({ settings, update }: Props): JSX.Element {
+export function ViewTab({ settings, update, updateMany }: Props): JSX.Element {
   // Custom scale mode is auto-enabled when the saved scale isn't one of the presets,
   // and toggled by the Custom/preset buttons otherwise.
   const [customScale, setCustomScale] = useState<boolean>(
@@ -191,7 +192,7 @@ export function ViewTab({ settings, update }: Props): JSX.Element {
         checked={settings.closeOnClickOutside}
         onChange={(val) => update('closeOnClickOutside', val)}
       />
-      <ThemeSettings settings={settings} update={update} />
+      <ThemeSettings settings={settings} update={update} updateMany={updateMany} />
     </>
   )
 }

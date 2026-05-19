@@ -96,6 +96,13 @@ export function SettingsPanel({
     onSettingsChange({ ...settings, [key]: value })
   }
 
+  const updateMany = (patch: Partial<AppSettings>): void => {
+    for (const k of Object.keys(patch) as Array<keyof AppSettings>) {
+      window.api.setSetting(k, patch[k] as AppSettings[keyof AppSettings])
+    }
+    onSettingsChange({ ...settings, ...patch })
+  }
+
   const showError = (msg: string, tone: 'error' | 'warn' = 'error'): void => {
     if (onError) {
       onError(msg, tone)
@@ -156,7 +163,7 @@ export function SettingsPanel({
       </div>
 
       {tab === 'general' && <GeneralTab settings={settings} update={update} />}
-      {tab === 'view' && <ViewTab settings={settings} update={update} />}
+      {tab === 'view' && <ViewTab settings={settings} update={update} updateMany={updateMany} />}
       {tab === 'macros' && <MacrosTab settings={settings} update={update} tryHotkey={tryHotkey} />}
       {tab === 'cheatsheets' && (
         <CheatSheetsTab settings={settings} update={update} tryHotkey={tryHotkey} onError={showError} />
