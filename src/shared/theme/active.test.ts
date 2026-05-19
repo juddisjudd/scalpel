@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { resolveActivePalette } from './active'
-import { DEFAULT_PALETTE, PRESETS_BY_ID } from './presets'
+import { DEFAULT_PALETTE, PRESETS } from './presets'
+
+const NON_DEFAULT = PRESETS.filter((p) => p.id !== 'default')
+const SAMPLE_A = NON_DEFAULT[0]
+if (!SAMPLE_A) throw new Error('test requires >=1 non-default preset')
 
 describe('resolveActivePalette', () => {
   it('returns the preset palette for a known id', () => {
-    expect(resolveActivePalette('abyssal', null)).toEqual(PRESETS_BY_ID['abyssal'].palette)
+    expect(resolveActivePalette(SAMPLE_A.id, null)).toEqual(SAMPLE_A.palette)
   })
 
   it('returns the custom palette when themeId is custom and one is saved', () => {

@@ -1,13 +1,9 @@
-import { useState } from 'react'
 import { CHANGELOG } from '../../../../shared/changelog'
 import { FAQ } from '../../../../shared/faq'
-import { Down, Right } from '@icon-park/react'
-import { IP } from '../../shared/constants'
 import { FaqItem } from './FaqItem'
+import { CollapsibleSection } from '../../shared/CollapsibleSection'
 
 export function FaqTab(): JSX.Element {
-  const [changelogOpen, setChangelogOpen] = useState(false)
-
   return (
     <>
       <div className="mt-3 flex flex-col gap-3">
@@ -23,14 +19,7 @@ export function FaqTab(): JSX.Element {
 
       {/* Changelog */}
       <section>
-        <div
-          onClick={() => setChangelogOpen(!changelogOpen)}
-          className="flex items-center gap-[6px] cursor-pointer select-none"
-        >
-          {changelogOpen ? <Down size={12} {...IP} /> : <Right size={12} {...IP} />}
-          <span className="text-xs text-text-dim">Changelog</span>
-        </div>
-        {changelogOpen && (
+        <CollapsibleSection title={<span className="text-xs text-text-dim">Changelog</span>}>
           <div className="mt-2 flex flex-col gap-[10px]">
             {CHANGELOG.map((entry) => (
               <div key={entry.version}>
@@ -45,7 +34,7 @@ export function FaqTab(): JSX.Element {
               </div>
             ))}
           </div>
-        )}
+        </CollapsibleSection>
       </section>
     </>
   )

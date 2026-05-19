@@ -96,6 +96,7 @@ export function SettingsPanel({
     onSettingsChange({ ...settings, [key]: value })
   }
 
+  // A single merged onSettingsChange avoids the stale-settings-closure clobber you'd get from two sequential update() calls in one tick.
   const updateMany = (patch: Partial<AppSettings>): void => {
     for (const k of Object.keys(patch) as Array<keyof AppSettings>) {
       window.api.setSetting(k, patch[k] as AppSettings[keyof AppSettings])

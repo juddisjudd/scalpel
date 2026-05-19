@@ -24,9 +24,9 @@ export function CollapsibleSection({
     <div>
       <div
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-[6px] cursor-pointer select-none${
-          headerClassName ? ` ${headerClassName}` : ''
-        }`}
+        className={['flex items-center gap-[6px] cursor-pointer select-none', headerClassName]
+          .filter(Boolean)
+          .join(' ')}
       >
         <span className="flex -mt-px">{open ? <Down size={12} {...IP} /> : <Right size={12} {...IP} />}</span>
         {title}

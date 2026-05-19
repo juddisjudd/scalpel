@@ -49,12 +49,7 @@ export function FilterInfoBanner({
     })
 
   return (
-    <div
-      className="flex items-center justify-between px-3.5 py-2 border-b border-border text-[11px]"
-      style={{
-        background: '#101118',
-      }}
-    >
+    <div className="flex items-center justify-between px-3.5 py-2 border-b border-border text-[11px] bg-bg-solid">
       <span className="text-text-dim truncate">
         {hasUpdate && <span className="text-accent font-semibold mr-1.5">Filter Update Available</span>}
         {!hasUpdate &&

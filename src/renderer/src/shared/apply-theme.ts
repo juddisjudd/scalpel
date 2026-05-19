@@ -8,6 +8,15 @@ export const THEME_CACHE_KEY = 'scalpel:theme-vars'
 
 type ThemeApi = Pick<Api, 'getSettings' | 'onSettingUpdated'>
 
+/** Apply resolved CSS vars to :root without writing the localStorage cache.
+ *  Use this on live-drag paths (e.g. color picker onChange) to avoid
+ *  synchronous disk-backed writes on every frame. */
+export function applyVars(palette: ThemePalette): void {
+  const vars = resolveCssVars(palette)
+  const root = document.documentElement
+  for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v)
+}
+
 /** Write a resolved palette to :root and cache it for the next cold start. */
 export function applyPalette(palette: ThemePalette): void {
   const vars = resolveCssVars(palette)

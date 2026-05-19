@@ -24,11 +24,13 @@
      the whole overlay so retheming controls translucency in one place. */
   --bg-solid-translucent: rgba(23, 24, 33, 0.95);
   --bg-card-translucent: rgba(35, 35, 46, 0.95);
-  --border: rgba(80, 80, 110, 0.5);
+  --border: rgba(56, 56, 77, 0.5);
   --accent: #c8a96e;
   --accent-dim: rgba(200, 169, 110, 0.3);
+  --accent-hover: #e0bd7b;
   --match: #4caf50;
   --match-dim: rgba(76, 175, 80, 0.2);
+  --match-hover: #55c45a;
   --secondary-match: #7e57c2;
   --secondary-match-dim: rgba(126, 87, 194, 0.2);
   --text: #e0d8cc;
@@ -137,12 +139,12 @@ button.menu-row:hover {
 /* Accent-colored buttons (Tailwind bg-accent) need a brighter gold on hover, else the
  * default gray-overlay hover above washes them out and loses the toggle feedback. */
 button.bg-accent:hover {
-  background: #d4b87a;
+  background: var(--accent-hover);
 }
 /* Match-colored buttons (Tailwind bg-match) get the same hover treatment for the
  * same reason - the default gray overlay would mask the green. */
 button.bg-match:hover {
-  background: #5cba60;
+  background: var(--match-hover);
 }
 button:focus,
 button:focus-visible {
@@ -251,7 +253,7 @@ input[type='number']::-webkit-outer-spin-button {
     @apply bg-accent text-bg-solid font-semibold;
   }
   button.primary:hover {
-    background: #d4b87a;
+    background: var(--accent-hover);
   }
 
   .section-title {

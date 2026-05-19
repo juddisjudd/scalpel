@@ -5,20 +5,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AppSettings } from '../../../../shared/types'
 import { DEFAULT_PALETTE } from '../../../../shared/theme/presets'
 import { ThemeSettings } from './ThemeSettings'
-import { applyPalette } from '../../shared/apply-theme'
+import { applyPalette, applyVars } from '../../shared/apply-theme'
 
-vi.mock('../../shared/apply-theme', () => ({ applyPalette: vi.fn() }))
+vi.mock('../../shared/apply-theme', () => ({ applyPalette: vi.fn(), applyVars: vi.fn() }))
 
 const mockApply = vi.mocked(applyPalette)
+const mockApplyVars = vi.mocked(applyVars)
 
 beforeEach(() => {
   mockApply.mockClear()
+  mockApplyVars.mockClear()
 })
 
-// Faithfully mirrors the SettingsPanel <-> setSettings wiring:
-//  - update: the UNSAFE single-key absolute write (current SettingsPanel.update)
-//  - updateMany: the SAFE atomic multi-key write (the fix)
-// Both spread the render-closure `settings`, exactly like SettingsPanel does.
+// Mirrors SettingsPanel's update/updateMany wiring: both spread the render-closure
+// `settings` and call setSettings, exactly as SettingsPanel does.
 function Harness(): JSX.Element {
   const [settings, setSettings] = useState<AppSettings>({
     themeId: 'default',
@@ -53,9 +53,9 @@ describe('ThemeSettings custom save sequence', () => {
     // Second customization.
     fireEvent.change(colorInput('Background'), { target: { value: '#222222' } })
 
-    // The last applied palette must be the saved custom palette plus BOTH edits,
+    // The last live-preview call must carry the saved custom palette plus BOTH edits,
     // i.e. it must NOT have reverted accent back to the default palette value.
-    const lastArg = mockApply.mock.calls.at(-1)?.[0]
+    const lastArg = mockApplyVars.mock.calls.at(-1)?.[0]
     expect(lastArg).toEqual({ ...DEFAULT_PALETTE, accent: '#111111', bgSolid: '#222222' })
   })
 

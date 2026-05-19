@@ -19,7 +19,7 @@ describe('lighten', () => {
 })
 
 describe('resolveCssVars - default palette anchor', () => {
-  it('reproduces the current styles.css :root exactly', () => {
+  it('encodes the intended derived values for the default palette (--border is deliberately darkened via BORDER_DARKEN=0.7, diverging from the original styles.css literal)', () => {
     expect(resolveCssVars(DEFAULT_PALETTE)).toEqual({
       '--bg': 'rgba(23, 24, 33, 0.99)',
       '--bg-solid': '#171821',
@@ -27,11 +27,13 @@ describe('resolveCssVars - default palette anchor', () => {
       '--bg-hover': '#2c2c3a',
       '--bg-solid-translucent': 'rgba(23, 24, 33, 0.95)',
       '--bg-card-translucent': 'rgba(35, 35, 46, 0.95)',
-      '--border': 'rgba(80, 80, 110, 0.5)',
+      '--border': 'rgba(56, 56, 77, 0.5)',
       '--accent': '#c8a96e',
       '--accent-dim': 'rgba(200, 169, 110, 0.3)',
+      '--accent-hover': '#e0bd7b',
       '--match': '#4caf50',
       '--match-dim': 'rgba(76, 175, 80, 0.2)',
+      '--match-hover': '#55c45a',
       '--secondary-match': '#7e57c2',
       '--secondary-match-dim': 'rgba(126, 87, 194, 0.2)',
       '--text': '#e0d8cc',
@@ -47,10 +49,10 @@ describe('resolveCssVars - default palette anchor', () => {
 })
 
 describe('resolveCssVars - all presets', () => {
-  it('produces 21 non-empty string vars for every preset', () => {
+  it('produces 23 non-empty string vars for every preset', () => {
     for (const p of PRESETS) {
       const vars = resolveCssVars(p.palette)
-      expect(Object.keys(vars)).toHaveLength(21)
+      expect(Object.keys(vars)).toHaveLength(23)
       for (const v of Object.values(vars)) {
         expect(typeof v).toBe('string')
         expect(v.length).toBeGreaterThan(0)

@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { applyPalette, applyCachedVars, bootstrapTheme, THEME_CACHE_KEY } from './apply-theme'
-import { DEFAULT_PALETTE, PRESETS_BY_ID } from '../../../shared/theme/presets'
+import { applyPalette, applyVars, applyCachedVars, bootstrapTheme, THEME_CACHE_KEY } from './apply-theme'
+import { DEFAULT_PALETTE, PRESETS } from '../../../shared/theme/presets'
 import { resolveCssVars } from '../../../shared/theme/derive'
+
+const NON_DEFAULT = PRESETS.filter((p) => p.id !== 'default')
+const SAMPLE_A = NON_DEFAULT[0]
+const SAMPLE_B = NON_DEFAULT[1]
+if (!SAMPLE_A || !SAMPLE_B) throw new Error('test requires >=2 non-default presets')
 
 beforeEach(() => {
   localStorage.clear()
@@ -11,12 +16,23 @@ beforeEach(() => {
 
 describe('applyPalette', () => {
   it('sets every resolved var on documentElement and caches it', () => {
-    applyPalette(PRESETS_BY_ID['abyssal'].palette)
-    const expected = resolveCssVars(PRESETS_BY_ID['abyssal'].palette)
+    applyPalette(SAMPLE_A.palette)
+    const expected = resolveCssVars(SAMPLE_A.palette)
     for (const [k, v] of Object.entries(expected)) {
       expect(document.documentElement.style.getPropertyValue(k)).toBe(v)
     }
     expect(JSON.parse(localStorage.getItem(THEME_CACHE_KEY)!)).toEqual(expected)
+  })
+})
+
+describe('applyVars', () => {
+  it('sets every resolved var on documentElement but does NOT write localStorage', () => {
+    applyVars(SAMPLE_A.palette)
+    const expected = resolveCssVars(SAMPLE_A.palette)
+    for (const [k, v] of Object.entries(expected)) {
+      expect(document.documentElement.style.getPropertyValue(k)).toBe(v)
+    }
+    expect(localStorage.getItem(THEME_CACHE_KEY)).toBeNull()
   })
 })
 
@@ -39,7 +55,7 @@ describe('bootstrapTheme', () => {
   it('applies the resolved settings palette and re-applies on setting-updated', async () => {
     let updatedCb: ((key: string, value: unknown) => void) | undefined
     ;(window as unknown as { api: unknown }).api = {
-      getSettings: vi.fn().mockResolvedValue({ themeId: 'abyssal', customThemePalette: null }),
+      getSettings: vi.fn().mockResolvedValue({ themeId: SAMPLE_A.id, customThemePalette: null }),
       onSettingUpdated: (cb: (k: string, v: unknown) => void) => {
         updatedCb = cb
         return () => {}
@@ -48,12 +64,12 @@ describe('bootstrapTheme', () => {
 
     await bootstrapTheme()
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe(
-      resolveCssVars(PRESETS_BY_ID['abyssal'].palette)['--accent'],
+      resolveCssVars(SAMPLE_A.palette)['--accent'],
     )
 
-    updatedCb!('themeId', 'mono')
+    updatedCb!('themeId', SAMPLE_B.id)
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe(
-      resolveCssVars(PRESETS_BY_ID['mono'].palette)['--accent'],
+      resolveCssVars(SAMPLE_B.palette)['--accent'],
     )
   })
 

@@ -1,5 +1,5 @@
 import { uIOhook, UiohookKey } from 'uiohook-napi'
-import { clipboard, globalShortcut } from 'electron'
+import { clipboard, globalShortcut, ipcMain } from 'electron'
 import { snapshotClipboard } from './clipboard-preserve'
 import { OverlayController } from 'electron-overlay-window'
 import { focusGameWindow, getOverlayWindow, isTypingInOverlay } from './overlay'
@@ -84,8 +84,10 @@ let onTrigger: (() => void) | null = null
 let onPriceCheck: (() => void) | null = null
 let onEscape: (() => void) | null = null
 let hookStarted = false
+let hookSuspended = false
 let injecting = false
 let stashScrollEnabled = false
+let hookResumeTimer: ReturnType<typeof setTimeout> | null = null
 
 /** globalShortcut is suppressed when the non-attached PoE has focus (Windows blocks
  *  hotkey delivery from a game that Electron isn't attached to); uIOhook is a
@@ -183,6 +185,38 @@ export function startHotkeyListener(handler: () => void): void {
   if (!hookStarted) {
     uIOhook.start()
     hookStarted = true
+
+    ipcMain.handle('screen-pick:suspend-hook', () => {
+      if (hookSuspended) return
+      try {
+        uIOhook.stop()
+      } catch {}
+      hookSuspended = true
+      if (hookResumeTimer) clearTimeout(hookResumeTimer)
+      // Safety net: if the renderer never sends resume (crash / window closed
+      // mid-pick), auto-restart the hook so Escape/hotkeys/scroll can't stay dead.
+      hookResumeTimer = setTimeout(() => {
+        hookResumeTimer = null
+        if (hookSuspended) {
+          try {
+            uIOhook.start()
+          } catch {}
+          hookSuspended = false
+        }
+      }, 60000)
+    })
+    ipcMain.handle('screen-pick:resume-hook', () => {
+      if (hookResumeTimer) {
+        clearTimeout(hookResumeTimer)
+        hookResumeTimer = null
+      }
+      if (hookSuspended) {
+        try {
+          uIOhook.start()
+        } catch {}
+        hookSuspended = false
+      }
+    })
   }
 }
 

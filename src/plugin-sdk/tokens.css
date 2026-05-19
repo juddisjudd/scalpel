@@ -13,11 +13,13 @@
   --bg-hover: #2c2c3a;
   --bg-solid-translucent: rgba(23, 24, 33, 0.95);
   --bg-card-translucent: rgba(35, 35, 46, 0.95);
-  --border: rgba(80, 80, 110, 0.5);
+  --border: rgba(56, 56, 77, 0.5);
   --accent: #c8a96e;
   --accent-dim: rgba(200, 169, 110, 0.3);
+  --accent-hover: #e0bd7b;
   --match: #4caf50;
   --match-dim: rgba(76, 175, 80, 0.2);
+  --match-hover: #55c45a;
   --secondary-match: #7e57c2;
   --secondary-match-dim: rgba(126, 87, 194, 0.2);
   --text: #e0d8cc;
