@@ -357,25 +357,22 @@ export function register(store: Store<AppSettings>): void {
     },
   )
 
-  ipcMain.handle(
-    'get-unique-visibility',
-    (_event, refs: Array<{ name: string; baseType: string; itemClass: string }>): Record<string, 'Show' | 'Hide'> => {
-      const currentFilter = getCurrentFilter()
-      if (!currentFilter) return {}
-      const result: Record<string, 'Show' | 'Hide'> = {}
-      for (const ref of refs) {
-        const synthetic = defaultPoeItem(
-          { ...clickSyntheticOverrides(ref.baseType, ref.itemClass, 'Unique'), name: ref.name, itemLevel: 84 },
-          getPoeVersion(),
-        )
-        const active = findMatchingBlocks(currentFilter, synthetic).find((m) => m.isFirstMatch)
-        // Mirror the renderer's show-vs-hide collapse (see toLabelBlock in this file):
-        // anything that isn't an explicit Hide counts as shown; no match = hidden by default.
-        result[ref.name] = active && active.block.visibility !== 'Hide' ? 'Show' : 'Hide'
-      }
-      return result
-    },
-  )
+  // Show/Hide for every unique, derived from the already-primed searchable-items cache
+  // (collectUniques evaluates each unique against the filter at ilvl 84). Reuses that
+  // primed result rather than re-walking the filter per unique on each Dust-tab open, and
+  // shares the combobox/LootLabel rule: an item's primary block is the last in its match
+  // chain; a null chain (nothing matched) reads as shown, matching the in-game default.
+  ipcMain.handle('get-unique-visibility', async (): Promise<Record<string, 'Show' | 'Hide'>> => {
+    if (!getCurrentFilter()) return {}
+    await primeSearchableItemsCache(store)
+    const result: Record<string, 'Show' | 'Hide'> = {}
+    for (const item of searchableCache?.items ?? []) {
+      if (item.rarity !== 'Unique') continue
+      const primary = item.blocks?.[item.blocks.length - 1]
+      result[item.name] = primary?.visibility === 'Hide' ? 'Hide' : 'Show'
+    }
+    return result
+  })
 
   ipcMain.handle(
     'batch-lookup-prices',

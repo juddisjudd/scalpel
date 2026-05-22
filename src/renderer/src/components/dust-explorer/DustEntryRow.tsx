@@ -56,7 +56,7 @@ export function DustEntryRow({
           title={visibility === 'Show' ? 'Shown by your filter' : 'Hidden by your filter'}
           className="shrink-0 flex items-center"
           style={{
-            color: visibility === 'Show' ? 'var(--text-dim)' : '#ef5350',
+            color: visibility === 'Show' ? 'var(--text-dim)' : 'var(--hide-color)',
             opacity: visibility === 'Show' ? 0.5 : 0.9,
           }}
         >

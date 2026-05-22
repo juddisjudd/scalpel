@@ -87,9 +87,7 @@ export function DustExplorer({
   useEffect(() => {
     let cancelled = false
     window.api
-      .getUniqueVisibility(
-        baseEntries.map((e) => ({ name: e.name, baseType: e.baseType, itemClass: baseClassMap[e.baseType] ?? '' })),
-      )
+      .getUniqueVisibility()
       .then((v) => {
         if (!cancelled) setVisibility(v)
       })
@@ -97,7 +95,7 @@ export function DustExplorer({
     return () => {
       cancelled = true
     }
-  }, [baseEntries])
+  }, [])
 
   const entries: DustEntry[] = useMemo(() => {
     return baseEntries
