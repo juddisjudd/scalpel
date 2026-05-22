@@ -45,8 +45,16 @@ export function TradeListings({
   const currencyIcons = getCurrencyIconMap(poeVersion)
   const openAll = resultsView === 'open-all'
   const compact = resultsView === 'shrinkydink'
+  const matchCount = total ?? listings.length
   return (
     <div className="bg-black/20 overflow-hidden flex-1 min-h-0 overflow-y-auto rounded-none mx-[-14px] mt-0 -mb-[10px]">
+      {matchCount > 0 && (
+        <div className="sticky top-2 z-10 flex h-0 items-start justify-end pr-3 pointer-events-none">
+          <span className="rounded-full bg-black/50 px-[8px] py-[2px] text-[9px] font-semibold text-text-dim">
+            {matchCount} {matchCount === 1 ? 'Match' : 'Matches'}
+          </span>
+        </div>
+      )}
       {listings.map((l, i) => {
         const isExpanded = openAll || expandedListing === l.id
         return (
