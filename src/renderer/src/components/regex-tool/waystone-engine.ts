@@ -1,4 +1,5 @@
 import type { WaystoneMod } from '../../../../shared/data/regex/waystone-mods'
+import { generateNumberRegex } from './waystone-number-regex'
 
 export interface WaystoneTier {
   min: number
@@ -26,6 +27,12 @@ export interface WaystoneSelections {
   avoid: Set<number>
   /** "any" = match if any selected prefix is present; "all" = require all. */
   wantMode: 'any' | 'all'
+  /** Per-mod magnitude thresholds for want (prefix) mods, keyed by mod id. A selected
+   *  mod with a non-zero value gets a number-regex prefix; absent/falsy means the bare
+   *  mod token. */
+  wantValues: Record<number, number>
+  /** Same as wantValues, for avoid (suffix) mods. */
+  avoidValues: Record<number, number>
 }
 
 interface BuildArgs {
@@ -34,6 +41,10 @@ interface BuildArgs {
   rarity: WaystoneRarity
   qualifiers: WaystoneQualifiers
   selections: WaystoneSelections
+  /** "Round down to nearest 10" -- compresses magnitude regex. */
+  round10: boolean
+  /** "Match numbers over 100%" -- widens magnitude regex to allow 3-digit rolls. */
+  over100: boolean
   customText?: string
 }
 
@@ -43,18 +54,12 @@ interface BuildArgs {
  *  Quirk preserved: when no mods are selected, `buildModifierRegex` returns a single
  *  space (poe2.re's `[null, null].join(' ')` quirk) which propagates to the final
  *  output as extra whitespace between adjacent sections. Trade regex tolerates the
- *  extra space, and matching the upstream behavior keeps the parity test honest.
- *
- *  Per-mod magnitude prefixes (e.g. "[2-9]\d.*fire$" for a 20+ fire roll) are NOT
- *  emitted yet -- poe2.re only adds them when the user explicitly picks a value
- *  for a mod, and we don't expose that picker. Without a chosen value, just the
- *  bare mod regex token is used. Re-add the magnitude path here when we surface
- *  per-mod value inputs. */
+ *  extra space, and matching the upstream behavior keeps the parity test honest. */
 export function buildWaystoneRegex(args: BuildArgs): string {
-  const { mods, tier, rarity, qualifiers, selections, customText } = args
+  const { mods, tier, rarity, qualifiers, selections, round10, over100, customText } = args
   const parts = [
     buildTierRegex(tier),
-    buildModifierRegex(mods, selections, qualifiers),
+    buildModifierRegex(mods, selections, qualifiers, round10, over100),
     buildRarityRegex(rarity),
     customText || null,
   ].filter((p): p is string => p !== null)
@@ -91,15 +96,24 @@ function buildTierRegex(tier: WaystoneTier): string | null {
   return result === '' ? null : `"${result}"`
 }
 
+/** poe2.re's selectedOptionRegex: a chosen magnitude prefixes the mod token. A
+ *  falsy value (0 / undefined) yields the bare token, matching their `if (option.value)`. */
+function modToken(mod: WaystoneMod, value: number | undefined, round10: boolean, over100: boolean): string {
+  if (!value) return mod.regex
+  return `${generateNumberRegex(String(value), round10, over100)}.*${mod.regex}`
+}
+
 function buildModifierRegex(
   mods: WaystoneMod[],
   selections: WaystoneSelections,
   qualifiers: WaystoneQualifiers,
+  round10: boolean,
+  over100: boolean,
 ): string {
   const wantMods = mods.filter((m) => m.affix === 'PREFIX' && selections.want.has(m.id))
   const avoidMods = mods.filter((m) => m.affix === 'SUFFIX' && selections.avoid.has(m.id))
 
-  const wantRegex = wantMods.map((m) => m.regex)
+  const wantRegex = wantMods.map((m) => modToken(m, selections.wantValues[m.id], round10, over100))
 
   const wantWithMode = selections.wantMode === 'any' ? wantRegex.join('|') : wantRegex.map((r) => `"${r}"`).join(' ')
 
@@ -116,7 +130,7 @@ function buildModifierRegex(
       ? `"${[...goodSpecial, wantWithMode].filter((s) => s !== '').join('|')}"`
       : [...goodSpecial.map((s) => `"${s}"`), wantWithMode].filter((s) => s !== '').join(' ')
 
-  const badRegex = avoidMods.map((m) => m.regex).join('|')
+  const badRegex = avoidMods.map((m) => modToken(m, selections.avoidValues[m.id], round10, over100)).join('|')
 
   const goodPart = goodSpecial.length + wantMods.length > 0 ? goodWithMode : null
   const badPart = badRegex.length > 0 ? `"!${badRegex}"` : null

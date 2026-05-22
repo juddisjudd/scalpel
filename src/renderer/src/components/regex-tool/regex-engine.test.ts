@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMapRegex } from './regex-engine'
+import { buildMapRegex, poeRegexMaxLength } from './regex-engine'
 import type { MapMod } from '../../../../shared/data/regex/map-mods'
 
 /** Fabricate a MapMod with just the fields buildMapRegex touches. Ids are unique and
@@ -45,5 +45,12 @@ describe('buildMapRegex', () => {
   it('passes a single want=any mod through without trailing pipe', () => {
     const out = buildMapRegex([], [mod(9000012, 'solo')], 'any')
     expect(out).toBe('"solo"')
+  })
+})
+
+describe('poeRegexMaxLength', () => {
+  it('returns 250 for both games (PoE2 input limit raised to 250)', () => {
+    expect(poeRegexMaxLength(1)).toBe(250)
+    expect(poeRegexMaxLength(2)).toBe(250)
   })
 })

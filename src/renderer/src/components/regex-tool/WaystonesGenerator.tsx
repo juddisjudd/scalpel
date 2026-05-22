@@ -3,11 +3,13 @@ import { AddOne, Forbid, CheckOne, Search, CloseSmall } from '@icon-park/react'
 import {
   TAB_COLORS,
   formatModText,
+  RegexCheckbox,
   useRegexKey,
   usePersistedSet,
   usePersistedString,
   usePersistedNumber,
   usePersistedBool,
+  usePersistedJSON,
 } from './mapmods-helpers'
 import { FilterChip } from '../price-check/FilterChip'
 import { ModList } from './ModList'
@@ -25,6 +27,15 @@ type WantMode = 'any' | 'all'
 
 const PREFIX_MODS = WAYSTONE_MODS.filter((m) => m.affix === 'PREFIX')
 const SUFFIX_MODS = WAYSTONE_MODS.filter((m) => m.affix === 'SUFFIX')
+
+/** Placeholder hint ("min-max") for a ranged mod's value input, or undefined when the
+ *  mod has no numeric range (so unranged mods show no input). Pure over WAYSTONE_MODS,
+ *  so it lives at module scope rather than being rebuilt on every render. */
+function waystoneRangeHint(id: string | number): string | undefined {
+  const mod = WAYSTONE_MODS.find((m) => m.id === Number(id))
+  if (!mod || mod.ranges[0]?.length !== 2) return undefined
+  return `${mod.ranges[0][0]}-${mod.ranges[0][1]}`
+}
 
 export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(function WaystonesGenerator(
   { onRegexChange, onAutoTagsChange, sharedSaveChip, sharedLoadChip, sharedSavePanel, sharedSavedPresets },
@@ -53,6 +64,15 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
   const [delirious, setDelirious] = usePersistedBool(key('waystone-delirious'), false)
   const [anyPack, setAnyPack] = usePersistedBool(key('waystone-any-pack'), false)
 
+  // "Round down to nearest 10" and "Match numbers over 100%" output toggles.
+  const [round10, setRound10] = usePersistedBool(key('waystone-round10'), false)
+  const [over100, setOver100] = usePersistedBool(key('waystone-over100'), false)
+
+  // Per-mod magnitude thresholds keyed by mod id. Values persist when a mod is
+  // unchecked (mirrors poe2.re) and only affect output while the mod is selected.
+  const [wantValues, setWantValues] = usePersistedJSON<Record<number, number>>(key('waystone-want-values'), {})
+  const [avoidValues, setAvoidValues] = usePersistedJSON<Record<number, number>>(key('waystone-avoid-values'), {})
+
   // ---- Ephemeral UI state ---------------------------------------------------
   const [tab, setTab] = useState<Tab>('qualifiers')
   const [search, setSearch] = useState('')
@@ -72,7 +92,9 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
     tier,
     rarity,
     qualifiers,
-    selections: { want, avoid, wantMode },
+    selections: { want, avoid, wantMode, wantValues, avoidValues },
+    round10,
+    over100,
   })
 
   useEffect(() => {
@@ -92,8 +114,23 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
       dropOverValue,
       delirious,
       anyPack,
+      wantValues,
+      avoidValues,
     }),
-    [want, avoid, tierMin, tierMax, corrupted, uncorrupted, dropOverEnabled, dropOverValue, delirious, anyPack],
+    [
+      want,
+      avoid,
+      tierMin,
+      tierMax,
+      corrupted,
+      uncorrupted,
+      dropOverEnabled,
+      dropOverValue,
+      delirious,
+      anyPack,
+      wantValues,
+      avoidValues,
+    ],
   )
 
   // Push auto-tags up to the container whenever a tag-relevant input changes.
@@ -115,9 +152,10 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
         avoid: [...avoid],
         want: [...want],
         wantMode,
-        // Stash waystone qualifiers in `qualifiers` so we don't widen RegexPreset.
-        // Numeric fields only -- corrupted/uncorrupted/delirious/etc. round-trip via
-        // 0/1 ints. The applyPreset side reads them back into booleans.
+        wantValues,
+        avoidValues,
+        // Stash waystone scalar/boolean qualifiers in `qualifiers`; wantValues/avoidValues
+        // are real RegexPreset fields because they're mod-id-keyed maps, not flat scalars.
         qualifiers: {
           tierMin,
           tierMax,
@@ -127,6 +165,8 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
           dropOverValue,
           delirious: delirious ? 1 : 0,
           anyPack: anyPack ? 1 : 0,
+          round10: round10 ? 1 : 0,
+          over100: over100 ? 1 : 0,
         } as Record<string, number>,
       }),
       applyPreset: (preset: RegexPreset) => {
@@ -142,6 +182,10 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
         setDropOverValue(q.dropOverValue ?? 100)
         setDelirious(!!q.delirious)
         setAnyPack(!!q.anyPack)
+        setRound10(!!q.round10)
+        setOver100(!!q.over100)
+        setWantValues(preset.wantValues ?? {})
+        setAvoidValues(preset.avoidValues ?? {})
       },
       // Match by sorted auto-tag set (ignoring user-added custom tags), so a "save"
       // becomes an "update" when the current state already corresponds to a saved
@@ -161,8 +205,9 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
       },
     }),
     // tagState collapses everything getPresetPayload + matchesPreset read EXCEPT
-    // wantMode (which feeds the engine but not the auto-tag set), so we list both.
-    [tagState, wantMode],
+    // wantMode, round10, and over100 (which feed the engine/payload but not the
+    // auto-tag set), so we list those explicitly alongside tagState.
+    [tagState, wantMode, round10, over100],
   )
 
   // Mod row helpers
@@ -206,6 +251,18 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
     })
   }
 
+  const values = tab === 'avoid' ? avoidValues : wantValues
+  const setValues = tab === 'avoid' ? setAvoidValues : setWantValues
+  const onValueChange = (id: string | number, v: number | null): void => {
+    const numId = Number(id)
+    setValues((prev) => {
+      const next = { ...prev }
+      if (v == null) delete next[numId]
+      else next[numId] = v
+      return next
+    })
+  }
+
   // Only count tier as "active" when the user has narrowed it beyond the full 1-16
   // span. Defaults of 1/16 produce no tier regex, so they shouldn't show as active.
   const tierActive = tierMin > 1 || tierMax < 16
@@ -214,7 +271,9 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
     (corrupted || uncorrupted ? 1 : 0) +
     (dropOverEnabled ? 1 : 0) +
     (delirious ? 1 : 0) +
-    (anyPack ? 1 : 0)
+    (anyPack ? 1 : 0) +
+    (round10 ? 1 : 0) +
+    (over100 ? 1 : 0)
 
   return (
     <>
@@ -370,19 +429,15 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
 
           <QualifierSection label="EXTRA">
             <div className="flex items-center gap-2 px-3 py-[6px]">
-              <input
-                type="checkbox"
-                id="ws-drop-over"
-                checked={dropOverEnabled}
-                onChange={(e) => setDropOverEnabled(e.target.checked)}
-              />
-              <label
-                htmlFor="ws-drop-over"
-                className="text-[11px] flex-1 cursor-pointer"
-                style={{ color: dropOverEnabled ? 'var(--text)' : 'var(--text-dim)' }}
+              <div
+                className="flex items-center gap-2 flex-1 cursor-pointer select-none"
+                onClick={() => setDropOverEnabled(!dropOverEnabled)}
               >
-                Waystone drop chance over
-              </label>
+                <RegexCheckbox checked={dropOverEnabled} color={TAB_COLORS.qualifiers} />
+                <span className="text-[11px]" style={{ color: dropOverEnabled ? 'var(--text)' : 'var(--text-dim)' }}>
+                  Waystone drop chance over
+                </span>
+              </div>
               <RegexSelect
                 value={dropOverValue}
                 options={[100, 200, 300, 400, 500, 600, 700]}
@@ -393,6 +448,15 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
             </div>
             <ToggleRow label="Players in area are #% delirious" checked={delirious} onChange={setDelirious} alt />
             <ToggleRow label="Area contains # of any additional packs" checked={anyPack} onChange={setAnyPack} />
+          </QualifierSection>
+
+          <QualifierSection label="OUTPUT">
+            <ToggleRow
+              label="Round down to nearest 10 (saves a lot of space)"
+              checked={round10}
+              onChange={setRound10}
+            />
+            <ToggleRow label="Match numbers over 100% (takes more space)" checked={over100} onChange={setOver100} alt />
           </QualifierSection>
         </div>
       )}
@@ -408,6 +472,9 @@ export const WaystonesGenerator = forwardRef<GeneratorHandle, GeneratorProps>(fu
           toggleCollapse={() => {
             // Single group per tab -- collapsing is a no-op for waystones.
           }}
+          values={values}
+          rangeHint={waystoneRangeHint}
+          onValueChange={onValueChange}
         />
       )}
     </>
@@ -443,20 +510,16 @@ function ToggleRow({
   onChange: (b: boolean) => void
   alt?: boolean
 }): JSX.Element {
-  const id = `ws-toggle-${label.replace(/\s+/g, '-').toLowerCase()}`
   return (
     <div
-      className="flex items-center gap-2 px-3 py-[6px]"
+      className="flex items-center gap-2 px-3 py-[6px] cursor-pointer select-none"
       style={{ background: alt ? 'rgba(255,255,255,0.02)' : 'transparent' }}
+      onClick={() => onChange(!checked)}
     >
-      <input type="checkbox" id={id} checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <label
-        htmlFor={id}
-        className="text-[11px] flex-1 cursor-pointer"
-        style={{ color: checked ? 'var(--text)' : 'var(--text-dim)' }}
-      >
+      <RegexCheckbox checked={checked} color={TAB_COLORS.qualifiers} />
+      <span className="text-[11px] flex-1" style={{ color: checked ? 'var(--text)' : 'var(--text-dim)' }}>
         {label}
-      </label>
+      </span>
     </div>
   )
 }

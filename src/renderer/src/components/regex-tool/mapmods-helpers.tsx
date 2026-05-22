@@ -14,6 +14,21 @@ export const TAB_COLORS = {
   custom: '#90a4ae',
 } as const
 
+/** The custom checkbox visual shared across the regex tool's tabs: a small rounded
+ *  square that fills with the given color and shows a check when on. Keeps the
+ *  Qualifiers toggles visually identical to the Want/Avoid mod rows instead of
+ *  rendering a native HTML checkbox that looks like a different component. */
+export function RegexCheckbox({ checked, color }: { checked: boolean; color: string }): JSX.Element {
+  return (
+    <div
+      className="w-[14px] h-[14px] shrink-0 rounded-[3px] flex items-center justify-center transition-[background] duration-100"
+      style={{ background: checked ? color : 'rgba(255,255,255,0.1)' }}
+    >
+      {checked && <span className="text-[10px] text-[#171821] font-bold leading-none">&#10003;</span>}
+    </div>
+  )
+}
+
 /** Canonical display formatter for mod-row text:
  *  - Collapses roll-range numbers to `#` so two rolls of the same mod compare equal.
  *  - Splits multi-line vendor mods (joined with `|` in the source data) onto a single

@@ -74,6 +74,8 @@ interface PresetTagState {
   dropOverValue: number
   delirious: boolean
   anyPack: boolean
+  wantValues: Record<number, number>
+  avoidValues: Record<number, number>
 }
 
 /** Generate the auto-tag list for a waystone preset, mirroring the maps generator's
@@ -119,14 +121,18 @@ export function generateWaystonePresetTags(state: PresetTagState): RegexPresetTa
   for (const id of state.avoid) {
     const mod = WAYSTONE_MODS.find((m) => m.id === id)
     if (!mod) continue
-    tags.push({ text: getWaystoneModTag(mod), color: TAB_COLORS.avoid, source: 'avoid', sourceId: id })
+    const v = state.avoidValues[id]
+    const text = v ? `${getWaystoneModTag(mod)}>=${v}` : getWaystoneModTag(mod)
+    tags.push({ text, color: TAB_COLORS.avoid, source: 'avoid', sourceId: id })
   }
 
   // Want (prefix) tags
   for (const id of state.want) {
     const mod = WAYSTONE_MODS.find((m) => m.id === id)
     if (!mod) continue
-    tags.push({ text: getWaystoneModTag(mod), color: TAB_COLORS.want, source: 'want', sourceId: id })
+    const v = state.wantValues[id]
+    const text = v ? `${getWaystoneModTag(mod)}>=${v}` : getWaystoneModTag(mod)
+    tags.push({ text, color: TAB_COLORS.want, source: 'want', sourceId: id })
   }
 
   return tags

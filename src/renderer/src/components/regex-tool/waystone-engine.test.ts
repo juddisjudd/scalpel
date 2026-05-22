@@ -37,6 +37,10 @@ function makeSettings(overrides: {
   prefixSelectType?: 'any' | 'all'
   prefixIds?: number[]
   suffixIds?: number[]
+  wantValues?: Record<number, number>
+  avoidValues?: Record<number, number>
+  round10?: boolean
+  over100?: boolean
   customText?: string
 }): Settings {
   const allMods = WAYSTONE_MODS
@@ -44,7 +48,7 @@ function makeSettings(overrides: {
     .filter((m) => m.affix === 'PREFIX')
     .map((m) => ({
       name: m.text,
-      value: null,
+      value: overrides.wantValues?.[m.id] ?? null,
       isSelected: (overrides.prefixIds ?? []).includes(m.id),
       ranges: m.ranges,
       regex: m.regex,
@@ -53,7 +57,7 @@ function makeSettings(overrides: {
     .filter((m) => m.affix === 'SUFFIX')
     .map((m) => ({
       name: m.text,
-      value: null,
+      value: overrides.avoidValues?.[m.id] ?? null,
       isSelected: (overrides.suffixIds ?? []).includes(m.id),
       ranges: m.ranges,
       regex: m.regex,
@@ -67,8 +71,8 @@ function makeSettings(overrides: {
         uncorrupted: overrides.uncorrupted ?? false,
       },
       modifier: {
-        over100: false,
-        round10: false,
+        over100: overrides.over100 ?? false,
+        round10: overrides.round10 ?? false,
         dropOverX: overrides.dropOverEnabled ?? false,
         dropOverValue: overrides.dropOverValue ?? 100,
         delirious: overrides.delirious ?? false,
@@ -100,7 +104,11 @@ function ours(overrides: Parameters<typeof makeSettings>[0]): string {
       want: new Set(overrides.prefixIds ?? []),
       avoid: new Set(overrides.suffixIds ?? []),
       wantMode: overrides.prefixSelectType ?? 'any',
+      wantValues: overrides.wantValues ?? {},
+      avoidValues: overrides.avoidValues ?? {},
     },
+    round10: overrides.round10 ?? false,
+    over100: overrides.over100 ?? false,
     customText: overrides.customText,
   })
 }
@@ -227,6 +235,28 @@ const CASES: Case[] = [
   // Custom text
   { label: 'custom text only', args: { customText: 'foo' } },
   { label: 'custom text + tier', args: { tierMin: 2, tierMax: 16, customText: 'bar' } },
+
+  // Per-mod magnitude values
+  { label: 'prefix value 20 (any)', args: { prefixIds: [FIRE], wantValues: { [FIRE]: 20 } } },
+  { label: 'prefix value 24 raw', args: { prefixIds: [FIRE], wantValues: { [FIRE]: 24 } } },
+  { label: 'prefix value 24 round10', args: { prefixIds: [FIRE], wantValues: { [FIRE]: 24 }, round10: true } },
+  { label: 'prefix value 24 over100', args: { prefixIds: [FIRE], wantValues: { [FIRE]: 24 }, over100: true } },
+  { label: 'prefix value 150', args: { prefixIds: [FIRE], wantValues: { [FIRE]: 150 } } },
+  {
+    label: 'two prefixes values (all)',
+    args: { prefixIds: [FIRE, ENFEEBLE], wantValues: { [FIRE]: 20, [ENFEEBLE]: 30 }, prefixSelectType: 'all' },
+  },
+  { label: 'suffix value 30', args: { suffixIds: [BLEEDING], avoidValues: { [BLEEDING]: 30 } } },
+  {
+    label: 'prefix + suffix values (any) round10',
+    args: {
+      prefixIds: [FIRE],
+      suffixIds: [BLEEDING],
+      wantValues: { [FIRE]: 25 },
+      avoidValues: { [BLEEDING]: 35 },
+      round10: true,
+    },
+  },
 ]
 
 describe('waystone-engine: parity with poe2.re reference implementation', () => {

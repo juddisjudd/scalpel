@@ -299,6 +299,10 @@ export interface RegexPreset {
   want: number[]
   wantMode: 'any' | 'all'
   qualifiers: Record<string, number>
+  /** Per-mod magnitude thresholds for waystones, keyed by mod id. Absent on
+   *  non-waystone presets and on presets saved before magnitudes shipped. */
+  wantValues?: Record<number, number>
+  avoidValues?: Record<number, number>
   nightmare: boolean
   customRegex?: string
   /** Computed regex string (stored so main process can paste without rebuilding) */
