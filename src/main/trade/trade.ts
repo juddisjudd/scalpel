@@ -48,6 +48,13 @@ interface TradeDialect {
   /** The client-side "equivalent" option. Not a valid API value; when selected
    *  we omit the price filter entirely and the consumer does the math locally. */
   priceEquivalent: 'chaos_equivalent' | 'exalted_equivalent'
+  /** Calculated pseudo ids this game's trade API does NOT support as native
+   *  `pseudo.*` stat ids and must instead be sent as Weighted Sum (`weight`)
+   *  groups over their contributing real stat ids. PoE1 supports all of them
+   *  (empty set); PoE2 supports the totals (resistances, life, mana) but not
+   *  added-elemental-damage, so only those ids live here. Remove ids as GGG
+   *  adds support. */
+  weightedPseudoIds: ReadonlySet<string>
 }
 
 /** PoE2 trade-fetch responses return mod text with localization tokens like
@@ -60,18 +67,30 @@ export function stripTradeTokens(s: string): string {
   return s.replace(/\[([^\]|]+)\|?([^\]]*)\]/g, (_, a: string, b: string) => b || a)
 }
 
+// Calculated pseudos that PoE2's /api/trade2 rejects as native `pseudo.*` stat
+// ids (it 400s on them). Sent as Weighted Sum groups instead. Everything else we
+// compute (total resistances, life, mana) IS a valid PoE2 pseudo id and stays on
+// the native path. PoE1 supports all of them, so its set is empty.
+const POE2_WEIGHTED_PSEUDO_IDS: ReadonlySet<string> = new Set([
+  'pseudo.pseudo_adds_elemental_damage',
+  'pseudo.pseudo_adds_elemental_damage_to_attacks',
+  'pseudo.pseudo_adds_elemental_damage_to_spells',
+])
+
 const TRADE_DIALECTS: Record<1 | 2, TradeDialect> = {
   1: {
     defenceFilterGroup: 'armour_filters',
     weaponFilterGroup: 'weapon_filters',
     priceDivinePair: 'chaos_divine',
     priceEquivalent: 'chaos_equivalent',
+    weightedPseudoIds: new Set(),
   },
   2: {
     defenceFilterGroup: 'equipment_filters',
     weaponFilterGroup: 'equipment_filters',
     priceDivinePair: 'exalted_divine',
     priceEquivalent: 'exalted_equivalent',
+    weightedPseudoIds: POE2_WEIGHTED_PSEUDO_IDS,
   },
 }
 
@@ -122,6 +141,11 @@ export interface TradeResult {
   listings: TradeListing[]
   queryId: string
   remainingIds: string[]
+  /** Ids of the Weighted Sum pseudos (e.g. added elemental damage on PoE2) that
+   *  were dropped from the query because the user is not logged in -- the trade
+   *  API rejects weighted searches for anonymous users. The UI shows a login tip
+   *  on each matching filter row. Absent when nothing was dropped. */
+  loginRequiredPseudoIds?: string[]
 }
 
 export interface BulkExchangeListing {
@@ -163,6 +187,27 @@ export interface StatFilter {
   /** Ternary chip state: 'yes' | 'no' | undefined (= any). Also used by
    *  minmax chips: 'min' | 'max' | undefined (= off). */
   chipState?: 'yes' | 'no' | 'min' | 'max'
+  /** PoE2 Weighted Sum payload for calculated pseudos: the contributing real
+   *  stat ids. Present only on `type: 'pseudo'` chips; ignored on PoE1, where
+   *  pseudos use their native `pseudo.*` id. */
+  weightFilters?: Array<{ id: string }>
+}
+
+/** True when this pseudo chip must be sent as a Weighted Sum group rather than a
+ *  native `pseudo.*` id -- i.e. its id is unsupported by the current game's trade
+ *  API. See TradeDialect.weightedPseudoIds. */
+function isWeightedPseudo(f: StatFilter, dialect: TradeDialect): boolean {
+  return (
+    f.type === 'pseudo' && dialect.weightedPseudoIds.has(f.id) && f.weightFilters != null && f.weightFilters.length > 0
+  )
+}
+
+/** Whether a search would include at least one Weighted Sum group. The trade API
+ *  rejects weighted searches for anonymous users, so the caller checks login
+ *  before searching only when this is true. */
+export function searchNeedsLogin(statFilters: StatFilter[]): boolean {
+  const dialect = TRADE_DIALECTS[getPoeVersion()]
+  return statFilters.some((f) => f.enabled && isWeightedPseudo(f, dialect))
 }
 
 const ynToOption = (s: 'yes' | 'no'): 'true' | 'false' => (s === 'yes' ? 'true' : 'false')
@@ -436,6 +481,7 @@ export async function searchTrade(
   tradePriceOption?: string,
   listedTime?: string,
   collapseListings: boolean = true,
+  loggedIn: boolean = true,
 ): Promise<TradeResult> {
   await _ensureStatsLoaded()
   const dialect = TRADE_DIALECTS[getPoeVersion()]
@@ -735,18 +781,36 @@ export async function searchTrade(
         mapPseudoIds.has(f.id)) &&
       (!unidEnabled || survivesUnid(f)),
   )
+  // A few calculated pseudos (added elemental damage on PoE2) aren't valid native
+  // `pseudo.*` ids on their trade API and 400 if sent, so we emit a Weighted Sum
+  // group over the contributing real stat ids instead. Natively-supported pseudos
+  // (resistances, life, mana) and all PoE1 pseudos stay in the `and` group as
+  // native ids. dialect.weightedPseudoIds names the ids that need this routing.
+  const weightPseudoFilters = enabledFilters.filter((f) => isWeightedPseudo(f, dialect))
+  const andFilters = enabledFilters.filter((f) => !weightPseudoFilters.includes(f))
+
+  // The trade API rejects weighted searches for anonymous users ("too complex,
+  // log in"), so emit weight groups only when logged in. When not, the unsupported
+  // pseudos are dropped (already excluded from andFilters) and we report their ids
+  // so the UI can prompt a login on those rows rather than silently lose them.
+  const loginRequiredPseudoIds = loggedIn ? [] : weightPseudoFilters.map((f) => f.id)
+  // Spread into whichever TradeResult we return below; empty object when nothing
+  // was dropped so the field is absent.
+  const loginRequiredField = loginRequiredPseudoIds.length > 0 ? { loginRequiredPseudoIds } : {}
+
   const timelessFilters = unidEnabled ? [] : statFilters.filter((f) => f.enabled && f.type === 'timeless')
 
   const statGroups: Array<{
     type: string
-    filters: Array<{ id: string; value: Record<string, unknown> }>
+    filters: Array<{ id: string; value?: Record<string, unknown>; disabled?: boolean }>
     value?: Record<string, unknown>
+    disabled?: boolean
   }> = []
 
-  if (enabledFilters.length > 0) {
+  if (andFilters.length > 0) {
     statGroups.push({
       type: 'and',
-      filters: enabledFilters.map((f) => ({
+      filters: andFilters.map((f) => ({
         id: f.id,
         value: f.option
           ? { option: f.option }
@@ -756,6 +820,24 @@ export async function searchTrade(
             },
       })),
     })
+  }
+
+  // One Weighted Sum group per pseudo that needs it. The trade2 weight group
+  // lists each stat id as `{id, disabled:false}` and sums at the implicit weight
+  // of 1; it does NOT accept a per-filter `value:{weight}` (that renders the saved
+  // search blank). Skipped for anonymous users (see loginRequiredPseudoIds above).
+  if (loggedIn) {
+    for (const f of weightPseudoFilters) {
+      statGroups.push({
+        type: 'weight',
+        disabled: false,
+        filters: f.weightFilters!.map((w) => ({ id: w.id, disabled: false })),
+        value: {
+          ...(f.min != null ? { min: f.min } : {}),
+          ...(f.max != null ? { max: f.max } : {}),
+        },
+      })
+    }
   }
 
   // Timeless jewel: "any leader" uses count group, specific leader uses and group
@@ -834,7 +916,13 @@ export async function searchTrade(
   })) as TradeSearchResult
 
   if (!searchResult.result || searchResult.result.length === 0) {
-    return { total: searchResult.total ?? 0, listings: [], queryId: searchResult.id ?? '', remainingIds: [] }
+    return {
+      total: searchResult.total ?? 0,
+      listings: [],
+      queryId: searchResult.id ?? '',
+      remainingIds: [],
+      ...loginRequiredField,
+    }
   }
 
   // Fetch first 10 results
@@ -1055,7 +1143,13 @@ export async function searchTrade(
       : undefined,
   }))
 
-  return { total: searchResult.total, listings, queryId: searchResult.id, remainingIds: searchResult.result.slice(10) }
+  return {
+    total: searchResult.total,
+    listings,
+    queryId: searchResult.id,
+    remainingIds: searchResult.result.slice(10),
+    ...loginRequiredField,
+  }
 }
 
 // ─── Bulk Exchange ──────────────────────────────────────────────────────────
