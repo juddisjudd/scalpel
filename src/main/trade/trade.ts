@@ -193,6 +193,15 @@ export interface StatFilter {
   weightFilters?: Array<{ id: string }>
 }
 
+/** Build a trade `{ min?, max? }` value object from a filter, dropping bounds
+ *  that are null. */
+function minMaxValue(f: { min: number | null; max: number | null }): { min?: number; max?: number } {
+  return {
+    ...(f.min != null ? { min: f.min } : {}),
+    ...(f.max != null ? { max: f.max } : {}),
+  }
+}
+
 /** True when this pseudo chip must be sent as a Weighted Sum group rather than a
  *  native `pseudo.*` id -- i.e. its id is unsupported by the current game's trade
  *  API. See TradeDialect.weightedPseudoIds. */
@@ -462,6 +471,14 @@ async function fetchJson(url: string, options?: { method?: string; body?: string
 import { ITEM_CLASS_TO_CATEGORY as _ITEM_CLASS_TO_CATEGORY } from './stat-matcher'
 import { ensureStatsLoaded as _ensureStatsLoaded, matchModToStat } from './stat-matcher'
 
+export interface SearchTradeOptions {
+  tradeStatus?: string
+  tradePriceOption?: string
+  listedTime?: string
+  collapseListings?: boolean
+  loggedIn?: boolean
+}
+
 export async function searchTrade(
   league: string,
   item: {
@@ -477,12 +494,9 @@ export async function searchTrade(
     vaalGem?: boolean
   },
   statFilters: StatFilter[],
-  tradeStatus: string = 'available',
-  tradePriceOption?: string,
-  listedTime?: string,
-  collapseListings: boolean = true,
-  loggedIn: boolean = true,
+  options: SearchTradeOptions = {},
 ): Promise<TradeResult> {
+  const { tradeStatus = 'available', tradePriceOption, listedTime, collapseListings = true, loggedIn = true } = options
   await _ensureStatsLoaded()
   const dialect = TRADE_DIALECTS[getPoeVersion()]
   const priceOption = tradePriceOption ?? dialect.priceDivinePair
@@ -559,8 +573,7 @@ export async function searchTrade(
     }
     for (const f of defenceFilters) {
       const key = idMap[f.id]
-      if (key)
-        armourFilters[key] = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
+      if (key) armourFilters[key] = minMaxValue(f)
     }
     const existing = (query.filters as Record<string, unknown>) ?? {}
     const existingGroup = (existing[dialect.defenceFilterGroup] as { filters?: Record<string, unknown> } | undefined)
@@ -585,7 +598,7 @@ export async function searchTrade(
     }
     for (const f of weaponDpsFilters) {
       const key = idMap[f.id]
-      if (key) weaponQuery[key] = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
+      if (key) weaponQuery[key] = minMaxValue(f)
     }
     const existing = (query.filters as Record<string, unknown>) ?? {}
     const existingGroup = (existing[dialect.weaponFilterGroup] as { filters?: Record<string, unknown> } | undefined)
@@ -613,7 +626,7 @@ export async function searchTrade(
         if (f.max != null) socketsFilter.max = f.max
         socketQuery.sockets = socketsFilter
       } else if (f.id === 'socket.links') {
-        socketQuery.links = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
+        socketQuery.links = minMaxValue(f)
       } else if (f.id === 'socket.rune_sockets') {
         if (f.min != null) runeSocketRange.min = f.min
         if (f.max != null) runeSocketRange.max = f.max
@@ -644,7 +657,7 @@ export async function searchTrade(
     for (const f of heistFilters) {
       // Map filter IDs like "heist.heist_engineering" -> trade query key "heist_engineering"
       const key = f.id.replace('heist.', '')
-      heistQuery[key] = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
+      heistQuery[key] = minMaxValue(f)
     }
     const existing = (query.filters as Record<string, unknown>) ?? {}
     query.filters = { ...existing, heist_filters: { disabled: false, filters: heistQuery } }
@@ -671,27 +684,18 @@ export async function searchTrade(
   )
   const miscQuery: Record<string, unknown> = {}
   for (const f of miscFiltersAll) {
-    if (f.id === 'misc.quality' && f.enabled)
-      miscQuery.quality = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
-    if (f.id === 'misc.ilvl' && f.enabled)
-      miscQuery.ilvl = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
-    if (f.id === 'misc.gem_level' && f.enabled)
-      miscQuery.gem_level = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
+    if (f.id === 'misc.quality' && f.enabled) miscQuery.quality = minMaxValue(f)
+    if (f.id === 'misc.ilvl' && f.enabled) miscQuery.ilvl = minMaxValue(f)
+    if (f.id === 'misc.gem_level' && f.enabled) miscQuery.gem_level = minMaxValue(f)
     if (f.id === 'misc.gem_transfigured') miscQuery.gem_transfigured = { option: f.enabled ? 'true' : 'false' }
     if (f.id === 'misc.corrupted' && (f.chipState === 'yes' || f.chipState === 'no'))
       miscQuery.corrupted = { option: ynToOption(f.chipState) }
     if (f.id === 'misc.mirrored' && (f.chipState === 'yes' || f.chipState === 'no'))
       miscQuery.mirrored = { option: ynToOption(f.chipState) }
     if (f.id === 'misc.identified') miscQuery.identified = { option: f.enabled ? 'false' : 'true' }
-    if (f.id === 'misc.memory_level' && f.enabled)
-      miscQuery.memory_level = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
-    if (f.id === 'misc.area_level' && f.enabled)
-      miscQuery.area_level = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
-    if (f.id === 'misc.stored_experience' && f.enabled)
-      miscQuery.stored_experience = {
-        ...(f.min != null ? { min: f.min } : {}),
-        ...(f.max != null ? { max: f.max } : {}),
-      }
+    if (f.id === 'misc.memory_level' && f.enabled) miscQuery.memory_level = minMaxValue(f)
+    if (f.id === 'misc.area_level' && f.enabled) miscQuery.area_level = minMaxValue(f)
+    if (f.id === 'misc.stored_experience' && f.enabled) miscQuery.stored_experience = minMaxValue(f)
     // Influence filters (misc_filters for traditional influences)
     if (f.id.startsWith('misc.influence_') && f.enabled) {
       const influenceKeyMap: Record<string, string> = {
@@ -730,7 +734,7 @@ export async function searchTrade(
       if (key === 'map_completion_reward' && f.option) {
         mapQuery[key] = { option: f.option }
       } else {
-        mapQuery[key] = { ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}) }
+        mapQuery[key] = minMaxValue(f)
       }
     }
     const existing = (query.filters as Record<string, unknown>) ?? {}
@@ -812,12 +816,7 @@ export async function searchTrade(
       type: 'and',
       filters: andFilters.map((f) => ({
         id: f.id,
-        value: f.option
-          ? { option: f.option }
-          : {
-              ...(f.min != null ? { min: f.min } : {}),
-              ...(f.max != null ? { max: f.max } : {}),
-            },
+        value: f.option ? { option: f.option } : minMaxValue(f),
       })),
     })
   }
@@ -832,10 +831,7 @@ export async function searchTrade(
         type: 'weight',
         disabled: false,
         filters: f.weightFilters!.map((w) => ({ id: w.id, disabled: false })),
-        value: {
-          ...(f.min != null ? { min: f.min } : {}),
-          ...(f.max != null ? { max: f.max } : {}),
-        },
+        value: minMaxValue(f),
       })
     }
   }

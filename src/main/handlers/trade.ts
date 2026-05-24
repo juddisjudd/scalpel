@@ -242,7 +242,13 @@ export function register(store: Store<AppSettings>): void {
       // Only spend a login check when the search would carry a Weighted Sum group
       // (the trade API rejects those for anonymous users). Most searches skip it.
       const loggedIn = searchNeedsLogin(statFilters) ? await isLoggedInCached() : true
-      return searchTrade(league, item, statFilters, status, price, searchOptions?.listedTime, collapse, loggedIn)
+      return searchTrade(league, item, statFilters, {
+        tradeStatus: status,
+        tradePriceOption: price,
+        listedTime: searchOptions?.listedTime,
+        collapseListings: collapse,
+        loggedIn,
+      })
     },
   )
 

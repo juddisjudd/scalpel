@@ -15,7 +15,6 @@ import {
   MINMAX_CHIP_IDS,
 } from './constants'
 import { FilterChip } from './FilterChip'
-import { PriceChip } from '../../shared/PriceChip'
 import { FaustusBanner } from './FaustusBanner'
 import { AngeBanner } from './AngeBanner'
 import { TradeTimeoutBanner } from './TradeTimeoutBanner'
@@ -31,6 +30,8 @@ import { BASE_DEFAULT_ITEM_CLASSES, applyBaseModeToFilters, shouldIncludeImplici
 import type { ListedTime, PriceOption, ResultsView, StatusOption } from './search-settings'
 import { LISTED_TIME_OPTIONS, getPriceOptions, primaryCurrencySwap, STATUS_OPTIONS } from './search-settings'
 import { SearchSettingDropdown } from './SearchSettingDropdown'
+import { zebraRowBg } from '../../shared/utils'
+import { useAuth } from '../../shared/use-auth'
 
 export function PriceCheck({
   item,
@@ -53,7 +54,7 @@ export function PriceCheck({
   const color = selectedUnique ? RARITY_COLORS['Unique'] : (RARITY_COLORS[item.rarity] ?? '#c8c8c8')
   const heroIcon = selectedUnique ? (iconMap[selectedUnique] ?? getItemIcon(item)) : getItemIcon(item)
   const heroName = selectedUnique ?? item.name
-  const [loggedIn, setLoggedIn] = useState(false)
+  const { loggedIn, login } = useAuth()
   // Ids of pseudos the last search dropped because the user is not logged in
   // (Weighted Sum, e.g. added elemental damage on PoE2). Each drives an in-row
   // login tip under the matching filter.
@@ -70,7 +71,6 @@ export function PriceCheck({
   const [penaltyUntil, setPenaltyUntil] = useState<number | null>(null)
 
   useEffect(() => {
-    window.api.poeCheckAuth().then((r) => setLoggedIn(r.loggedIn))
     const unsubRate = window.api.onRateLimit((state) => setRateLimitTiers(state.tiers))
     const unsubPenalty = window.api.onTradePenalty((until) => setPenaltyUntil(until))
     return () => {
@@ -630,16 +630,13 @@ export function PriceCheck({
                         className="px-3 pt-2 pb-2"
                         // Match the StatFilterRow alternating background (same rowIdx)
                         // so the tip reads as part of its pseudo's row, not a gap.
-                        style={{ background: rowIdx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent' }}
+                        style={{ background: zebraRowBg(rowIdx) }}
                       >
                         <DismissibleTip id={`pseudo-login-${f.id}`} dismissible={false}>
                           <span
                             className="font-bold underline cursor-pointer"
                             onClick={() => {
-                              window.api.poeLogin().then(() => {
-                                window.api.poeCheckAuth().then((r) => setLoggedIn(r.loggedIn))
-                                doSearch()
-                              })
+                              login().then(() => doSearch())
                             }}
                           >
                             Log in

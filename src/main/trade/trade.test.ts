@@ -71,6 +71,18 @@ import {
 import { setPoeVersion } from '../game-state'
 import { matchItemMods, _setStatEntriesForTests } from './stat-matcher'
 
+// Shared rare-body-armour fixture for the searchTrade describes below. The
+// evasion/energyShield feed the defence-filter tests and are harmless to the
+// pseudo tests (which pass no defence filters).
+const bodyArmourItem = {
+  name: '',
+  baseType: "Falconer's Jacket",
+  itemClass: 'Body Armours',
+  rarity: 'Rare',
+  evasion: 542,
+  energyShield: 203,
+}
+
 describe('buildGemTypeField', () => {
   it('returns baseType as a plain string for a regular gem', () => {
     expect(buildGemTypeField('Fireball', false)).toBe('Fireball')
@@ -130,15 +142,6 @@ describe('stripTradeTokens', () => {
 // group" and demands everything under `equipment_filters`. Anyone who edits
 // TRADE_DIALECTS or the defence/weapon filter branches has this test as a guard.
 describe('searchTrade filter-group dispatch', () => {
-  const bodyArmourItem = {
-    name: '',
-    baseType: "Falconer's Jacket",
-    itemClass: 'Body Armours',
-    rarity: 'Rare',
-    evasion: 542,
-    energyShield: 203,
-  }
-
   const defenceFilters: StatFilter[] = [
     {
       id: 'defence.evasion',
@@ -171,7 +174,10 @@ describe('searchTrade filter-group dispatch', () => {
 
   it('PoE1 rare body armour uses armour_filters, never equipment_filters', async () => {
     setPoeVersion(1)
-    await searchTrade('Mirage', bodyArmourItem, defenceFilters, 'any', 'chaos_divine')
+    await searchTrade('Mirage', bodyArmourItem, defenceFilters, {
+      tradeStatus: 'any',
+      tradePriceOption: 'chaos_divine',
+    })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     expect(req).toBeDefined()
     expect(req!.url).toContain('/api/trade/search/')
@@ -183,7 +189,10 @@ describe('searchTrade filter-group dispatch', () => {
 
   it('PoE2 rare body armour uses equipment_filters, never armour_filters or weapon_filters', async () => {
     setPoeVersion(2)
-    await searchTrade('Fate of the Vaal', bodyArmourItem, defenceFilters, 'any', 'exalted_divine')
+    await searchTrade('Fate of the Vaal', bodyArmourItem, defenceFilters, {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+    })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     expect(req).toBeDefined()
     expect(req!.url).toContain('/api/trade2/search/')
@@ -205,7 +214,7 @@ describe('searchTrade filter-group dispatch', () => {
       itemClass: 'Jewels',
       rarity: 'Rare',
     }
-    await searchTrade('Mirage', clusterItem, [], 'any', 'chaos_divine')
+    await searchTrade('Mirage', clusterItem, [], { tradeStatus: 'any', tradePriceOption: 'chaos_divine' })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     expect(req).toBeDefined()
     const body = JSON.parse(req!.body!)
@@ -224,7 +233,7 @@ describe('searchTrade filter-group dispatch', () => {
       itemClass: 'Stackable Currency',
       rarity: 'Unique',
     }
-    await searchTrade('Mirage', beast, [], 'any', 'chaos_divine')
+    await searchTrade('Mirage', beast, [], { tradeStatus: 'any', tradePriceOption: 'chaos_divine' })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     expect(req).toBeDefined()
     const body = JSON.parse(req!.body!)
@@ -261,7 +270,7 @@ describe('searchTrade filter-group dispatch', () => {
         max: null,
       },
     ]
-    await searchTrade('Mirage', unidCluster, filters, 'any', 'chaos_divine')
+    await searchTrade('Mirage', unidCluster, filters, { tradeStatus: 'any', tradePriceOption: 'chaos_divine' })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     const body = JSON.parse(req!.body!)
     const sentIds = body.query.stats[0].filters.map((f: { id: string }) => f.id)
@@ -278,7 +287,7 @@ describe('searchTrade filter-group dispatch', () => {
       itemClass: 'Jewels',
       rarity: 'Rare',
     }
-    await searchTrade('Mirage', abyssJewel, [], 'any', 'chaos_divine')
+    await searchTrade('Mirage', abyssJewel, [], { tradeStatus: 'any', tradePriceOption: 'chaos_divine' })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     const body = JSON.parse(req!.body!)
     expect(body.query.filters.type_filters.filters.category).toEqual({ option: 'jewel' })
@@ -290,7 +299,10 @@ describe('searchTrade filter-group dispatch', () => {
       ...defenceFilters,
       { id: 'socket.rune_sockets', text: '2 Rune Sockets', type: 'socket', enabled: true, value: 2, min: 2, max: null },
     ]
-    await searchTrade('Fate of the Vaal', bodyArmourItem, withRunes, 'any', 'exalted_divine')
+    await searchTrade('Fate of the Vaal', bodyArmourItem, withRunes, {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+    })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     const body = JSON.parse(req!.body!)
     expect(body.query.filters.equipment_filters.filters.rune_sockets).toEqual({ min: 2 })
@@ -300,13 +312,6 @@ describe('searchTrade filter-group dispatch', () => {
 })
 
 describe('searchTrade pseudo emission', () => {
-  const bodyArmourItem = {
-    name: '',
-    baseType: "Falconer's Jacket",
-    itemClass: 'Body Armours',
-    rarity: 'Rare',
-  }
-
   const lifePseudo: StatFilter = {
     id: 'pseudo.pseudo_total_life',
     text: 'Total Life: 120',
@@ -349,7 +354,10 @@ describe('searchTrade pseudo emission', () => {
 
   it('PoE2 emits an unsupported pseudo (added ele damage) as a Weighted Sum group, never a native pseudo id', async () => {
     setPoeVersion(2)
-    await searchTrade('Fate of the Vaal', bodyArmourItem, [addsElePseudo], 'any', 'exalted_divine')
+    await searchTrade('Fate of the Vaal', bodyArmourItem, [addsElePseudo], {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+    })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     expect(req).toBeDefined()
     const body = JSON.parse(req!.body!)
@@ -377,7 +385,10 @@ describe('searchTrade pseudo emission', () => {
 
   it('PoE2 emits one Weighted Sum group per enabled unsupported pseudo', async () => {
     setPoeVersion(2)
-    await searchTrade('Fate of the Vaal', bodyArmourItem, [addsElePseudo, addsEleSpellsPseudo], 'any', 'exalted_divine')
+    await searchTrade('Fate of the Vaal', bodyArmourItem, [addsElePseudo, addsEleSpellsPseudo], {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+    })
     const body = JSON.parse(capturedRequests.find((r) => r.url.includes('/search/'))!.body!)
     const weightGroups = (
       body.query.stats as Array<{
@@ -403,7 +414,10 @@ describe('searchTrade pseudo emission', () => {
 
   it('PoE2 keeps a natively-supported pseudo (Total Life) on the native pseudo path', async () => {
     setPoeVersion(2)
-    await searchTrade('Fate of the Vaal', bodyArmourItem, [lifePseudo], 'any', 'exalted_divine')
+    await searchTrade('Fate of the Vaal', bodyArmourItem, [lifePseudo], {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+    })
     const body = JSON.parse(capturedRequests.find((r) => r.url.includes('/search/'))!.body!)
     const groups = body.query.stats as Array<{ type: string; filters: Array<{ id: string }> }>
     // No weight group: Total Life is a valid PoE2 pseudo id.
@@ -415,7 +429,10 @@ describe('searchTrade pseudo emission', () => {
 
   it('PoE1 keeps all calculated pseudos as native pseudo ids in the and group', async () => {
     setPoeVersion(1)
-    await searchTrade('Mirage', bodyArmourItem, [lifePseudo, addsElePseudo], 'any', 'chaos_divine')
+    await searchTrade('Mirage', bodyArmourItem, [lifePseudo, addsElePseudo], {
+      tradeStatus: 'any',
+      tradePriceOption: 'chaos_divine',
+    })
     const body = JSON.parse(capturedRequests.find((r) => r.url.includes('/search/'))!.body!)
     const groups = body.query.stats as Array<{ type: string; filters: Array<{ id: string }> }>
     expect(groups.find((g) => g.type === 'weight')).toBeUndefined()
@@ -448,7 +465,10 @@ describe('searchTrade pseudo emission', () => {
     expect(elePseudo).toBeDefined()
 
     setPoeVersion(2)
-    await searchTrade('Fate of the Vaal', bodyArmourItem, chips, 'any', 'exalted_divine')
+    await searchTrade('Fate of the Vaal', bodyArmourItem, chips, {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+    })
     const req = capturedRequests.find((r) => r.url.includes('/search/'))
     expect(req).toBeDefined()
     const body = JSON.parse(req!.body!)
@@ -466,16 +486,11 @@ describe('searchTrade pseudo emission', () => {
 
   it('PoE2 drops the weighted pseudo and flags the result when not logged in', async () => {
     setPoeVersion(2)
-    const result = await searchTrade(
-      'Fate of the Vaal',
-      bodyArmourItem,
-      [addsElePseudo],
-      'any',
-      'exalted_divine',
-      undefined,
-      true,
-      false, // not logged in
-    )
+    const result = await searchTrade('Fate of the Vaal', bodyArmourItem, [addsElePseudo], {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+      loggedIn: false, // not logged in
+    })
     const body = JSON.parse(capturedRequests.find((r) => r.url.includes('/search/'))!.body!)
     const groups = body.query.stats as Array<{ type: string }>
     // No weight group is sent (the API would reject it for an anonymous user)...
@@ -486,16 +501,11 @@ describe('searchTrade pseudo emission', () => {
 
   it('PoE2 emits the weighted pseudo and sets no flag when logged in', async () => {
     setPoeVersion(2)
-    const result = await searchTrade(
-      'Fate of the Vaal',
-      bodyArmourItem,
-      [addsElePseudo],
-      'any',
-      'exalted_divine',
-      undefined,
-      true,
-      true, // logged in
-    )
+    const result = await searchTrade('Fate of the Vaal', bodyArmourItem, [addsElePseudo], {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+      loggedIn: true, // logged in
+    })
     const body = JSON.parse(capturedRequests.find((r) => r.url.includes('/search/'))!.body!)
     const groups = body.query.stats as Array<{ type: string }>
     expect(groups.find((g) => g.type === 'weight')).toBeDefined()
