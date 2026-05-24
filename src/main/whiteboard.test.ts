@@ -6,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // whiteboard.ts registers an ipcMain listener at module scope after Task 20,
 // so the mock must be installed before the module is imported.
 vi.mock('electron', () => ({
-  app: { getPath: vi.fn() },
+  // `on` covers the before-quit listener windowing/index.ts registers at module
+  // scope (pulled in transitively via whiteboard.ts -> overlay).
+  app: { getPath: vi.fn(), on: vi.fn() },
   ipcMain: { on: vi.fn(), handle: vi.fn(), removeListener: vi.fn() },
   screen: { getPrimaryDisplay: vi.fn(() => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } })) },
 }))

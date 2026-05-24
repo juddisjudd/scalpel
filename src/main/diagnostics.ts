@@ -105,6 +105,35 @@ export function recordMainDiagnostic(kind: string, error: unknown): void {
   appendDiagnosticLine(`[${new Date().toISOString()}] [main:${kind}] ${formatError(serialized)}`)
 }
 
+/** Synchronous one-line breadcrumb (no stack). Used to trace the shutdown
+ *  sequence: appendFileSync flushes before returning, so the last line written
+ *  survives even a native abort or a hang in the very next call. If the log ends
+ *  at "uIOhook.stop() calling" with no "returned", the uiohook worker-thread
+ *  join wedged; if it ends earlier, the crash beat the quit handlers. */
+export function recordMainBreadcrumb(message: string): void {
+  appendDiagnosticLine(`[${new Date().toISOString()}] [main:breadcrumb] ${message}`)
+}
+
+/** Wrap a native-event listener (uiohook-napi, electron-overlay-window) so a
+ *  thrown exception is logged instead of propagating back into the addon's
+ *  threadsafe-function dispatch. Those addons call napi_fatal_error when the JS
+ *  callback leaves a pending exception (napi_call_function returns non-ok),
+ *  aborting the whole process with "FATAL ERROR: tsfn_to_js_proxy
+ *  napi_call_function". Catching inside the listener prevents that abort.
+ *  The process-level uncaughtException handler does NOT cover this path. */
+export function guardNativeListener<A extends unknown[]>(
+  label: string,
+  fn: (...args: A) => void,
+): (...args: A) => void {
+  return (...args: A) => {
+    try {
+      fn(...args)
+    } catch (err) {
+      recordMainDiagnostic(`native-listener:${label}`, err)
+    }
+  }
+}
+
 function recordRendererDiagnostic(payload: RendererDiagnosticPayload): void {
   appendDiagnosticLine(
     `[${payload.timestamp}] [${payload.source}:${payload.kind}] ${payload.context ? `${payload.context}\n` : ''}${formatError(

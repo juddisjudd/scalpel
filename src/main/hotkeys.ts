@@ -8,6 +8,7 @@ import {
   scopeAppliesTo,
 } from '../shared/macro-scope'
 import { snapshotClipboard } from './clipboard-preserve'
+import { guardNativeListener, recordMainBreadcrumb, recordMainDiagnostic } from './diagnostics'
 import { getPoeVersion } from './game-state'
 import { focusGameWindow, getOverlayWindow, isTypingInOverlay } from './overlay'
 import { hideFocusedOrAnyVisibleSecondaryOverlay } from './windowing'
@@ -150,43 +151,49 @@ export function startHotkeyListener(handler: () => void): void {
 
   // uiohook is only used for Escape (overlay close), stash scroll, and modifier tracking
   initModifierTracking()
-  uIOhook.on('keydown', (e) => {
-    if (injecting) return
-    // Only respond to Escape when PoE or the overlay itself has focus -- otherwise
-    // pressing Esc in another app (browser, Discord, etc.) would silently hide the
-    // overlay here in the background.
-    if (e.keycode === UiohookKey.Escape) {
-      // Secondary overlays (cheat sheets etc.) own Esc when visible. The
-      // renderer keydown listener doesn't fire reliably because Windows
-      // often denies focus stealing from PoE, so handle it kernel-side here.
-      if (hideFocusedOrAnyVisibleSecondaryOverlay()) return
+  uIOhook.on(
+    'keydown',
+    guardNativeListener('keydown-main', (e) => {
+      if (injecting) return
       // Only respond to Escape when PoE or the overlay itself has focus -- otherwise
       // pressing Esc in another app (browser, Discord, etc.) would silently hide the
       // overlay here in the background.
-      if (onEscape && hasPoeOrOverlayFocus()) onEscape()
-    }
-    // Trigger + price-check via uIOhook so the combo fires in BOTH PoE1 and PoE2,
-    // not just whichever game electron-overlay-window is attached to. The handlers
-    // themselves (ensureCorrectGameForHotkey) gate on the focused window's title,
-    // so presses in non-PoE apps are ignored downstream.
-    if (triggerCombo && matchesCombo(e, triggerCombo)) fireTrigger()
-    if (priceCheckCombo && matchesCombo(e, priceCheckCombo)) firePriceCheck()
-  })
+      if (e.keycode === UiohookKey.Escape) {
+        // Secondary overlays (cheat sheets etc.) own Esc when visible. The
+        // renderer keydown listener doesn't fire reliably because Windows
+        // often denies focus stealing from PoE, so handle it kernel-side here.
+        if (hideFocusedOrAnyVisibleSecondaryOverlay()) return
+        // Only respond to Escape when PoE or the overlay itself has focus -- otherwise
+        // pressing Esc in another app (browser, Discord, etc.) would silently hide the
+        // overlay here in the background.
+        if (onEscape && hasPoeOrOverlayFocus()) onEscape()
+      }
+      // Trigger + price-check via uIOhook so the combo fires in BOTH PoE1 and PoE2,
+      // not just whichever game electron-overlay-window is attached to. The handlers
+      // themselves (ensureCorrectGameForHotkey) gate on the focused window's title,
+      // so presses in non-PoE apps are ignored downstream.
+      if (triggerCombo && matchesCombo(e, triggerCombo)) fireTrigger()
+      if (priceCheckCombo && matchesCombo(e, priceCheckCombo)) firePriceCheck()
+    }),
+  )
 
   // Stash tab scrolling: Ctrl+scroll outside stash grid -> arrow key taps
-  uIOhook.on('wheel', (e) => {
-    if (!stashScrollEnabled || !e.ctrlKey || !OverlayController.targetHasFocus) return
-    const tb = OverlayController.targetBounds
-    if (!tb?.width) return
-    // Only act when cursor is inside the PoE window but outside the stash grid area
-    if (e.x < tb.x || e.x > tb.x + tb.width || e.y < tb.y || e.y > tb.y + tb.height) return
-    if (isStashGridArea(e.x, e.y, tb)) return
-    if (e.rotation > 0) {
-      uIOhook.keyTap(UiohookKey.ArrowRight)
-    } else if (e.rotation < 0) {
-      uIOhook.keyTap(UiohookKey.ArrowLeft)
-    }
-  })
+  uIOhook.on(
+    'wheel',
+    guardNativeListener('wheel', (e) => {
+      if (!stashScrollEnabled || !e.ctrlKey || !OverlayController.targetHasFocus) return
+      const tb = OverlayController.targetBounds
+      if (!tb?.width) return
+      // Only act when cursor is inside the PoE window but outside the stash grid area
+      if (e.x < tb.x || e.x > tb.x + tb.width || e.y < tb.y || e.y > tb.y + tb.height) return
+      if (isStashGridArea(e.x, e.y, tb)) return
+      if (e.rotation > 0) {
+        uIOhook.keyTap(UiohookKey.ArrowRight)
+      } else if (e.rotation < 0) {
+        uIOhook.keyTap(UiohookKey.ArrowLeft)
+      }
+    }),
+  )
 
   if (!hookStarted) {
     uIOhook.start()
@@ -502,18 +509,24 @@ export function sendChatCommand(command: string, autoSubmit = true): Promise<voi
 const heldModifiers = { ctrl: 0 as number, shift: 0 as number, alt: 0 as number }
 
 function initModifierTracking(): void {
-  uIOhook.on('keydown', (e) => {
-    if (injecting) return
-    if (e.keycode === UiohookKey.Ctrl || e.keycode === UiohookKey.CtrlRight) heldModifiers.ctrl = e.keycode
-    if (e.keycode === UiohookKey.Shift || e.keycode === UiohookKey.ShiftRight) heldModifiers.shift = e.keycode
-    if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) heldModifiers.alt = e.keycode
-  })
-  uIOhook.on('keyup', (e) => {
-    if (injecting) return
-    if (e.keycode === UiohookKey.Ctrl || e.keycode === UiohookKey.CtrlRight) heldModifiers.ctrl = 0
-    if (e.keycode === UiohookKey.Shift || e.keycode === UiohookKey.ShiftRight) heldModifiers.shift = 0
-    if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) heldModifiers.alt = 0
-  })
+  uIOhook.on(
+    'keydown',
+    guardNativeListener('keydown-modifiers', (e) => {
+      if (injecting) return
+      if (e.keycode === UiohookKey.Ctrl || e.keycode === UiohookKey.CtrlRight) heldModifiers.ctrl = e.keycode
+      if (e.keycode === UiohookKey.Shift || e.keycode === UiohookKey.ShiftRight) heldModifiers.shift = e.keycode
+      if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) heldModifiers.alt = e.keycode
+    }),
+  )
+  uIOhook.on(
+    'keyup',
+    guardNativeListener('keyup', (e) => {
+      if (injecting) return
+      if (e.keycode === UiohookKey.Ctrl || e.keycode === UiohookKey.CtrlRight) heldModifiers.ctrl = 0
+      if (e.keycode === UiohookKey.Shift || e.keycode === UiohookKey.ShiftRight) heldModifiers.shift = 0
+      if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) heldModifiers.alt = 0
+    }),
+  )
 }
 
 type ModSnapshot = { ctrl: number; shift: number; alt: number }
@@ -530,7 +543,17 @@ function restoreModifiers(snapshot: ModSnapshot): void {
 
 export function stopHotkeyListener(): void {
   if (hookStarted) {
-    uIOhook.stop()
+    // Breadcrumbs bracket the uiohook worker-thread join (uiohook_worker.c:
+    // uv_thread_join). If the log shows "calling" with no "returned", the join
+    // wedged and the quit hung here; the try/catch keeps a stop() failure from
+    // aborting the process via the tsfn proxy.
+    recordMainBreadcrumb('uIOhook.stop() calling')
+    try {
+      uIOhook.stop()
+    } catch (e) {
+      recordMainDiagnostic('uiohook-stop', e)
+    }
+    recordMainBreadcrumb('uIOhook.stop() returned')
     hookStarted = false
   }
   globalShortcut.unregisterAll()

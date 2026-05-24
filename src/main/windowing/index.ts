@@ -1,6 +1,7 @@
-import { type BrowserWindow, screen } from 'electron'
+import { app, type BrowserWindow, screen } from 'electron'
 import { OverlayController } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
+import { guardNativeListener } from '../diagnostics'
 import { hideAllOnPoeBlur, isAnyScalpelWindowFocused } from './focus'
 import { prewarmSnapCanvas, type Rect, setSnapGhost } from './snap-canvas'
 import { fireOnLeaveScalpel, type OverlayState, overlays } from './state'
@@ -168,15 +169,21 @@ function applyAnchorBounds(state: OverlayState): void {
 // within snap range of the default. Mirrors how the main overlay only updates
 // snap state inside its drag-bound mousemove handler.
 let leftMouseHeld = false
-uIOhook.on('mousedown', (e) => {
-  if (e.button === 1) leftMouseHeld = true
-})
-uIOhook.on('mouseup', (e) => {
-  if (e.button === 1) leftMouseHeld = false
-  // Don't clear snapGhostActive here - the gridWin 'moved' event fires
-  // *after* this mouseup and needs the flag set to know whether to commit
-  // the snap. Clearing it here would silently break the snap.
-})
+uIOhook.on(
+  'mousedown',
+  guardNativeListener('mousedown-snap', (e) => {
+    if (e.button === 1) leftMouseHeld = true
+  }),
+)
+uIOhook.on(
+  'mouseup',
+  guardNativeListener('mouseup-snap', (e) => {
+    if (e.button === 1) leftMouseHeld = false
+    // Don't clear snapGhostActive here - the gridWin 'moved' event fires
+    // *after* this mouseup and needs the flag set to know whether to commit
+    // the snap. Clearing it here would silently break the snap.
+  }),
+)
 
 export function registerSecondaryOverlay(spec: OverlaySpec): SecondaryOverlay {
   if (overlays.has(spec.id)) {
@@ -280,8 +287,20 @@ function hideState(state: OverlayState): void {
   state.win.hide()
 }
 
+// Secondary overlays hide-instead-of-close so their hotkey can re-show them.
+// During app shutdown they must actually close: the unconditional preventDefault
+// below otherwise refuses the close and stalls Electron's quit forever
+// (before-quit fires, will-quit never does), hanging the process. Only bites
+// when a secondary overlay was opened this session -- which is why the hang was
+// intermittent. Mirrors the quitting guard in app-window.ts.
+let appQuitting = false
+app.on('before-quit', () => {
+  appQuitting = true
+})
+
 function wireWindowEvents(state: OverlayState, win: BrowserWindow): void {
   win.on('close', (e) => {
+    if (appQuitting) return
     e.preventDefault()
     win.hide()
     state.wasVisibleBeforeFocusLoss = false
@@ -370,8 +389,8 @@ function maybeUpdateSnap(state: OverlayState): void {
  *  secondary overlay's window to track PoE. Call once during main-process boot
  *  after OverlayController is wired up. */
 export function subscribeToPoeMoves(): void {
-  OverlayController.events.on('attach', repositionAll)
-  OverlayController.events.on('moveresize', repositionAll)
+  OverlayController.events.on('attach', guardNativeListener('reposition-attach', repositionAll))
+  OverlayController.events.on('moveresize', guardNativeListener('reposition-moveresize', repositionAll))
 }
 
 function repositionAll(): void {

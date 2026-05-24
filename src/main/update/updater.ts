@@ -6,6 +6,8 @@ import { app, type BrowserWindow, ipcMain } from 'electron'
 import { ELECTRON_RELEASES, GITHUB_RELEASES_API } from '../../shared/endpoints'
 import type { InstallManifest } from '../../shared/types'
 import { findBrickedMatch } from '../../shared/version-match'
+import { recordMainBreadcrumb } from '../diagnostics'
+import { stopHotkeyListener } from '../hotkeys'
 
 const CHECK_DELAY = 5000
 const CHECK_INTERVAL = 60_000
@@ -460,7 +462,11 @@ ipcMain.handle('install-update', () => {
   const isAsarUpdate = existsSync(asarNew)
 
   if (!isFullUpgrade && !isAsarUpdate) {
-    // No pending update, just relaunch
+    // No pending update, just relaunch. app.exit() skips before-quit/will-quit,
+    // so stop the uiohook worker explicitly here -- otherwise it tears down
+    // during env cleanup with events in flight (tsfn-proxy abort risk).
+    recordMainBreadcrumb('updater: relaunch (no pending update)')
+    stopHotkeyListener()
     app.relaunch()
     app.exit(0)
     return
@@ -517,5 +523,7 @@ ipcMain.handle('install-update', () => {
     stdio: 'ignore',
   }).unref()
 
+  recordMainBreadcrumb('updater: exit to apply update')
+  stopHotkeyListener()
   app.exit(0)
 })

@@ -3,6 +3,7 @@ import { BrowserWindow, ipcMain, screen, webContents } from 'electron'
 import { OVERLAY_WINDOW_OPTS, OverlayController } from 'electron-overlay-window'
 import { uIOhook } from 'uiohook-napi'
 import { startClientLogWatcher } from './client-log'
+import { guardNativeListener } from './diagnostics'
 import { getPoeVersion, setPoeVersion } from './game-state'
 import { closeAllOverlaysOnPoeExit, isAnyScalpelWindowFocused, isInsideAnySecondaryOverlay } from './windowing'
 
@@ -177,54 +178,60 @@ function setInteractive(interactive: boolean): void {
 // Debounce exit to prevent flickering at DPI-scaled boundaries
 let exitTimer: ReturnType<typeof setTimeout> | null = null
 
-uIOhook.on('mousemove', (e) => {
-  // No rects reported yet -- skip hit testing. (Whiteboard registers its own
-  // rects independently of the main overlay's `overlayVisible` flag.)
-  if (panelRectsBySender.size === 0) return
-  const winUnder = windowAtPoint(e.x, e.y)
-  if (winUnder) {
-    if (exitTimer) {
-      clearTimeout(exitTimer)
-      exitTimer = null
+uIOhook.on(
+  'mousemove',
+  guardNativeListener('mousemove', (e) => {
+    // No rects reported yet -- skip hit testing. (Whiteboard registers its own
+    // rects independently of the main overlay's `overlayVisible` flag.)
+    if (panelRectsBySender.size === 0) return
+    const winUnder = windowAtPoint(e.x, e.y)
+    if (winUnder) {
+      if (exitTimer) {
+        clearTimeout(exitTimer)
+        exitTimer = null
+      }
+      if (currentInteractiveWindow !== winUnder) {
+        mouseOverPanel = true
+        setInteractiveWindow(winUnder)
+      }
+    } else if (currentInteractiveWindow && !exitTimer) {
+      exitTimer = setTimeout(() => {
+        exitTimer = null
+        mouseOverPanel = false
+        if (!interactiveLocked) setInteractiveWindow(null)
+      }, 50)
     }
-    if (currentInteractiveWindow !== winUnder) {
-      mouseOverPanel = true
-      setInteractiveWindow(winUnder)
-    }
-  } else if (currentInteractiveWindow && !exitTimer) {
-    exitTimer = setTimeout(() => {
-      exitTimer = null
-      mouseOverPanel = false
-      if (!interactiveLocked) setInteractiveWindow(null)
-    }, 50)
-  }
-})
+  }),
+)
 
 // Close overlay when clicking outside the panel
 // Use mousedown (not click) so the overlay hides immediately on press,
 // before PoE grabs focus and causes a flash.
-uIOhook.on('mousedown', (e) => {
-  if (!overlayVisible) return
-  // Only process clicks if the overlay window is actually visible on screen
-  if (!overlayWindow || overlayWindow.isDestroyed() || !overlayWindow.isVisible()) return
-  if (!isInsidePanel(e.x, e.y)) {
-    // A click on any visible Scalpel secondary overlay (cheat sheets etc.) is
-    // an interaction with our app, not a "click outside" - don't hide.
-    if (isInsideAnySecondaryOverlay(e.x, e.y)) return
-    // A native <select> dropdown is open -- its option list lives outside our reported
-    // panel rect, so every click on it looks like a click "outside". Bail so we don't
-    // disable interactivity (click-through to PoE) or close the overlay.
-    if (interactiveLocked) return
-    // Ensure click-through is enabled so the click reaches the game
-    if (mouseOverPanel) {
-      mouseOverPanel = false
-      setInteractive(false)
+uIOhook.on(
+  'mousedown',
+  guardNativeListener('mousedown-overlay', (e) => {
+    if (!overlayVisible) return
+    // Only process clicks if the overlay window is actually visible on screen
+    if (!overlayWindow || overlayWindow.isDestroyed() || !overlayWindow.isVisible()) return
+    if (!isInsidePanel(e.x, e.y)) {
+      // A click on any visible Scalpel secondary overlay (cheat sheets etc.) is
+      // an interaction with our app, not a "click outside" - don't hide.
+      if (isInsideAnySecondaryOverlay(e.x, e.y)) return
+      // A native <select> dropdown is open -- its option list lives outside our reported
+      // panel rect, so every click on it looks like a click "outside". Bail so we don't
+      // disable interactivity (click-through to PoE) or close the overlay.
+      if (interactiveLocked) return
+      // Ensure click-through is enabled so the click reaches the game
+      if (mouseOverPanel) {
+        mouseOverPanel = false
+        setInteractive(false)
+      }
+      if (closeOnClickOutside) {
+        hideOverlay()
+      }
     }
-    if (closeOnClickOutside) {
-      hideOverlay()
-    }
-  }
-})
+  }),
+)
 
 const POE_WINDOW_TITLES: Record<1 | 2, string> = {
   1: 'Path of Exile',
@@ -330,32 +337,35 @@ export function createOverlayWindow(version: 1 | 2 = 1): BrowserWindow {
       console.error('[overlay] Error in detach handler:', err)
     }
   })
-  OverlayController.events.on('focus', () => {
-    if (!overlayWindow || overlayWindow.isDestroyed()) return
+  OverlayController.events.on(
+    'focus',
+    guardNativeListener('overlay-focus', () => {
+      if (!overlayWindow || overlayWindow.isDestroyed()) return
 
-    // Only show the overlay if POE actually has focus (not another window)
-    // This prevents the overlay from appearing on top of other windows during rapid alt-tab
-    if (!OverlayController.targetHasFocus) return
+      // Only show the overlay if POE actually has focus (not another window)
+      // This prevents the overlay from appearing on top of other windows during rapid alt-tab
+      if (!OverlayController.targetHasFocus) return
 
-    const tb = OverlayController.targetBounds
-    if (tb?.width) sendGameBounds(tb.width, tb.height)
-    if (overlayVisible) {
-      // Patched showInactive() fires onGameFocus internally, which resumes
-      // hotkeys and restores any hidden secondary overlays.
-      overlayWindow.showInactive()
-      mouseOverPanel = false
-      overlayWindow.setIgnoreMouseEvents(true)
-      if (currentInteractiveWindow === overlayWindow) currentInteractiveWindow = null
-    } else if (onGameFocus) {
-      // Main overlay is closed but PoE just refocused -- still need to resume
-      // hotkeys and restore secondary overlays (cheat sheets, etc.) that were
-      // hidden when the user clicked away. Without this branch, the path that
-      // normally drives onGameFocus (showInactive above) doesn't fire when only
-      // a secondary overlay was up, leaving it hidden and hotkeys suspended
-      // until the user manually alt-tabs.
-      setImmediate(onGameFocus)
-    }
-  })
+      const tb = OverlayController.targetBounds
+      if (tb?.width) sendGameBounds(tb.width, tb.height)
+      if (overlayVisible) {
+        // Patched showInactive() fires onGameFocus internally, which resumes
+        // hotkeys and restores any hidden secondary overlays.
+        overlayWindow.showInactive()
+        mouseOverPanel = false
+        overlayWindow.setIgnoreMouseEvents(true)
+        if (currentInteractiveWindow === overlayWindow) currentInteractiveWindow = null
+      } else if (onGameFocus) {
+        // Main overlay is closed but PoE just refocused -- still need to resume
+        // hotkeys and restore secondary overlays (cheat sheets, etc.) that were
+        // hidden when the user clicked away. Without this branch, the path that
+        // normally drives onGameFocus (showInactive above) doesn't fire when only
+        // a secondary overlay was up, leaving it hidden and hotkeys suspended
+        // until the user manually alt-tabs.
+        setImmediate(onGameFocus)
+      }
+    }),
+  )
   OverlayController.events.on('moveresize', (ev) => {
     try {
       sendGameBounds(ev.width, ev.height)

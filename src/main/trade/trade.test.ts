@@ -37,7 +37,9 @@ vi.mock('electron', () => ({
   ipcMain: { on: vi.fn(), handle: vi.fn(), removeListener: vi.fn() },
   // trade.ts reads `app.userAgentFallback` on every request so we set a UA
   // the way APT/EE2 do. Tests don't exercise the value, just need it to exist.
-  app: { userAgentFallback: 'Scalpel-Test/1.0' },
+  // `on` covers the before-quit listener windowing/index.ts registers at module
+  // scope (pulled in transitively via overlay.ts).
+  app: { userAgentFallback: 'Scalpel-Test/1.0', on: vi.fn() },
   net: {
     request: vi.fn((opts: { url: string; method: string }) => {
       const entry = { url: opts.url, method: opts.method } as {

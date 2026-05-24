@@ -1,15 +1,35 @@
-import { app, type BrowserWindow, clipboard, ipcMain, Tray, Menu, nativeImage, powerMonitor, screen } from 'electron'
+import {
+  app,
+  type BrowserWindow,
+  clipboard,
+  crashReporter,
+  ipcMain,
+  Tray,
+  Menu,
+  nativeImage,
+  powerMonitor,
+  screen,
+} from 'electron'
 import {
   createAndOpenBugReport,
   installEarlyDiagnostics,
+  recordMainBreadcrumb,
   recordMainDiagnostic,
   registerDiagnostics,
 } from './diagnostics'
 
 // Prevent unhandled JS exceptions from crashing the native overlay thread
 // electron-overlay-window's tsfn_to_js_proxy calls napi_fatal_error if napi_call_function
-// returns non-ok, which happens when there's a pending exception on the JS isolate
+// returns non-ok, which happens when there's a pending exception on the JS isolate.
+// Note: this only covers exceptions Node routes to uncaughtException. A throw
+// inside a uiohook/overlay-window event listener is dispatched from native code
+// and does NOT reach here -- those listeners are wrapped with guardNativeListener.
 installEarlyDiagnostics()
+
+// Capture native aborts (the tsfn proxy calling napi_fatal_error, etc.) as local
+// minidumps under userData/Crashpad. A C-level abort never reaches the JS
+// uncaughtException handler, so this is the only trace it leaves on Windows.
+crashReporter.start({ uploadToServer: false })
 
 import { dirname, join } from 'node:path'
 import { execSync } from 'node:child_process'
@@ -568,6 +588,16 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
+  recordMainBreadcrumb('before-quit')
+  // Release the single-instance lock before will-quit runs the blocking
+  // uIOhook.stop() join. If that join wedges and this process lingers, a
+  // manually relaunched instance can still acquire the lock and start, instead
+  // of silently quitting at the gotLock check above.
+  try {
+    app.releaseSingleInstanceLock()
+  } catch (err) {
+    recordMainDiagnostic('release-lock', err)
+  }
   try {
     flushPluginStorage()
   } catch {
@@ -576,8 +606,10 @@ app.on('before-quit', () => {
 })
 
 app.on('will-quit', () => {
+  recordMainBreadcrumb('will-quit')
   stopHotkeyListener()
   stopOnlineSync()
+  recordMainBreadcrumb('will-quit complete')
 })
 
 // Keep app alive even with no windows (overlay hides, not closes)
