@@ -1,5 +1,9 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.8-rc11',
+    notes: ['Fixed Scalpel hanging on quit instead of closing cleanly.'],
+  },
+  {
     version: '0.9.8-rc10',
     notes: [
       'Added a match count to the top of trade search results, not just the bottom.',
