@@ -610,6 +610,13 @@ app.on('will-quit', () => {
   stopHotkeyListener()
   stopOnlineSync()
   recordMainBreadcrumb('will-quit complete')
+  // electron-overlay-window never releases its ref'd threadsafe function or
+  // stops its X11 thread (empty AddonCleanUp, no stop API), which keeps the
+  // Linux process alive after an otherwise-clean quit -- the app appears to
+  // hang on close. Our own teardown is done here (uiohook stopped above, plugin
+  // storage flushed in before-quit, electron-store writes synchronously), so a
+  // forced exit loses nothing. Linux-only: Windows closes cleanly without it.
+  if (process.platform === 'linux') app.exit(0)
 })
 
 // Keep app alive even with no windows (overlay hides, not closes)
