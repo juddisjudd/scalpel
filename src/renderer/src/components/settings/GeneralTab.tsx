@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { AppSettings, ProfileSettingValue, RuntimeSettings } from '../../../../shared/types'
 import { getGameFeatures } from '../../../../shared/game-features'
 import { reportDiagnosticError } from '../../shared/diagnostics'
+import { SettingToggleBox } from './SettingToggleBox'
 
 interface Props {
   settings: RuntimeSettings
@@ -40,6 +41,12 @@ export function GeneralTab({ settings, update, updateProfile, onShowOnboarding }
   return (
     <>
       <div className="settings-section-title mt-3">General</div>
+
+      <SettingToggleBox
+        label="Start in tray"
+        checked={settings.startInTray}
+        onChange={(val) => update('startInTray', val)}
+      />
 
       {/* League */}
       {(() => {

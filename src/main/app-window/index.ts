@@ -1,15 +1,26 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, nativeImage } from 'electron'
+import type Store from 'electron-store'
+import type { AppSettings } from '../../shared/types'
+import { persistAppWindowPosition, restoreAppWindowPosition } from './position'
 
 let appWindow: BrowserWindow | null = null
 let quitting = false
+let store: Store<AppSettings> | null = null
+
+function getStore(): Store<AppSettings> {
+  if (!store) throw new Error('Store not initialized. Call createAppWindow first.')
+  return store
+}
 
 app.on('before-quit', () => {
   quitting = true
 })
 
-export function createAppWindow(): BrowserWindow {
+export function createAppWindow(_store: Store<AppSettings>): BrowserWindow {
+  store = _store
+
   const devIcon = join(__dirname, '../../resources/icon.ico')
   const prodIcon = join(process.resourcesPath, 'icon.ico')
   const iconPath = existsSync(prodIcon) ? prodIcon : devIcon
@@ -48,11 +59,24 @@ export function createAppWindow(): BrowserWindow {
     }
   })
 
+  // Persist window position on user move so next launch restores it.
+  appWindow.on('moved', () => {
+    if (!appWindow || appWindow.isDestroyed()) return
+    persistAppWindowPosition(appWindow, getStore())
+  })
+
   return appWindow
 }
 
 export function showAppWindow(): void {
   if (!appWindow) return
+
+  if (store) {
+    restoreAppWindowPosition(appWindow, store)
+  }
+
+  // If the window was minimized, restore() brings it back; otherwise it's a no-op.
+  if (appWindow.isMinimized()) appWindow.restore()
   appWindow.show()
   appWindow.focus()
 }
@@ -75,5 +99,10 @@ ipcMain.on('app-window-mode', (_event, mode: 'onboarding' | 'settings') => {
     appWindow.setResizable(true)
     appWindow.setMinimumSize(420, 350)
     appWindow.setSize(520, 600)
+  }
+  // Mode change can resize the window, which could push the bottom edge off the
+  // work area if the saved y was near the lower boundary.
+  if (store) {
+    restoreAppWindowPosition(appWindow, store)
   }
 })
