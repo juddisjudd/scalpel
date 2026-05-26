@@ -76,9 +76,11 @@ import { initUpdater } from './update/updater'
 import { applyPendingUpdate } from './update/update-swap'
 import { loadFilter } from './filter-state'
 import { createHotkeyHandler, createPriceCheckHandler, setOpenSide, setEvaluationStore } from './evaluation'
+import { initLearning } from './learning'
 import { snapshotClipboard } from './clipboard-preserve'
 import * as tradeHandlers from './handlers/trade'
 import * as settingsHandlers from './handlers/settings'
+import * as learningHandlers from './handlers/learning'
 import * as filesHandlers from './handlers/files'
 import * as editingHandlers from './handlers/editing'
 import * as versionsHandlers from './handlers/versions'
@@ -175,6 +177,7 @@ const store = new Store<AppSettings>({
     tradePriceOptionPoe1: 'chaos_divine',
     tradePriceOptionPoe2: 'exalted_divine',
     priceCheckDefaultPercent: 90,
+    adaptiveDefaultsMode: 'eager',
     tradeDefaultToBase: false,
     chatCommands: [],
     appMacros: [],
@@ -202,6 +205,7 @@ if (store.get('openSide') === undefined) store.set('openSide', 'both')
 if ((store.get('tradeStatus') as string) === 'any') store.set('tradeStatus', 'available')
 if (store.get('themeId') === undefined) store.set('themeId', 'default')
 if (store.get('customThemePalette') === undefined) store.set('customThemePalette', null)
+if (store.get('adaptiveDefaultsMode') === undefined) store.set('adaptiveDefaultsMode', 'eager')
 
 // Auto-detect overlay scale on first run (deferred until app ready since screen API requires it)
 if (!IS_E2E)
@@ -267,6 +271,7 @@ if (!IS_E2E)
   })
 
 setEvaluationStore(store)
+initLearning(store, store.get('poeVersion'))
 initAppMacrosRefresh(() => store.get('appMacros') ?? [])
 
 // ---- Register IPC handlers -------------------------------------------------
@@ -283,6 +288,7 @@ registerWhiteboard()
 registerClipboard()
 registerManifest()
 registerPlugins(store, isElevated)
+learningHandlers.register()
 registerDiagnostics({ store, getAppWindow, showAppWindow })
 
 ipcMain.on('close-overlay', () => hideOverlay())

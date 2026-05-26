@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Star } from '@icon-park/react'
 import { ScrubInput } from '../regex-tool/ScrubInput'
+import { LearnedIcon } from './LearnedIcon'
 import { divCardArtMap, RARITY_COLORS } from '../../shared/constants'
 import { getModColor, MOD_BOLD_TYPES, uniqueToBase } from './constants'
 import type { StatFilter } from './types'
@@ -144,6 +145,15 @@ export function StatFilterRow({
         }}
       >
         {f.type === 'temple-key' && <Star size={12} theme="filled" fill="#ffd700" />}
+        {f.learned && (
+          <span
+            title="Learned Preference"
+            className="inline-flex items-center shrink-0"
+            style={{ color: 'var(--accent)' }}
+          >
+            <LearnedIcon size={12} />
+          </span>
+        )}
         {f.text}
         {showChip && (
           <span

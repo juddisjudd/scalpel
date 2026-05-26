@@ -94,3 +94,12 @@ export const RESULTS_VIEW_OPTIONS: Array<{ value: ResultsView; label: string }> 
   { value: 'open-all', label: 'Open All' },
   { value: 'shrinkydink', label: 'Shrinkydink' },
 ]
+
+import type { AdaptiveMode } from '../../../../shared/types'
+export type { AdaptiveMode }
+
+export const ADAPTIVE_MODE_OPTIONS: Array<{ value: AdaptiveMode; label: string }> = [
+  { value: 'eager', label: 'Eager' },
+  { value: 'conservative', label: 'Conservative' },
+  { value: 'off', label: 'Off (keeps learning quietly)' },
+]

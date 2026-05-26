@@ -171,10 +171,13 @@ export default function App(): JSX.Element {
       max: number | null
       enabled: boolean
       type: string
+      learned?: boolean
     }>
     league: string
     chaosPerDivine?: number
     unidCandidates?: Array<{ name: string; chaosValue: number }>
+    sessionId: number
+    learnedDecisions: Record<string, boolean>
   } | null>(null)
 
   // Transient settings banner (hotkey collisions -> red, protected PoE hotkeys -> orange)
@@ -970,6 +973,8 @@ export default function App(): JSX.Element {
                     poeVersion={poeVersion ?? 1}
                     chaosPerDivine={priceCheckData.chaosPerDivine}
                     unidCandidates={priceCheckData.unidCandidates}
+                    sessionId={priceCheckData.sessionId}
+                    learnedDecisions={priceCheckData.learnedDecisions}
                     onClose={close}
                     onOpenWiki={externalLinkHandler('wiki', priceCheckData?.item)}
                     onOpenPoeDb={externalLinkHandler('poedb', priceCheckData?.item)}
