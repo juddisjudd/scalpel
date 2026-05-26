@@ -1,5 +1,16 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.9-rc1',
+    notes: [
+      'Added adaptive price-check defaults - Scalpel learns which stat mods you usually keep or drop for each kind of item and pre-selects them for you. Set it to Eager, Conservative, or Off under Trade settings.',
+      'Added profiles - save a named setup of filter, league, and trade settings per character or league and switch between them in settings. Switching games still prompts a relaunch.',
+      'Improved the onboarding steps.',
+      'Fixed the Linux overlay not registering clicks on hover (X11).',
+      'Fixed stacked items showing the wrong filter block when hotkeying the same item at a different stack size.',
+      'Updated FAQs',
+    ],
+  },
+  {
     version: '0.9.8',
     notes: [
       'Added Path of Exile 2 unique pricing via poe.ninja (thanks kvan for the API).',
