@@ -17,6 +17,7 @@ export function DivCardExplorer({ onSelectItem }: Props): JSX.Element {
   const [tierStyles, setTierStyles] = useState<Record<string, TierStyle>>({})
   const [cardTiers, setCardTiers] = useState<Record<string, string>>({})
   const [hiddenCards, setHiddenCards] = useState<Record<string, boolean>>({})
+  const [filterVersion, setFilterVersion] = useState(0)
   const [manualFlags, setManualFlags] = useState<Record<string, boolean>>(() => {
     try {
       return JSON.parse(localStorage.getItem('div-outlier-flags') || '{}')
@@ -25,13 +26,19 @@ export function DivCardExplorer({ onSelectItem }: Props): JSX.Element {
     }
   })
 
-  // Fetch live prices and tier data
+  useEffect(() => window.api.onFilterChanged(() => setFilterVersion((v) => v + 1)), [])
+
+  // Filter-derived tier/visibility data -- refetched when the filter reloads.
   useEffect(() => {
     window.api.getDivCardTiers().then(({ tierStyles: ts, cardTiers: ct, hiddenCards: hc }) => {
       setTierStyles(ts)
       setCardTiers(ct)
       setHiddenCards(hc)
     })
+  }, [filterVersion])
+
+  // Fetch live prices
+  useEffect(() => {
     let cancelled = false
     const fetchPrices = async (attempt = 0): Promise<void> => {
       try {
@@ -41,7 +48,7 @@ export function DivCardExplorer({ onSelectItem }: Props): JSX.Element {
         const chunkSize = 200
         for (let i = 0; i < cardNames.length; i += chunkSize) {
           const chunk = cardNames.slice(i, i + chunkSize)
-          const p = await window.api.batchLookupDivCardPrices(chunk, settings.league)
+          const p = await window.api.batchLookupDivCardPrices(chunk, settings.activeProfile?.league ?? '')
           for (const [name, info] of Object.entries(p)) {
             if (info?.chaosValue) result[name] = info.chaosValue
           }
@@ -53,7 +60,7 @@ export function DivCardExplorer({ onSelectItem }: Props): JSX.Element {
           return
         }
         setPrices(result)
-        const currPrices = await window.api.batchLookupPrices(['Divine Orb'], settings.league)
+        const currPrices = await window.api.batchLookupPrices(['Divine Orb'], settings.activeProfile?.league ?? '')
         const divPrice = currPrices['Divine Orb']?.chaosValue ?? 0
         if (divPrice > 0) setDivineRate(divPrice)
       } catch {

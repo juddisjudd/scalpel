@@ -3,6 +3,43 @@
 import type { MacroScope } from './macro-scope'
 import type { ThemePalette } from './theme/palette'
 
+export type GameVariant = 1 | 2
+
+export interface PoeProfile {
+  schemaVersion: 1
+  id: string
+  name: string
+  gameVariant: GameVariant
+  createdAt: string
+  updatedAt: string
+  filterDir: string
+  filterPath: string
+  league: string
+  tradePriceOption: TradePriceOption
+  cheatSheets: CheatSheetsSettings
+  regexPresets: RegexPreset[]
+}
+
+export interface PoeProfileSummary {
+  id: string
+  name: string
+  gameVariant: GameVariant
+  league: string
+  filterDir: string
+  filterPath: string
+  createdAt: string
+  updatedAt: string
+  active: boolean
+}
+
+export type ProfileSettingKey = 'league' | 'filterPath' | 'filterDir' | 'tradePriceOption' | 'cheatSheets'
+
+export type ProfileSettingValue<K extends ProfileSettingKey> = PoeProfile[K]
+
+export interface RuntimeSettings extends AppSettings {
+  activeProfile: PoeProfile | null
+}
+
 export type Visibility = 'Show' | 'Hide' | 'Minimal'
 export type ComparisonOperator = '>' | '>=' | '=' | '==' | '<=' | '<'
 
@@ -362,20 +399,35 @@ export interface CheatSheetsSettings {
 /** Adaptive price-check defaults learning engine mode. */
 export type AdaptiveMode = 'eager' | 'conservative' | 'off'
 
+export type TradePriceOption =
+  | 'chaos_divine'
+  | 'chaos_equivalent'
+  | 'chaos'
+  | 'divine'
+  | 'exalted_divine'
+  | 'exalted_equivalent'
+  | 'exalted'
+
+/** Legacy settings keys that existed before the profile system. Used only by
+ *  migrateFromLegacy() to read one-time migration data from the electron-store. */
+export interface LegacyAppSettings {
+  filterPathPoe1?: string
+  filterPathPoe2?: string
+  filterDirPoe1?: string
+  filterDirPoe2?: string
+  leaguePoe1?: string
+  leaguePoe2?: string
+  tradePriceOptionPoe1?: TradePriceOption
+  tradePriceOptionPoe2?: TradePriceOption
+  cheatSheetsPoe1?: CheatSheetsSettings
+  cheatSheetsPoe2?: CheatSheetsSettings
+  regexPresetsPoe1?: RegexPreset[]
+  regexPresetsPoe2?: RegexPreset[]
+  filterPath?: string
+  filterDir?: string
+}
+
 export interface AppSettings {
-  /** Active filter path + dir + league. Mirrored to/from the per-version fields
-   *  (filterPathPoe1, filterPathPoe2, etc.) based on the current poeVersion at
-   *  startup and on every set. Consumers read these flat fields as before --
-   *  the version namespacing is an implementation detail of the store layer. */
-  filterPath: string
-  filterDir: string
-  league: string
-  filterPathPoe1: string
-  filterPathPoe2: string
-  filterDirPoe1: string
-  filterDirPoe2: string
-  leaguePoe1: string
-  leaguePoe2: string
   /** Cached league lists fetched from the trade APIs at app launch. The settings
    *  + onboarding dropdowns prefer these when populated; falls back to the
    *  hardcoded list in shared/game-features.ts if a fetch never succeeded. */
@@ -407,16 +459,6 @@ export interface AppSettings {
   tradeCollapseListings?: boolean
   /** Volume (0.0-1.0) for the filter sound preview button. */
   previewVolume?: number
-  tradePriceOption:
-    | 'chaos_divine'
-    | 'chaos_equivalent'
-    | 'chaos'
-    | 'divine'
-    | 'exalted_divine'
-    | 'exalted_equivalent'
-    | 'exalted'
-  tradePriceOptionPoe1: AppSettings['tradePriceOption']
-  tradePriceOptionPoe2: AppSettings['tradePriceOption']
   /** Default "Listed" time for price-check searches. Empty string = any time. */
   tradeDefaultListedTime?:
     | ''
@@ -438,11 +480,8 @@ export interface AppSettings {
   tradeNeverAutoSearch?: boolean
   chatCommands: Array<{ hotkey: string; command: string; autoSubmit?: boolean; scope?: MacroScope }>
   appMacros: Array<{ action: string; hotkey: string; tag?: string; scope?: MacroScope }>
-  cheatSheets: CheatSheetsSettings
-  cheatSheetsPoe1: CheatSheetsSettings
-  cheatSheetsPoe2: CheatSheetsSettings
   stashScrollEnabled: boolean
-  poeVersion: 1 | 2
+  poeVersion: GameVariant
   /** Regex presets are persisted per game. Each session reads/writes the slot
    *  matching `poeVersion` -- the relaunch-on-switch flow guarantees the active
    *  version is stable for the lifetime of the process. */
@@ -467,6 +506,22 @@ export interface AppSettings {
    *  before changing a default; 'off' stops applying learned defaults but keeps
    *  recording so re-enabling is never cold-start. */
   adaptiveDefaultsMode: AdaptiveMode
+  /** Runtime-only: the active profile data, populated from the profile store.
+   *  Never persisted to electron-store. Filter path, league, etc. are
+   *  accessed via activeProfile.* instead of top-level settings fields. */
+  /** UUID of the active profile (loaded from profiles/ dir). */
+  activeProfileId: string
+  /** Last explicitly activated profile for each game. Used when switching games. */
+  lastProfileIdPoe1: string
+  lastProfileIdPoe2: string
+  /** True once the user completes the first-run onboarding wizard. */
+  onboardingCompleted: boolean
+  /** First-run onboarding resume: current step key (saved on every step transition). */
+  onboardingStep?: string
+  /** Legacy first-run resume: which games the user selected in the old setup flow. */
+  onboardingSelectedGames?: { poe1: boolean; poe2: boolean }
+  /** Legacy first-run resume: name of the online filter imported per game, if any. */
+  onboardingImportedOnline?: { poe1: string | null; poe2: string | null }
 }
 
 /** Title-bar tab keys the user is allowed to hide via View settings. Settings + Close

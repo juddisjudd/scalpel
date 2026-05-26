@@ -7,9 +7,14 @@ import type {
   FilterBlock,
   FilterListEntry,
   FilterVersion,
+  GameVariant,
   HistoryEntry,
   Manifest,
   OverlayData,
+  PoeProfileSummary,
+  ProfileSettingKey,
+  ProfileSettingValue,
+  RuntimeSettings,
   Zone,
 } from '../shared/types'
 import type { BoardLibrary, BoardSnapshot, BoardState } from '../shared/whiteboard-types'
@@ -19,15 +24,37 @@ export const api = {
   getManifest: (): Promise<Manifest> => ipcRenderer.invoke('get-manifest'),
 
   // Settings
-  getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('get-settings'),
+  getSettings: (): Promise<RuntimeSettings> => ipcRenderer.invoke('get-settings'),
   setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<void> =>
     ipcRenderer.invoke('set-setting', key, value),
+  setProfileSettingForGame: (
+    variant: GameVariant,
+    key: ProfileSettingKey,
+    value: ProfileSettingValue<typeof key>,
+  ): Promise<RuntimeSettings> => ipcRenderer.invoke('set-profile-setting-for-game', variant, key, value),
+  listProfiles: (): Promise<PoeProfileSummary[]> => ipcRenderer.invoke('list-profiles'),
+  createProfile: (input: {
+    name: string
+    gameVariant: GameVariant
+    cloneFromId?: string
+  }): Promise<PoeProfileSummary> => ipcRenderer.invoke('create-profile', input),
+  renameProfile: (id: string, name: string): Promise<PoeProfileSummary | null> =>
+    ipcRenderer.invoke('rename-profile', id, name),
+  duplicateProfile: (id: string, name: string): Promise<PoeProfileSummary> =>
+    ipcRenderer.invoke('duplicate-profile', id, name),
+  deleteProfile: (id: string): Promise<void> => ipcRenderer.invoke('delete-profile', id),
+  setActiveProfile: (
+    id: string,
+    restartIfNeeded = false,
+  ): Promise<
+    | { ok: true; settings: RuntimeSettings; devRestartRequired?: true }
+    | { ok: true; restarting: true; devRestartRequired?: true }
+    | { ok: false; requiresRestart: true; targetGame: GameVariant }
+    | { ok: false; error: string }
+  > => ipcRenderer.invoke('set-active-profile', id, restartIfNeeded),
   refreshLeagues: (): Promise<{
     leaguesPoe1: string[]
     leaguesPoe2: string[]
-    leaguePoe1: string
-    leaguePoe2: string
-    league: string
   }> => ipcRenderer.invoke('refresh-leagues'),
   pickFilterFile: (): Promise<string | null> => ipcRenderer.invoke('pick-filter-file'),
   pickFilterDir: (): Promise<string | null> => ipcRenderer.invoke('pick-filter-dir'),
@@ -141,7 +168,6 @@ export const api = {
     ipcRenderer.invoke('delete-version', filename),
 
   // App window
-  finishOnboarding: (): Promise<void> => ipcRenderer.invoke('finish-onboarding'),
   setAppWindowMode: (mode: 'onboarding' | 'settings'): void => ipcRenderer.send('app-window-mode', mode),
 
   // Dev tools
@@ -296,6 +322,11 @@ export const api = {
     const handler = (_: Electron.IpcRendererEvent, key: string, value: unknown): void => cb(key, value)
     ipcRenderer.on('setting-updated', handler)
     return () => ipcRenderer.removeListener('setting-updated', handler)
+  },
+  onLeagueUpdated: (cb: (league: string) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, league: string): void => cb(league)
+    ipcRenderer.on('league-updated', handler)
+    return () => ipcRenderer.removeListener('league-updated', handler)
   },
   onSkipAnimation: (cb: () => void): (() => void) => {
     const handler = (): void => cb()
@@ -566,6 +597,11 @@ export const api = {
     const handler = (_: Electron.IpcRendererEvent, changed: { path: string; name: string }[]): void => cb(changed)
     ipcRenderer.on('online-filter-changed', handler)
     return () => ipcRenderer.removeListener('online-filter-changed', handler)
+  },
+  onFilterChanged: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('filter-changed', handler)
+    return () => ipcRenderer.removeListener('filter-changed', handler)
   },
 
   // Auto-update

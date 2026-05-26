@@ -9,27 +9,46 @@ const SAMPLE_A = NON_DEFAULT[0]
 const SAMPLE_B = NON_DEFAULT[1]
 if (!SAMPLE_A || !SAMPLE_B) throw new Error('test requires >=2 non-default presets')
 
-function installLocalStorageMock(): void {
-  const store = new Map<string, string>()
-  Object.defineProperty(window, 'localStorage', {
-    configurable: true,
-    value: {
-      clear: () => store.clear(),
-      getItem: (key: string) => store.get(key) ?? null,
-      removeItem: (key: string) => {
-        store.delete(key)
-      },
-      setItem: (key: string, value: string) => {
-        store.set(key, value)
+// Vitest environmentMatchGlobs may run this in Node; always stub DOM globals
+const store = new Map<string, string>()
+const storageStub: Storage = {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => {
+    store.set(k, v)
+  },
+  removeItem: (k: string) => {
+    store.delete(k)
+  },
+  clear: () => {
+    store.clear()
+  },
+  get length() {
+    return store.size
+  },
+  key: (i: number) => [...store.keys()][i] ?? null,
+}
+if (typeof localStorage === 'undefined' || typeof localStorage.clear !== 'function') {
+  Object.defineProperty(globalThis, 'localStorage', { value: storageStub, configurable: true })
+}
+if (typeof document === 'undefined') {
+  const style = new Map<string, string>()
+  const documentStub = {
+    documentElement: {
+      removeAttribute: () => style.clear(),
+      style: {
+        setProperty: (key: string, value: string) => style.set(key, value),
+        getPropertyValue: (key: string) => style.get(key) ?? '',
       },
     },
-  })
+  } as unknown as Document
+  Object.defineProperty(globalThis, 'document', { value: documentStub, configurable: true })
 }
 
 beforeEach(() => {
-  installLocalStorageMock()
   localStorage.clear()
-  document.documentElement.removeAttribute('style')
+  if (document?.documentElement) {
+    document.documentElement.removeAttribute('style')
+  }
 })
 
 describe('applyPalette', () => {

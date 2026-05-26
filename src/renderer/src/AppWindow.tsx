@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
-import type { AppSettings } from '../../shared/types'
+import type { AppSettings, PoeProfileSummary, RuntimeSettings } from '../../shared/types'
 import { type Step, STEP_ORDER, type SelectedGames, totalOnboardingSteps } from './app-window/constants'
 import {
   backStepFromFilterFolder,
@@ -32,42 +32,30 @@ import { GameSwitchModal } from './components/GameSwitchModal'
 type ImportedOnline = { poe1: string | null; poe2: string | null }
 
 export function AppWindow(): JSX.Element {
-  const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [settings, setSettings] = useState<RuntimeSettings | null>(null)
   const [step, setStep] = useState<Step>('welcome')
   const [direction, setDirection] = useState<'forward' | 'back'>('forward')
   const [importedOnline, setImportedOnline] = useState<ImportedOnline>({ poe1: null, poe2: null })
   const [gameSwitchTarget, setGameSwitchTarget] = useState<1 | 2 | null>(null)
   const [selectedGames, setSelectedGames] = useState<SelectedGames>({ poe1: false, poe2: false })
-  // Set when the user clicks "Show Onboarding" from settings so the focus-bounce
-  // effect below doesn't yank them back to settings on every focus event.
-  const [revisitingOnboarding, setRevisitingOnboarding] = useState(false)
+  const [settingsTabRequest, setSettingsTabRequest] = useState<{ tab: string; n: number } | null>(null)
 
-  const goTo = (next: Step): void => {
+  const goTo = (next: Step, resumeGames = selectedGames): void => {
     const curIdx = STEP_ORDER.indexOf(step)
     const nextIdx = STEP_ORDER.indexOf(next)
     setDirection(nextIdx >= curIdx ? 'forward' : 'back')
     setStep(next)
+    if (next !== 'settings' && next !== 'done') {
+      window.api.setSetting('onboardingStep', next)
+      window.api.setSetting('onboardingSelectedGames', resumeGames)
+      window.api.setSetting('onboardingImportedOnline', importedOnline)
+    }
   }
 
-  /** Switch the active poeVersion mid-onboarding and rebuild the flat
-   *  filterDir/filterPath/league fields from the target version's mirror keys.
-   *  Without this, FilterPicker on the second game would show the first game's
-   *  values until the user changed them.
-   *
-   *  Order matters: `poeVersion` MUST be written first so the mirror logic in
-   *  applySetting() writes the subsequent filterDir/filterPath/league updates
-   *  into the target version's mirror keys. Writing in the other order would
-   *  overwrite the *outgoing* version's saved values with the incoming game's. */
-  const switchOnboardingGame = (target: 1 | 2): void => {
+  const switchOnboardingGame = async (target: 1 | 2): Promise<void> => {
     if (!settings) return
-    const dir = target === 2 ? settings.filterDirPoe2 : settings.filterDirPoe1
-    const path = target === 2 ? settings.filterPathPoe2 : settings.filterPathPoe1
-    const league = target === 2 ? settings.leaguePoe2 : settings.leaguePoe1
-    window.api.setSetting('poeVersion', target)
-    window.api.setSetting('filterDir', dir)
-    window.api.setSetting('filterPath', path)
-    window.api.setSetting('league', league)
-    setSettings({ ...settings, poeVersion: target, filterDir: dir, filterPath: path, league })
+    await window.api.setSetting('poeVersion', target)
+    setSettings(await window.api.getSettings())
   }
 
   useEffect(() => {
@@ -77,7 +65,13 @@ export function AppWindow(): JSX.Element {
   useEffect(() => {
     window.api.getSettings().then((s) => {
       setSettings(s)
-      if (s.filterPath) goTo('settings')
+      if (s.onboardingCompleted) {
+        goTo('settings')
+      } else if (s.onboardingStep) {
+        setStep((s.onboardingStep === 'profiles' ? 'welcome' : s.onboardingStep) as Step)
+        if (s.onboardingSelectedGames) setSelectedGames(s.onboardingSelectedGames)
+        if (s.onboardingImportedOnline) setImportedOnline(s.onboardingImportedOnline)
+      }
     })
     // Re-fetch leagues each time the app window mounts. The cooldown gate in
     // refreshLeagues short-circuits the network call when the launch-time
@@ -97,16 +91,20 @@ export function AppWindow(): JSX.Element {
 
   useEffect(() => {
     const onFocus = (): void => {
-      if (settings?.filterPath && step !== 'settings' && !revisitingOnboarding) goTo('settings')
+      if (settings?.onboardingCompleted && step !== 'settings') goTo('settings')
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [settings, step, revisitingOnboarding])
+  }, [settings, step])
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
     if (!settings) return
     window.api.setSetting(key, value)
     setSettings({ ...settings, [key]: value })
+  }
+
+  const updateProfileSettingForGame = async (game: 1 | 2, key: 'league', value: string): Promise<void> => {
+    setSettings(await window.api.setProfileSettingForGame(game, key, value))
   }
 
   if (!settings) return <div />
@@ -116,9 +114,35 @@ export function AppWindow(): JSX.Element {
   const orderedGames = selectedGameOrder(selectedGames)
   const showGameLabel = orderedGames.length === 2
 
-  const startFilterFlowFor = (game: 1 | 2): void => {
-    switchOnboardingGame(game)
+  const editProfile = async (profile: PoeProfileSummary): Promise<void> => {
+    const result = await window.api.setActiveProfile(profile.id)
+    if (!result.ok && 'requiresRestart' in result) {
+      const confirmed = window.confirm(
+        `Editing this PoE${profile.gameVariant} profile requires restarting Scalpel so the overlay can attach to the correct game. Restart now?`,
+      )
+      if (!confirmed) return
+      const restartResult = await window.api.setActiveProfile(profile.id, true)
+      if (!restartResult.ok || !('settings' in restartResult)) return
+      setSettings(restartResult.settings)
+      setSettingsTabRequest((prev) => ({ tab: 'filter', n: (prev?.n ?? 0) + 1 }))
+      goTo('settings')
+      return
+    }
+    if (!result.ok) return
+    if ('restarting' in result) return
+    setSettings(result.settings)
+    setSettingsTabRequest((prev) => ({ tab: 'filter', n: (prev?.n ?? 0) + 1 }))
+    goTo('settings')
+  }
+
+  const startFilterFlowFor = async (game: 1 | 2): Promise<void> => {
+    await switchOnboardingGame(game)
     goTo(filterFolderStepFor(game))
+  }
+
+  const switchGameThenGoTo = async (game: 1 | 2, next: Step): Promise<void> => {
+    await switchOnboardingGame(game)
+    goTo(next)
   }
 
   return (
@@ -150,7 +174,9 @@ export function AppWindow(): JSX.Element {
               <WelcomeStep
                 selectedGames={selectedGames}
                 onSelectedGamesChange={setSelectedGames}
-                onNext={() => startFilterFlowFor(orderedGames[0] ?? 1)}
+                onNext={() => {
+                  void startFilterFlowFor(orderedGames[0] ?? 1)
+                }}
               />
             </SlideIn>
           )}
@@ -173,7 +199,10 @@ export function AppWindow(): JSX.Element {
                       onNext={() => goTo(filterStep)}
                       onBack={() => {
                         const back = backStepFromFilterFolder(game, selectedGames, importedOnline)
-                        if (game === 2 && selectedGames.poe1) switchOnboardingGame(1)
+                        if (game === 2 && selectedGames.poe1) {
+                          void switchGameThenGoTo(1, back)
+                          return
+                        }
                         goTo(back)
                       }}
                       game={showGameLabel ? game : null}
@@ -189,7 +218,10 @@ export function AppWindow(): JSX.Element {
                       onSettingsChange={setSettings}
                       onNext={() => {
                         const next = nextStepAfterFilter(game, selectedGames, importedOnline)
-                        if (next === 'filter-folder-poe2') switchOnboardingGame(2)
+                        if (next === 'filter-folder-poe2') {
+                          void switchGameThenGoTo(2, next)
+                          return
+                        }
                         goTo(next)
                       }}
                       onBack={() => goTo(folderStep)}
@@ -206,7 +238,10 @@ export function AppWindow(): JSX.Element {
                       filterName={importedName}
                       onNext={() => {
                         const next = nextStepAfterOnlineSetup(game, selectedGames)
-                        if (next === 'filter-folder-poe2') switchOnboardingGame(2)
+                        if (next === 'filter-folder-poe2') {
+                          void switchGameThenGoTo(2, next)
+                          return
+                        }
                         goTo(next)
                       }}
                       onBack={() => {
@@ -262,6 +297,7 @@ export function AppWindow(): JSX.Element {
                 settings={settings}
                 selectedGames={selectedGames}
                 onUpdate={updateSetting}
+                onProfileUpdateForGame={updateProfileSettingForGame}
                 onNext={() => goTo('done')}
                 onBack={() => goTo('trade-login')}
                 stepNum={sharedBase + 4}
@@ -273,8 +309,8 @@ export function AppWindow(): JSX.Element {
             <SlideIn stepKey="done" direction={direction}>
               <DoneStep
                 onFinish={() => {
-                  window.api.finishOnboarding()
-                  setRevisitingOnboarding(false)
+                  window.api.setSetting('onboardingCompleted', true)
+                  window.api.setSetting('onboardingStep', '')
                   goTo('settings')
                 }}
               />
@@ -284,9 +320,9 @@ export function AppWindow(): JSX.Element {
             <AppSettingsWrapper
               settings={settings}
               onSettingsChange={setSettings}
-              onShowOnboarding={() => {
-                setRevisitingOnboarding(true)
-                goTo('welcome')
+              tabRequest={settingsTabRequest}
+              onEditProfile={(profile) => {
+                void editProfile(profile)
               }}
             />
           )}

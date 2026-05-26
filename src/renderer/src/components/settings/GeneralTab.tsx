@@ -1,20 +1,22 @@
 import { useState } from 'react'
-import type { AppSettings } from '../../../../shared/types'
+import type { AppSettings, ProfileSettingValue, RuntimeSettings } from '../../../../shared/types'
 import { getGameFeatures } from '../../../../shared/game-features'
 import { reportDiagnosticError } from '../../shared/diagnostics'
 
 interface Props {
-  settings: AppSettings
+  settings: RuntimeSettings
   update: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  updateProfile: <K extends 'league'>(key: K, value: ProfileSettingValue<K>) => Promise<void>
 }
 
-export function GeneralTab({ settings, update }: Props): JSX.Element {
+export function GeneralTab({ settings, update, updateProfile }: Props): JSX.Element {
   const [reportMessage, setReportMessage] = useState<string | null>(null)
   const [reporting, setReporting] = useState(false)
   const [simulateCrash, setSimulateCrash] = useState(false)
   const features = getGameFeatures(settings.poeVersion)
   const cachedLeagues = settings.poeVersion === 2 ? settings.leaguesPoe2 : settings.leaguesPoe1
   const leagueOptions: readonly string[] = cachedLeagues && cachedLeagues.length > 0 ? cachedLeagues : features.leagues
+  const activeLeague = settings.activeProfile?.league ?? ''
 
   const reportBug = async (): Promise<void> => {
     setReporting(true)
@@ -39,20 +41,13 @@ export function GeneralTab({ settings, update }: Props): JSX.Element {
 
       {/* League */}
       {(() => {
-        // "Private League" is a sentinel option in the dropdown (matches APT's
-        // pattern). When selected, an input below lets the user type the actual
-        // private league name (e.g. "MyPL (PL12345)") which is what gets persisted
-        // to settings.league and sent to the trade API verbatim. We detect "private
-        // mode" by absence from the standard league list rather than a separate flag,
-        // so a typed value that happens to match a standard league cleanly switches
-        // back to dropdown mode.
         const PRIVATE_LEAGUE_LABEL = 'Private League'
-        const isPrivate = !leagueOptions.includes(settings.league)
+        const isPrivate = !leagueOptions.includes(activeLeague)
         return (
           <section>
             <label>League</label>
             <div className="setting-box mt-[6px] relative">
-              <span className="value">{settings.league || PRIVATE_LEAGUE_LABEL}</span>
+              <span className="value">{activeLeague || PRIVATE_LEAGUE_LABEL}</span>
               <button
                 className="primary"
                 onClick={() => {
@@ -65,15 +60,12 @@ export function GeneralTab({ settings, update }: Props): JSX.Element {
               </button>
               <select
                 id="league-select-unified"
-                value={isPrivate ? PRIVATE_LEAGUE_LABEL : settings.league}
+                value={isPrivate ? PRIVATE_LEAGUE_LABEL : activeLeague}
                 onChange={(e) => {
                   if (e.target.value === PRIVATE_LEAGUE_LABEL) {
-                    // First-time switch into private mode: clear so the input below
-                    // shows empty + placeholder. Re-selecting while already private
-                    // is a no-op (the typed value stays).
-                    if (!isPrivate) update('league', '')
+                    if (!isPrivate) updateProfile('league', '')
                   } else {
-                    update('league', e.target.value)
+                    updateProfile('league', e.target.value)
                   }
                 }}
                 className="absolute inset-0 opacity-0 cursor-pointer"
@@ -89,8 +81,8 @@ export function GeneralTab({ settings, update }: Props): JSX.Element {
             {isPrivate && (
               <input
                 type="text"
-                value={settings.league}
-                onChange={(e) => update('league', e.target.value)}
+                value={activeLeague}
+                onChange={(e) => updateProfile('league', e.target.value)}
                 placeholder="Enter Private League - Full name including (PL#####)"
                 className="mt-[6px] w-full text-[11px] bg-black/30 rounded px-2 py-[5px] border-none"
               />
@@ -176,8 +168,6 @@ export function GeneralTab({ settings, update }: Props): JSX.Element {
                   const k = localStorage.key(i)
                   if (k && k.startsWith('tip.')) localStorage.removeItem(k)
                 }
-                // Mounted DismissibleTip instances only check localStorage on mount,
-                // so reload to surface the dismissed tips again.
                 window.location.reload()
               }}
               className="text-[11px] px-3 py-1.5 text-text-dim"

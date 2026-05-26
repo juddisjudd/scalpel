@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { CloseSmall, Info } from '@icon-park/react'
-import type { AppSettings, FilterListEntry } from '../../../shared/types'
+import type { FilterListEntry, GameVariant, RuntimeSettings } from '../../../shared/types'
 
 interface Props {
-  settings: AppSettings
-  onSettingsChange: (s: AppSettings) => void
+  settings: RuntimeSettings
+  onSettingsChange: (s: RuntimeSettings) => void
   /** Called when an online filter is imported and the user needs instructions */
   onOnlineImport?: (filterName: string) => void
   /** When true, automatically send /itemfilter command to PoE after importing */
@@ -45,6 +45,10 @@ export function FilterPicker({
     conflicts: Array<{ description: string; actionType: string }>
   } | null>(null)
 
+  const fDir = settings.activeProfile?.filterDir ?? ''
+  const fPath = settings.activeProfile?.filterPath ?? ''
+  const gameVariant = (settings.poeVersion === 2 ? 2 : 1) as GameVariant
+
   // Listen for online filter changes
   useEffect(() => {
     const unsub = window.api.onOnlineFilterChanged((changed) => {
@@ -66,51 +70,56 @@ export function FilterPicker({
 
   // Scan on mount if we already have a directory
   useEffect(() => {
-    if (settings.filterDir) scanDir(settings.filterDir)
-  }, [settings.filterDir])
+    if (fDir) scanDir(fDir)
+  }, [fDir])
 
   const pickDir = async (): Promise<void> => {
     const dir = await window.api.pickFilterDir()
     if (dir) {
-      onSettingsChange({ ...settings, filterDir: dir })
+      const updated = await window.api.setProfileSettingForGame(gameVariant, 'filterDir', dir)
+      onSettingsChange(updated)
     }
   }
 
   const importOnlineFilter = async (entry: FilterListEntry, force: boolean): Promise<boolean> => {
-    const result = await window.api.importOnlineFilter(entry.path, entry.name, settings.filterDir, force)
+    const dir = settings.activeProfile?.filterDir ?? ''
+    const result = await window.api.importOnlineFilter(entry.path, entry.name, dir, force)
     if (result.conflict) {
       setConflictEntry(entry)
       return false
     }
     if (!result.ok || !result.path) return false
-    onSettingsChange({ ...settings, filterPath: result.path })
-    await scanDir(settings.filterDir)
+    const updated = await window.api.setProfileSettingForGame(gameVariant, 'filterPath', result.path)
+    onSettingsChange(updated)
+    await scanDir(dir)
     return true
   }
 
   const selectFilter = async (entry: FilterListEntry): Promise<void> => {
     let filterName: string
     let freshImport = false
+    const dir = settings.activeProfile?.filterDir ?? ''
 
     if (entry.online) {
       const safeName = entry.name.replace(/[<>:"/\\|?*]/g, '_')
       const localName = `${safeName}-local`
-      const sep = settings.filterDir.includes('/') ? '/' : '\\'
-      const localPath = `${settings.filterDir}${sep}${localName}.filter`
+      const sep = dir.includes('/') ? '/' : '\\'
+      const localPath = `${dir}${sep}${localName}.filter`
 
       // Check if local copy already exists by attempting a non-force import
-      const result = await window.api.importOnlineFilter(entry.path, entry.name, settings.filterDir, false)
+      const result = await window.api.importOnlineFilter(entry.path, entry.name, dir, false)
       if (result.conflict) {
         // Local copy exists - switch to it and check for updates
-        window.api.setSetting('filterPath', localPath)
-        onSettingsChange({ ...settings, filterPath: localPath })
+        const updated = await window.api.setProfileSettingForGame(gameVariant, 'filterPath', localPath)
+        onSettingsChange(updated)
         filterName = localName
         // Trigger update check in the background (same as overlay's "Check for Updates")
         window.api.checkForOnlineUpdate().catch(() => {})
       } else if (result.ok && result.path) {
         // First import - set up the local copy
-        onSettingsChange({ ...settings, filterPath: result.path })
-        await scanDir(settings.filterDir)
+        const updated = await window.api.setProfileSettingForGame(gameVariant, 'filterPath', result.path)
+        onSettingsChange(updated)
+        await scanDir(dir)
         filterName = localName
         freshImport = true
         if (!autoSwitchInGame) {
@@ -121,17 +130,14 @@ export function FilterPicker({
         return
       }
     } else {
-      window.api.setSetting('filterPath', entry.path)
-      onSettingsChange({ ...settings, filterPath: entry.path })
+      const updated = await window.api.setProfileSettingForGame(gameVariant, 'filterPath', entry.path)
+      onSettingsChange(updated)
       filterName = entry.name
     }
 
     if (autoSwitchInGame) {
       setSwitching(true)
-      const currentFilter =
-        freshImport && settings.filterPath
-          ? settings.filterPath.replace(/^.*[\\/]/, '').replace(/\.filter$/i, '')
-          : undefined
+      const currentFilter = freshImport && fPath ? fPath.replace(/^.*[\\/]/, '').replace(/\.filter$/i, '') : undefined
       await window.api.switchIngameFilter(filterName, currentFilter)
       setSwitching(false)
     }
@@ -140,7 +146,8 @@ export function FilterPicker({
   const mergeOnlineFilter = async (entry: FilterListEntry): Promise<void> => {
     const safeName = entry.name.replace(/[<>:"/\\|?*]/g, '_')
     const localName = `${safeName}-local`
-    const localPath = `${settings.filterDir}${settings.filterDir.includes('/') ? '/' : '\\'}${localName}.filter`
+    const dir = settings.activeProfile?.filterDir ?? ''
+    const localPath = `${dir}${dir.includes('/') ? '/' : '\\'}${localName}.filter`
 
     setMerging(true)
     setConflictEntry(null)
@@ -169,12 +176,10 @@ export function FilterPicker({
     }
 
     // Reload filter list and switch in game if needed
-    await scanDir(settings.filterDir)
+    await scanDir(dir)
     if (autoSwitchInGame) {
       setSwitching(true)
-      const currentFilter = settings.filterPath
-        ? settings.filterPath.replace(/^.*[\\/]/, '').replace(/\.filter$/i, '')
-        : undefined
+      const currentFilter = fPath ? fPath.replace(/^.*[\\/]/, '').replace(/\.filter$/i, '') : undefined
       await window.api.switchIngameFilter(localName, currentFilter)
       setSwitching(false)
     }
@@ -195,9 +200,7 @@ export function FilterPicker({
     const filterName = entry.name.replace(/[<>:"/\\|?*]/g, '_') + '-local'
     if (autoSwitchInGame) {
       setSwitching(true)
-      const currentFilter = settings.filterPath
-        ? settings.filterPath.replace(/^.*[\\/]/, '').replace(/\.filter$/i, '')
-        : undefined
+      const currentFilter = fPath ? fPath.replace(/^.*[\\/]/, '').replace(/\.filter$/i, '') : undefined
       await window.api.switchIngameFilter(filterName, currentFilter)
       setSwitching(false)
     } else {
@@ -205,7 +208,8 @@ export function FilterPicker({
     }
   }
 
-  const dirName = settings.filterDir ? settings.filterDir.replace(/^.*[\\/]/, '') : null
+  const dirName = fDir ? fDir.replace(/^.*[\\/]/, '') : null
+  const currentPath = settings.activeProfile?.filterPath
 
   const localFilters = filters.filter((f) => !f.online)
   const onlineFilters = filters.filter((f) => f.online)
@@ -232,7 +236,7 @@ export function FilterPicker({
       )}
 
       {/* Filter list */}
-      {showList && settings.filterDir && !scanning && filters.length > 0 && (
+      {showList && fDir && !scanning && filters.length > 0 && (
         <div
           className="flex flex-col gap-0.5 overflow-y-auto rounded p-1 bg-black/20"
           style={{
@@ -244,7 +248,7 @@ export function FilterPicker({
               <FilterRow
                 key={f.path}
                 entry={f}
-                active={settings.filterPath === f.path}
+                active={currentPath === f.path}
                 switching={switching}
                 hasUpdate={false}
                 onSelect={() => selectFilter(f)}
@@ -259,7 +263,7 @@ export function FilterPicker({
                 <FilterRow
                   key={f.path}
                   entry={f}
-                  active={settings.filterPath === f.path}
+                  active={currentPath === f.path}
                   switching={switching}
                   hasUpdate={updatedFilters.has(f.name)}
                   onSelect={() => selectFilter(f)}
@@ -270,14 +274,14 @@ export function FilterPicker({
         </div>
       )}
 
-      {showList && settings.filterDir && !scanning && filters.length > 0 && (
+      {showList && fDir && !scanning && filters.length > 0 && (
         <p className="text-[10px] text-text-dim flex items-center gap-1 m-0 ml-1 mt-0.5">
           <Info size={12} theme="two-tone" fill={['currentColor', 'rgba(255,255,255,0.2)']} className="flex shrink-0" />
           To add a new online filter, load it in-game first and it will appear here next time you open settings.
         </p>
       )}
 
-      {showList && settings.filterDir && !scanning && filters.length === 0 && (
+      {showList && fDir && !scanning && filters.length === 0 && (
         <p className="text-[11px] text-text-dim m-0">No filter files found in this folder.</p>
       )}
 

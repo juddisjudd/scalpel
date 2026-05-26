@@ -1,4 +1,4 @@
-import type { AppSettings, PoeItem } from '../../../../shared/types'
+import type { AppSettings, ProfileSettingValue, PoeItem, RuntimeSettings } from '../../../../shared/types'
 import { getGameFeatures } from '../../../../shared/game-features'
 import { FilterPicker } from '../FilterPicker'
 import { HistoryPanel } from '../HistoryPanel'
@@ -6,12 +6,13 @@ import { HotkeyField } from './HotkeyField'
 import { SettingToggleBox } from './SettingToggleBox'
 
 interface Props {
-  settings: AppSettings
+  settings: RuntimeSettings
   update: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  updateProfile: <K extends 'filterPath' | 'filterDir'>(key: K, value: ProfileSettingValue<K>) => Promise<void>
   isOverlay: boolean
   onOnlineFilterUpdated?: (name: string) => void
   onOnlineImport?: (name: string) => void
-  onSettingsChange: (s: AppSettings) => void
+  onSettingsChange: (s: RuntimeSettings) => void
   tryHotkey: (hotkey: string, slot: { kind: 'filter' }) => boolean
   currentItem?: PoeItem
 }
@@ -19,6 +20,7 @@ interface Props {
 export function FilterTab({
   settings,
   update,
+  updateProfile: _updateProfile,
   isOverlay,
   onOnlineFilterUpdated,
   onOnlineImport,
@@ -27,6 +29,7 @@ export function FilterTab({
   currentItem,
 }: Props): JSX.Element {
   const features = getGameFeatures(settings.poeVersion)
+  const filterPath = settings.activeProfile?.filterPath
 
   return (
     <>
@@ -44,7 +47,7 @@ export function FilterTab({
             onOnlineImport={onOnlineImport}
           />
         </div>
-        {isOverlay && !settings.filterPath && (
+        {isOverlay && !filterPath && (
           <p className="text-[11px] text-text-dim mt-1">
             Typically: <code>{features.filterFolderHint}</code>
           </p>

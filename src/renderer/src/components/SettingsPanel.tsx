@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { AppSettings, PoeItem } from '../../../shared/types'
+import type {
+  AppSettings,
+  PoeItem,
+  PoeProfileSummary,
+  ProfileSettingKey,
+  ProfileSettingValue,
+  RuntimeSettings,
+} from '../../../shared/types'
 import {
   GeneralTab,
   ViewTab,
@@ -15,15 +22,16 @@ import { PluginsSection } from './settings/PluginsSection'
 import { ErrorBanner } from './ErrorBanner'
 import { findHotkeyCollision, type HotkeySlot } from './settings/hotkey-collisions'
 import { usePoeVersion } from '../shared/poe-version-context'
+import { ProfileManagerTab } from '../features/profiles/ProfileManagerTab'
 
 interface Props {
-  settings: AppSettings
-  onSettingsChange: (s: AppSettings) => void
+  settings: RuntimeSettings
+  onSettingsChange: (s: RuntimeSettings) => void
   mode: 'overlay' | 'app'
   onDone?: () => void
   onOnlineFilterUpdated?: (name: string) => void
   onOnlineImport?: (name: string) => void
-  onShowOnboarding?: () => void
+  onEditProfile?: (profile: PoeProfileSummary) => void
   /** Item currently loaded in the overlay, used to preserve context when undoing/restoring */
   currentItem?: PoeItem
   /** Optional callback to show a short banner at the top of the overlay */
@@ -44,6 +52,7 @@ const TAB_KEYS = [
   'cheatsheets',
   'filter',
   'pricecheck',
+  'profiles',
   'plugins',
   'faq',
   'developer',
@@ -56,6 +65,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   cheatsheets: 'Sheets',
   filter: 'Filter',
   pricecheck: 'Trade',
+  profiles: 'Profiles',
   plugins: 'Plugins',
   faq: 'FAQ',
   developer: 'Developer',
@@ -68,7 +78,7 @@ export function SettingsPanel({
   onDone: _onDone,
   onOnlineFilterUpdated,
   onOnlineImport,
-  onShowOnboarding,
+  onEditProfile,
   currentItem,
   onError,
   tabRequest,
@@ -79,7 +89,9 @@ export function SettingsPanel({
   // right tab without waiting for an effect.
   const [tab, setTab] = useState<TabKey>(() => {
     const t = tabRequest?.tab
-    return t && (TAB_KEYS as readonly string[]).includes(t) ? (t as TabKey) : 'general'
+    if (!t || !(TAB_KEYS as readonly string[]).includes(t)) return 'general'
+    if (mode === 'overlay' && t === 'profiles') return 'general'
+    return t as TabKey
   })
   const [localError, setLocalError] = useState<string | null>(null)
   const [localErrorTone, setLocalErrorTone] = useState<'error' | 'warn'>('error')
@@ -88,12 +100,19 @@ export function SettingsPanel({
   // the initial mount since useState above already consumed the seed.
   useEffect(() => {
     if (!tabRequest) return
+    if (mode === 'overlay' && tabRequest.tab === 'profiles') return
     if ((TAB_KEYS as readonly string[]).includes(tabRequest.tab)) setTab(tabRequest.tab as TabKey)
-  }, [tabRequest?.n])
+  }, [mode, tabRequest?.n])
 
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
     window.api.setSetting(key, value)
     onSettingsChange({ ...settings, [key]: value })
+  }
+
+  const updateProfile = async <K extends ProfileSettingKey>(key: K, value: ProfileSettingValue<K>): Promise<void> => {
+    const variant = settings.poeVersion === 2 ? 2 : 1
+    const updated = await window.api.setProfileSettingForGame(variant, key, value)
+    onSettingsChange(updated)
   }
 
   // A single merged onSettingsChange avoids the stale-settings-closure clobber you'd get from two sequential update() calls in one tick.
@@ -146,6 +165,7 @@ export function SettingsPanel({
         <div className="flex flex-wrap gap-[6px]">
           {(TAB_KEYS as readonly TabKey[])
             .filter((t) => t !== 'developer' || settings.developerMode)
+            .filter((t) => t !== 'profiles' || !isOverlay)
             .map((t) => (
               <button
                 key={t}
@@ -155,24 +175,20 @@ export function SettingsPanel({
                 {TAB_LABELS[t]}
               </button>
             ))}
-          {!isOverlay && onShowOnboarding && (
-            <button onClick={onShowOnboarding} className="text-[11px] text-text-dim px-3 py-1.5">
-              Setup Wizard
-            </button>
-          )}
         </div>
       </div>
 
-      {tab === 'general' && <GeneralTab settings={settings} update={update} />}
+      {tab === 'general' && <GeneralTab settings={settings} update={update} updateProfile={updateProfile} />}
       {tab === 'view' && <ViewTab settings={settings} update={update} updateMany={updateMany} />}
       {tab === 'macros' && <MacrosTab settings={settings} update={update} tryHotkey={tryHotkey} />}
       {tab === 'cheatsheets' && (
-        <CheatSheetsTab settings={settings} update={update} tryHotkey={tryHotkey} onError={showError} />
+        <CheatSheetsTab settings={settings} updateProfile={updateProfile} tryHotkey={tryHotkey} onError={showError} />
       )}
       {tab === 'filter' && (
         <FilterTab
           settings={settings}
           update={update}
+          updateProfile={updateProfile}
           isOverlay={isOverlay}
           onOnlineFilterUpdated={onOnlineFilterUpdated}
           onOnlineImport={onOnlineImport}
@@ -181,7 +197,12 @@ export function SettingsPanel({
           currentItem={currentItem}
         />
       )}
-      {tab === 'pricecheck' && <PriceCheckTab settings={settings} update={update} tryHotkey={tryHotkey} />}
+      {tab === 'pricecheck' && (
+        <PriceCheckTab settings={settings} update={update} updateProfile={updateProfile} tryHotkey={tryHotkey} />
+      )}
+      {tab === 'profiles' && !isOverlay && onEditProfile && (
+        <ProfileManagerTab settings={settings} onSettingsChange={onSettingsChange} onEditProfile={onEditProfile} />
+      )}
       {tab === 'plugins' && <PluginsSection onError={showError} />}
       {tab === 'faq' && <FaqTab />}
       {tab === 'developer' && <DeveloperSection settings={settings} update={update} onError={showError} />}

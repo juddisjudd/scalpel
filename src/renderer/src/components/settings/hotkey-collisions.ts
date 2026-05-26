@@ -1,4 +1,4 @@
-import type { AppSettings } from '../../../../shared/types'
+import type { RuntimeSettings } from '../../../../shared/types'
 import {
   chatCommandEffectiveScope,
   appMacroEffectiveScope,
@@ -37,8 +37,8 @@ interface SlotEntry {
   scope: MacroScope
 }
 
-function buildSlots(settings: AppSettings): SlotEntry[] {
-  const cheatSheets = settings.cheatSheets
+function buildSlots(settings: RuntimeSettings): SlotEntry[] {
+  const cheatSheets = settings.activeProfile?.cheatSheets
   return [
     { slot: { kind: 'filter' }, value: settings.hotkey ?? '', scope: 'both' },
     { slot: { kind: 'pricecheck' }, value: settings.priceCheckHotkey ?? '', scope: 'both' },
@@ -61,7 +61,7 @@ function buildSlots(settings: AppSettings): SlotEntry[] {
           },
         ]
       : []),
-    ...(cheatSheets?.categories ?? []).map<SlotEntry>((cat, i) => ({
+    ...(cheatSheets?.categories ?? []).map<SlotEntry>((cat: { hotkey?: string; name: string }, i: number) => ({
       slot: { kind: 'cheatsheet-category', index: i },
       value: cat.hotkey ?? '',
       label: `Cheat sheet: ${cat.name}`,
@@ -77,7 +77,7 @@ function buildSlots(settings: AppSettings): SlotEntry[] {
  * other game are invisible here so the user can reuse the key.
  */
 export function findHotkeyCollision(
-  settings: AppSettings,
+  settings: RuntimeSettings,
   hotkey: string,
   excluding: HotkeySlot,
   currentGame: 1 | 2,
@@ -101,7 +101,7 @@ export function findHotkeyCollision(
  * collision already caught by findHotkeyCollision).
  */
 export function narrowScopeForCrossGameConflict(
-  settings: AppSettings,
+  settings: RuntimeSettings,
   hotkey: string,
   excluding: HotkeySlot,
   currentGame: 1 | 2,

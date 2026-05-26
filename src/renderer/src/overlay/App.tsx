@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { PluginHost } from '../plugins/PluginHost'
 import { PluginTabHost } from '../plugins/PluginTabHost'
 import type { RegisteredTab } from '../plugins/PluginHost'
-import type { AppSettings, OverlayData, PoeItem, PriceInfo } from '../../../shared/types'
+import type { RuntimeSettings, OverlayData, PoeItem, PriceInfo } from '../../../shared/types'
 import { isHideableTabKey } from '../../../shared/types'
 import type { ExternalLinkTarget } from '../../../shared/external-link'
 import { externalLinkUrl, ninjaLinkUrl } from '../../../shared/external-link'
@@ -78,7 +78,7 @@ export default function App(): JSX.Element {
   const showAnimDone = useRef(false)
   const [overlayData, setOverlayData] = useState<OverlayData | null>(null)
   const [searchId, setSearchId] = useState(0)
-  const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [settings, setSettings] = useState<RuntimeSettings | null>(null)
   const [gameBounds, setGameBounds] = useState<{ gameWidth: number; gameHeight: number; sidebarWidth: number } | null>(
     null,
   )
@@ -217,10 +217,7 @@ export default function App(): JSX.Element {
     [],
   )
   const onSubscribeLeagueChange = useCallback(
-    (h: (l: string) => void): (() => void) =>
-      window.api.onSettingUpdated((k, v) => {
-        if (k === 'league' && typeof v === 'string') h(v)
-      }),
+    (h: (l: string) => void): (() => void) => window.api.onLeagueUpdated((league) => h(league)),
     [],
   )
 
@@ -723,9 +720,9 @@ export default function App(): JSX.Element {
   // don't have a ninja price entry for this item -- ninja's PoE2 catalogue is
   // incomplete and items absent from it 404 on the deep link.
   const ninjaLinkHandler = (item: PoeItem | undefined, priceInfo: PriceInfo | undefined): (() => void) | undefined => {
-    if (!item || !poeVersion || !settings?.league || !priceInfo) return undefined
+    if (!item || !poeVersion || !settings?.activeProfile?.league || !priceInfo) return undefined
     const leagueSlugMap = getManifest().ninjaLeagues[poeVersion === 1 ? 'poe1' : 'poe2']
-    const url = ninjaLinkUrl(item, poeVersion, settings.league, leagueSlugMap, priceInfo)
+    const url = ninjaLinkUrl(item, poeVersion, settings.activeProfile.league, leagueSlugMap, priceInfo)
     if (!url) return undefined
     return () => window.api.openExternal(url)
   }
@@ -739,7 +736,7 @@ export default function App(): JSX.Element {
           itemClass={tierSisterData?.itemClass ?? overlayData.item.itemClass}
           currentBaseType={overlayData.item.baseType}
           currentRarity={overlayData.item.rarity}
-          league={settings?.league ?? ''}
+          league={settings?.activeProfile?.league ?? ''}
           uniqueTier={tierSisterData?.uniqueTier}
           left={sisterLeft}
           top={PANEL_TOP + SISTER_NAV_OFFSET}
@@ -861,9 +858,9 @@ export default function App(): JSX.Element {
               }}
             />
 
-            {view === 'item' && settings?.filterPath && (
+            {view === 'item' && settings?.activeProfile?.filterPath && (
               <FilterInfoBanner
-                filterPath={settings.filterPath}
+                filterPath={settings.activeProfile.filterPath}
                 updatedOnlineFilters={updatedOnlineFilters}
                 checkingUpdate={checkingUpdate}
                 updatingFilter={updatingFilter}
@@ -916,7 +913,18 @@ export default function App(): JSX.Element {
                 />
               )}
               {view === 'no-filter' && (
-                <Notice icon="⚠" title="No filter loaded" body="Click ⚙ to select your .filter file." />
+                <Notice
+                  icon="⚠"
+                  title="No filter loaded"
+                  body="Select your .filter file to get started."
+                  action={{
+                    label: 'Open Filter Settings',
+                    onClick: () => {
+                      setSettingsTabRequest({ tab: 'filter', n: Date.now() })
+                      setView('setup')
+                    },
+                  }}
+                />
               )}
               {view === 'no-item' && (
                 <>
@@ -1027,7 +1035,7 @@ export default function App(): JSX.Element {
       <PluginHost
         ready={poeVersion !== null}
         poeVersion={poeVersion ?? 1}
-        league={settings?.league ?? ''}
+        league={settings?.activeProfile?.league ?? ''}
         currentItem={overlayData?.item ?? null}
         currentZone={currentZone}
         onSubscribeCurrentItem={onSubscribeCurrentItem}

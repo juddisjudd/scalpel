@@ -1,6 +1,11 @@
+import { mkdtempSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import type Store from 'electron-store'
 import { describe, expect, it } from 'vitest'
 import type { AppSettings } from '../../shared/types'
+import { ACTIVE_PROFILE_ID_KEY, LAST_PROFILE_ID_POE1_KEY, PROFILE_VERSION_KEY } from '../profiles/profile-settings'
+import { initProfileStore } from '../profiles/store'
 import { migrateLeague, refreshLeagues } from './leagues'
 
 describe('migrateLeague', () => {
@@ -31,8 +36,6 @@ describe('migrateLeague', () => {
   })
 
   it('migrates Mirage -> Return of the Settlers (multi-word challenge name)', () => {
-    // Real-world scenario: PoE1 launches a multi-word league name; the SC
-    // challenge entry is the first item in the trade API response.
     const fresh = [
       'Return of the Settlers',
       'Hardcore Return of the Settlers',
@@ -66,30 +69,30 @@ describe('migrateLeague', () => {
   })
 })
 
-// ─── refreshLeagues integration ─────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// refreshLeagues integration
+// ---------------------------------------------------------------------------
 
-/** Minimal in-memory implementation of the subset of electron-store's API that
- *  refreshLeagues touches. Lets us assert what got persisted without booting
- *  electron. */
-function makeFakeStore(initial: Partial<AppSettings>): Store<AppSettings> {
+function makeFakeStore(initial: Record<string, unknown>): Store<AppSettings> {
   const data: Record<string, unknown> = { ...initial }
   return {
     get: (key: string) => data[key],
     set: (key: string, value: unknown) => {
       data[key] = value
     },
-    // expose for assertions
     _data: data,
   } as unknown as Store<AppSettings> & { _data: Record<string, unknown> }
 }
 
 describe('refreshLeagues', () => {
-  it('persists fetched lists and migrates leaguePoe1 + flat league when poe1 is active', async () => {
+  it('persists fetched lists and migrates active profile league when poe1 is active', async () => {
+    const profiles = initProfileStore(mkdtempSync(join(tmpdir(), 'scalpel-league-profiles-')))
+    const poe1 = { ...profiles.createDefault(1), league: 'Mirage' }
+    profiles.saveProfile(poe1)
     const store = makeFakeStore({
+      [ACTIVE_PROFILE_ID_KEY]: poe1.id,
+      [LAST_PROFILE_ID_POE1_KEY]: poe1.id,
       poeVersion: 1,
-      league: 'Mirage',
-      leaguePoe1: 'Mirage',
-      leaguePoe2: 'Fate of the Vaal',
       leaguesPoe1: [],
       leaguesPoe2: [],
     })
@@ -108,20 +111,19 @@ describe('refreshLeagues', () => {
 
     expect(store.get('leaguesPoe1')).toEqual(fresh1)
     expect(store.get('leaguesPoe2')).toEqual(fresh2)
-    expect(store.get('leaguePoe1')).toBe('Return of the Settlers')
-    expect(store.get('league')).toBe('Return of the Settlers') // poe1 is active so flat mirrors
-    expect(store.get('leaguePoe2')).toBe('Fate of the Vaal') // unchanged
+    expect(profiles.getProfile(poe1.id)?.league).toBe('Return of the Settlers')
     expect(changed).toContain('leaguesPoe1')
-    expect(changed).toContain('leaguePoe1')
-    expect(changed).toContain('league')
+    expect(changed).toContain('activeProfile')
   })
 
   it('migrates Hardcore Mirage -> Hardcore Return of the Settlers', async () => {
+    const profiles = initProfileStore(mkdtempSync(join(tmpdir(), 'scalpel-league-profiles-')))
+    const poe1 = { ...profiles.createDefault(1), league: 'Hardcore Mirage' }
+    profiles.saveProfile(poe1)
     const store = makeFakeStore({
+      [ACTIVE_PROFILE_ID_KEY]: poe1.id,
+      [LAST_PROFILE_ID_POE1_KEY]: poe1.id,
       poeVersion: 1,
-      league: 'Hardcore Mirage',
-      leaguePoe1: 'Hardcore Mirage',
-      leaguePoe2: 'Fate of the Vaal',
       leaguesPoe1: [],
       leaguesPoe2: [],
     })
@@ -131,18 +133,19 @@ describe('refreshLeagues', () => {
 
     await refreshLeagues(store, fetcher)
 
-    expect(store.get('leaguePoe1')).toBe('Hardcore Return of the Settlers')
-    expect(store.get('league')).toBe('Hardcore Return of the Settlers')
+    expect(profiles.getProfile(poe1.id)?.league).toBe('Hardcore Return of the Settlers')
   })
 
-  it('does not touch flat league when the inactive version migrates', async () => {
-    // poe2 is active, but leaguePoe1 (PoE1, inactive) needs migration. The flat
-    // 'league' field reflects the active game (poe2) so it must not be rewritten.
+  it('does not return activeProfile when the inactive version migrates', async () => {
+    const profiles = initProfileStore(mkdtempSync(join(tmpdir(), 'scalpel-league-profiles-')))
+    const poe1 = { ...profiles.createDefault(1), league: 'Mirage' }
+    const poe2 = { ...profiles.createDefault(2), league: 'Fate of the Vaal' }
+    profiles.saveProfile(poe1)
+    profiles.saveProfile(poe2)
     const store = makeFakeStore({
+      [ACTIVE_PROFILE_ID_KEY]: poe2.id,
+      [LAST_PROFILE_ID_POE1_KEY]: poe1.id,
       poeVersion: 2,
-      league: 'Fate of the Vaal',
-      leaguePoe1: 'Mirage',
-      leaguePoe2: 'Fate of the Vaal',
       leaguesPoe1: [],
       leaguesPoe2: [],
     })
@@ -153,17 +156,18 @@ describe('refreshLeagues', () => {
 
     const changed = await refreshLeagues(store, fetcher)
 
-    expect(store.get('leaguePoe1')).toBe('Return of the Settlers')
-    expect(store.get('league')).toBe('Fate of the Vaal') // active game (poe2) untouched
-    expect(changed).not.toContain('league')
+    expect(profiles.getProfile(poe1.id)?.league).toBe('Return of the Settlers')
+    expect(profiles.getProfile(poe2.id)?.league).toBe('Fate of the Vaal')
+    expect(changed).not.toContain('activeProfile')
   })
 
   it('makes no migrations when the user is on Standard (persists across leagues)', async () => {
+    const profiles = initProfileStore(mkdtempSync(join(tmpdir(), 'scalpel-league-profiles-')))
+    const poe1 = { ...profiles.createDefault(1), league: 'Standard' }
+    profiles.saveProfile(poe1)
     const store = makeFakeStore({
+      [ACTIVE_PROFILE_ID_KEY]: poe1.id,
       poeVersion: 1,
-      league: 'Standard',
-      leaguePoe1: 'Standard',
-      leaguePoe2: 'Standard',
       leaguesPoe1: [],
       leaguesPoe2: [],
     })
@@ -172,18 +176,13 @@ describe('refreshLeagues', () => {
 
     const changed = await refreshLeagues(store, fetcher)
 
-    expect(store.get('leaguePoe1')).toBe('Standard')
-    expect(store.get('league')).toBe('Standard')
-    expect(changed).not.toContain('leaguePoe1')
-    expect(changed).not.toContain('league')
+    expect(profiles.getProfile(poe1.id)?.league).toBe('Standard')
+    expect(changed).not.toContain('activeProfile')
   })
 
   it('uses the hardcoded fallback list when the API returns null', async () => {
     const store = makeFakeStore({
       poeVersion: 1,
-      league: 'Mirage',
-      leaguePoe1: 'Mirage',
-      leaguePoe2: 'Fate of the Vaal',
       leaguesPoe1: [],
       leaguesPoe2: [],
     })
@@ -191,19 +190,18 @@ describe('refreshLeagues', () => {
 
     await refreshLeagues(store, fetcher)
 
-    // Fallback uses shared/game-features.ts -- 'Mirage' is in there so no migration.
-    expect(store.get('leaguePoe1')).toBe('Mirage')
     const list = store.get('leaguesPoe1') as string[]
     expect(list.length).toBeGreaterThan(0)
   })
 
   it('does not re-persist the list or rewrite the league when nothing changed', async () => {
+    const profiles = initProfileStore(mkdtempSync(join(tmpdir(), 'scalpel-league-profiles-')))
+    const poe1 = { ...profiles.createDefault(1), league: 'Mirage' }
+    profiles.saveProfile(poe1)
     const fresh1 = ['Mirage', 'Hardcore Mirage', 'Standard', 'Hardcore']
     const store = makeFakeStore({
+      [ACTIVE_PROFILE_ID_KEY]: poe1.id,
       poeVersion: 1,
-      league: 'Mirage',
-      leaguePoe1: 'Mirage',
-      leaguePoe2: 'Fate of the Vaal',
       leaguesPoe1: fresh1,
       leaguesPoe2: ['Fate of the Vaal', 'HC Fate of the Vaal', 'Standard', 'Hardcore'],
     })
@@ -213,5 +211,43 @@ describe('refreshLeagues', () => {
     const changed = await refreshLeagues(store, fetcher)
 
     expect(changed).toEqual([])
+  })
+
+  it('migrates every stale profile for a game without rewriting the active profile for another game', async () => {
+    const profiles = initProfileStore(mkdtempSync(join(tmpdir(), 'scalpel-league-profiles-')))
+    const poe1Trade = {
+      ...profiles.createDefault(1),
+      name: 'Trade',
+      league: 'Mirage',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    }
+    const poe1Hc = {
+      ...profiles.createDefault(1),
+      name: 'HC',
+      league: 'Hardcore Mirage',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const poe2Active = { ...profiles.createDefault(2), name: 'PoE2 active', league: 'Fate of the Vaal' }
+    profiles.saveProfile(poe1Trade)
+    profiles.saveProfile(poe1Hc)
+    profiles.saveProfile(poe2Active)
+
+    const store = makeFakeStore({
+      [PROFILE_VERSION_KEY]: 2,
+      [ACTIVE_PROFILE_ID_KEY]: poe2Active.id,
+      [LAST_PROFILE_ID_POE1_KEY]: poe1Hc.id,
+      leaguesPoe1: [],
+      leaguesPoe2: [],
+    })
+    const fresh1 = ['Return of the Settlers', 'Hardcore Return of the Settlers', 'Standard', 'Hardcore']
+    const fresh2 = ['Fate of the Vaal', 'HC Fate of the Vaal', 'Standard', 'Hardcore']
+    const fetcher = async (v: 1 | 2): Promise<string[] | null> => (v === 1 ? fresh1 : fresh2)
+
+    const changed = await refreshLeagues(store, fetcher)
+
+    expect(profiles.getProfile(poe1Trade.id)?.league).toBe('Return of the Settlers')
+    expect(profiles.getProfile(poe1Hc.id)?.league).toBe('Hardcore Return of the Settlers')
+    expect(profiles.getProfile(poe2Active.id)?.league).toBe('Fate of the Vaal')
+    expect(changed).not.toContain('activeProfile')
   })
 })

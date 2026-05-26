@@ -7,6 +7,7 @@ import type { BugReportResult, RendererDiagnosticPayload, SerializedDiagnosticEr
 import { serializeDiagnosticError } from '../shared/diagnostics'
 import { DISCORD_INVITE_URL, GITHUB_NEW_ISSUE_URL } from '../shared/endpoints'
 import type { AppSettings } from '../shared/types'
+import { getActiveProfile } from './profiles/profile-settings'
 
 // Tail of the log embedded in a generated bug report.
 const MAX_LOG_BYTES = 256 * 1024
@@ -44,14 +45,18 @@ function redact(text: string): string {
   } catch {
     // app paths may be unavailable during early process errors.
   }
-  const settings = storeRef?.store
+  const _settings = storeRef?.store
+  const legacyData = ((storeRef as unknown as { store: Record<string, unknown> } | null)?.store ?? {}) as Record<
+    string,
+    unknown
+  >
   for (const value of [
-    settings?.filterPath,
-    settings?.filterDir,
-    settings?.filterPathPoe1,
-    settings?.filterPathPoe2,
-    settings?.filterDirPoe1,
-    settings?.filterDirPoe2,
+    legacyData['filterPathPoe1'],
+    legacyData['filterPathPoe2'],
+    legacyData['filterDirPoe1'],
+    legacyData['filterDirPoe2'],
+    legacyData['filterPath'],
+    legacyData['filterDir'],
   ]) {
     if (typeof value === 'string' && value.length > 0) out = out.split(value).join('<path>')
   }
@@ -160,18 +165,19 @@ function recentLog(): string {
 function settingsSummary(): Record<string, unknown> {
   const s = storeRef?.store
   if (!s) return {}
+  const profile = storeRef ? getActiveProfile(storeRef) : null
   return {
     poeVersion: s.poeVersion,
-    league: s.league,
+    league: profile?.league ?? '',
     updateChannel: s.updateChannel,
     developerMode: s.developerMode,
-    filterConfigured: Boolean(s.filterPath),
-    filterDirConfigured: Boolean(s.filterDir),
+    filterConfigured: Boolean(profile?.filterPath),
+    filterDirConfigured: Boolean(profile?.filterDir),
     closeOnClickOutside: s.closeOnClickOutside,
     overlayScale: s.overlayScale,
     openSide: s.openSide,
     stashScrollEnabled: s.stashScrollEnabled,
-    cheatSheetsCategories: s.cheatSheets?.categories?.length ?? 0,
+    cheatSheetsCategories: profile?.cheatSheets?.categories?.length ?? 0,
   }
 }
 
