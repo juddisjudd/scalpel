@@ -5,6 +5,7 @@ import { ModLine } from './ModLine'
 import { SOCKET_IMGS, RARITY_COLORS, MOD_COLORS, getItemSize, socketLink, socketWhite } from './constants'
 import { RuneSocketOverlayPoe2 } from '../sockets/RuneSocketOverlay.poe2'
 import { usePoeVersion } from '../../shared/poe-version-context'
+import { isSkillGem } from '../../../../shared/poe-item'
 
 const MOD_SEPARATOR = {
   backgroundImage: 'linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent)',
@@ -46,7 +47,8 @@ export function ExpandedListing({ listing: l, itemClass, itemName, itemRarity }:
   const d = l.itemData!
   const [slotW, slotH] = getItemSize(itemClass, d.name || itemName)
   const artW = slotW * 50
-  const artH = slotH * 40
+  // PoE2 skill gems can have up to 5 sockets which render as a 2x3 grid 90px tall; bump the art tile so the overlay fits.
+  const artH = isSkillGem({ itemClass }) ? 100 : slotH * 40
 
   return (
     <div

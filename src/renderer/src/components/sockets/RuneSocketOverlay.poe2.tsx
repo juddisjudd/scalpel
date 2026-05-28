@@ -1,4 +1,5 @@
 import socketRunePoe2 from '../../assets/sockets/socket-rune-poe2.png'
+import { isSkillGem } from '../../../../shared/poe-item'
 import { getItemSize } from '../price-check/constants'
 
 /**
@@ -7,6 +8,9 @@ import { getItemSize } from '../price-check/constants'
  * size they want. Layout matches PoE1's grid shape (column for 1-wide items or
  * a single socket, L-R-R-L zigzag for 2-wide items) so the overlay reads the
  * same across games; only the socket art and the absence of links differ.
+ *
+ * Skill gems are 1x2 in inventory but are forced into the 2-wide zigzag layout
+ * so multi-socket gems render as a grid rather than a vertical column.
  *
  * No links, no colors: PoE2 rune sockets are always the single rune orb.
  */
@@ -24,7 +28,7 @@ export function RuneSocketOverlayPoe2({
   gap: number
 }): JSX.Element | null {
   if (count <= 0) return null
-  const is1Wide = getItemSize(itemClass, itemName)[0] <= 1
+  const is1Wide = !isSkillGem({ itemClass }) && getItemSize(itemClass, itemName)[0] <= 1
 
   if (is1Wide || count <= 1) {
     return (

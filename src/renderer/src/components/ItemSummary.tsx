@@ -416,9 +416,10 @@ const LINK_OVERLAP = 1
 function SocketDisplay({ sockets, onRecolor }: { sockets: string; onRecolor?: () => void }): JSX.Element {
   const poeVersion = usePoeVersion()
   if (poeVersion === 2) {
-    // PoE2 items use rune sockets only: no colors, no links. The clipboard parser
-    // emits each rune socket as "S" (e.g. "S S" for two).
-    const runeCount = (sockets.match(/S/g) ?? []).length
+    // PoE2 items use rune sockets only: no colors, no links. Gear sockets use
+    // "S" tokens and gem sockets use "G" tokens - count all whitespace-separated
+    // tokens to handle both.
+    const runeCount = sockets.split(/\s+/).filter(Boolean).length
     return <>{<RuneSocketChipPoe2 count={runeCount} size={SOCKET_SIZE} />}</>
   }
   const groups = sockets.split(' ').filter(Boolean)
