@@ -640,18 +640,25 @@ export function sendCtrlCToPoE(): Promise<void> {
   if (needCtrl) uIOhook.keyToggle(UiohookKey.Ctrl, 'down')
   if (needAlt) uIOhook.keyToggle(UiohookKey.Alt, 'down')
   uIOhook.keyTap(UiohookKey.C)
-  if (needAlt) uIOhook.keyToggle(UiohookKey.Alt, 'up')
-  if (needCtrl) uIOhook.keyToggle(UiohookKey.Ctrl, 'up')
 
-  // Re-press Shift immediately if it was held
-  if (heldShift) uIOhook.keyToggle(heldShift, 'down')
-
-  return new Promise((resolve) =>
+  // PoE2 drops modifier keyup events when they fire too soon after the C tap,
+  // leaving the in-game advanced tooltip stuck "Alt-pinned" on the item (the
+  // symptom shows up most when the overlay closes via click-outside, where no
+  // focus round-trip resyncs PoE's view of held modifiers). Hold the modifiers
+  // ~10ms before releasing so PoE registers them in order. Same root cause and
+  // fix as Exiled-Exchange-2 issue #124.
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (needAlt) uIOhook.keyToggle(UiohookKey.Alt, 'up')
+      if (needCtrl) uIOhook.keyToggle(UiohookKey.Ctrl, 'up')
+      // Re-press Shift immediately if it was held
+      if (heldShift) uIOhook.keyToggle(heldShift, 'down')
+    }, 10)
     setTimeout(() => {
       injecting = false
       resolve()
-    }, 100),
-  )
+    }, 100)
+  })
 }
 
 function getHotkeyDiagnostics(): Record<string, unknown> {
