@@ -580,11 +580,13 @@ export function parseItemText(text: string): PoeItem | null {
     ...(ultimatumChallenge != null ? { ultimatumChallenge } : {}),
     ...(ultimatumRewardText != null ? { ultimatumRewardText } : {}),
     ...(ultimatumRequired != null ? { ultimatumRequired } : {}),
-    // areaLevel = itemLevel; for items with no item level (currency) fall back to
-    // the endgame default, not undefined: an undefined areaLevel lets the non-strict
-    // matcher treat `AreaLevel <= N` leveling rules as a pass, so bulk currency
-    // wrongly resolves to leveling tiers. The zone override corrects this in-zone.
-    areaLevel: itemLevel > 0 ? itemLevel : endgameAreaLevel(getPoeVersion()),
+    // Default areaLevel to the higher of itemLevel and the endgame baseline.
+    // Currency (no itemLevel) and low-itemLevel gear inspected outside a known
+    // endgame zone both fall back to endgame so AreaLevel-gated leveling rules
+    // don't win. Genuine endgame drops (itemLevel above the baseline, e.g. T17
+    // / Wraeclast bosses in PoE1) keep their actual itemLevel. The zone override
+    // in evaluation.ts corrects this in-zone.
+    areaLevel: Math.max(itemLevel, endgameAreaLevel(getPoeVersion())),
   }
 }
 

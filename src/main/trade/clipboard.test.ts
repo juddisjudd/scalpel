@@ -545,7 +545,7 @@ describe('parseItemText', () => {
       expect(item.areaLevel).toBe(endgameAreaLevel(getPoeVersion()))
     })
 
-    it('uses item level as areaLevel for gear that has one', () => {
+    it('bumps low-itemLevel gear up to the endgame baseline', () => {
       const text = [
         'Item Class: Rings',
         'Rarity: Rare',
@@ -559,7 +559,24 @@ describe('parseItemText', () => {
 
       const item = parseItemText(text)!
       expect(item.itemLevel).toBe(75)
-      expect(item.areaLevel).toBe(75)
+      expect(item.areaLevel).toBe(endgameAreaLevel(getPoeVersion()))
+    })
+
+    it('preserves itemLevel for gear dropped above the endgame baseline', () => {
+      const text = [
+        'Item Class: Rings',
+        'Rarity: Rare',
+        'Gloom Knuckle',
+        'Iron Ring',
+        '--------',
+        'Item Level: 84',
+        '--------',
+        'Adds 3 to 7 Physical Damage to Attacks',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.itemLevel).toBe(84)
+      expect(item.areaLevel).toBe(84)
     })
 
     it('parses a Flask', () => {
