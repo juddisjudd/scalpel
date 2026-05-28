@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getCurrencyIcons } from './icons'
+import { CurrencyIcon } from './CurrencyIcon'
 import { usePoeVersion } from './poe-version-context'
 import ninjaIcon from '../assets/other/poe-ninja.png'
 import { formatPrice } from './utils'
@@ -31,7 +31,7 @@ export function PriceChip({
   graph,
   hideTrend,
 }: PriceChipProps): JSX.Element {
-  const icons = getCurrencyIcons(usePoeVersion())
+  const version = usePoeVersion()
   const useDivine =
     divineValue != null
       ? divineValue >= 1
@@ -39,7 +39,8 @@ export function PriceChip({
   const displayValue = useDivine
     ? formatPrice(divineValue != null && divineValue >= 1 ? divineValue : chaosValue / chaosPerDivine!)
     : formatPrice(chaosValue)
-  const currencyIcon = useDivine ? icons.divine : icons.baseline
+  // PoE1 baseline = chaos, PoE2 baseline = exa(lted). Both use "divine" for the high tier.
+  const currencyKey = useDivine ? 'divine' : version === 2 ? 'exalted' : 'chaos'
 
   const showTrend = !hideTrend && graph != null && graph.length > 0
   const [hovered, setHovered] = useState(false)
@@ -64,7 +65,7 @@ export function PriceChip({
     >
       <InfoChip icon={showNinja ? ninjaIcon : undefined} label={label} size={size}>
         <span className="font-semibold">{displayValue}</span>
-        <img src={currencyIcon} alt="" className="w-3 h-3" />
+        <CurrencyIcon name={currencyKey} className="w-3 h-3" />
         {showTrend && <PriceTrend graph={graph} />}
       </InfoChip>
       {showTrend && (

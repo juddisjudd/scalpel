@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
-import { chaosIcon } from '../../shared/icons'
+import { CurrencyIcon } from '../../shared/CurrencyIcon'
 import socketWhite from '../../assets/sockets/socket-white.png'
 import type { DustEntry, ActiveFilter, FilterType, SortKey, SortDir } from './types'
 import {
@@ -257,7 +257,7 @@ export function DustExplorer({
         <div className="w-[22px] shrink-0" />
         <SortHeader label="Unique" sortKey="name" active={sortKey} dir={sortDir} onSort={handleSort} flex />
         <SortHeader
-          label={<img src={chaosIcon} alt="" className="w-[10px] h-[10px]" />}
+          label={<CurrencyIcon name="chaos" className="w-[10px] h-[10px]" />}
           sortKey="chaosValue"
           active={sortKey}
           dir={sortDir}
@@ -277,7 +277,7 @@ export function DustExplorer({
             <>
               <img src={dustIcon} alt="" className="w-[10px] h-[10px]" />
               <span>/</span>
-              <img src={chaosIcon} alt="" className="w-[10px] h-[10px]" />
+              <CurrencyIcon name="chaos" className="w-[10px] h-[10px]" />
             </>
           }
           sortKey="dustPerChaos"
@@ -291,7 +291,7 @@ export function DustExplorer({
             <>
               <img src={dustIcon} alt="" className="w-[10px] h-[10px]" />
               <span>/</span>
-              <img src={chaosIcon} alt="" className="w-[10px] h-[10px]" />
+              <CurrencyIcon name="chaos" className="w-[10px] h-[10px]" />
               <span>/</span>
               <img src={socketWhite} alt="" className="w-[10px] h-[10px]" />
             </>

@@ -1,4 +1,5 @@
 import { formatPrice } from './utils'
+import { CurrencyIcon } from '../../shared/CurrencyIcon'
 
 interface PriceChipProps {
   value: number
@@ -6,11 +7,11 @@ interface PriceChipProps {
 }
 
 export function PriceChip({ value, divineRate }: PriceChipProps): JSX.Element {
-  const { text, icon } = formatPrice(value, divineRate)
+  const { text, currencyKey } = formatPrice(value, divineRate)
   return (
     <span className="inline-flex items-center gap-[2px]">
       {text}
-      <img src={icon} alt="" className="w-[10px] h-[10px]" />
+      <CurrencyIcon name={currencyKey} className="w-[10px] h-[10px]" />
     </span>
   )
 }

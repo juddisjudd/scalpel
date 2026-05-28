@@ -175,6 +175,7 @@ const store = new Store<AppSettings>({
     overlayScale: 1,
     openSide: 'both',
     closeOnClickOutside: false,
+    currencyLabelsAsText: false,
     useCurrentZoneAreaLevel: false,
     reloadOnSave: true,
     updateChannel: 'stable',

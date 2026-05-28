@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { getCurrencyIcons } from './icons'
+import { CurrencyIcon } from './CurrencyIcon'
 import { usePoeVersion } from './poe-version-context'
 import { getTrendDirection, TREND_DOWN_COLOR, TREND_UP_COLOR } from './price-trend'
 import { formatPrice } from './utils'
@@ -158,10 +158,10 @@ function MiniPriceChip({
   chaosPerDivine?: number
   testId: string
 }): JSX.Element {
-  const icons = getCurrencyIcons(usePoeVersion())
+  const version = usePoeVersion()
   const useDivine = chaosPerDivine != null && chaosPerDivine > 0 && chaosValue >= chaosPerDivine
   const display = useDivine ? formatPrice(chaosValue / chaosPerDivine!) : formatPrice(chaosValue)
-  const icon = useDivine ? icons.divine : icons.baseline
+  const currencyKey = useDivine ? 'divine' : version === 2 ? 'exalted' : 'chaos'
   return (
     <div
       data-testid={testId}
@@ -180,7 +180,7 @@ function MiniPriceChip({
       }}
     >
       <span>{display}</span>
-      <img src={icon} alt="" style={{ width: 8, height: 8 }} />
+      <CurrencyIcon name={currencyKey} style={{ width: 8, height: 8 }} />
     </div>
   )
 }

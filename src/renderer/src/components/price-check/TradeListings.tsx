@@ -1,11 +1,12 @@
 import { Down, Up } from '@icon-park/react'
 import type { Listing } from './types'
 import { ExpandedListing } from './ExpandedListing'
-import { getCurrencyIconMap, SOCKET_IMGS, formatTimeAgo, socketLink, socketWhite } from './constants'
+import { SOCKET_IMGS, formatTimeAgo, socketLink, socketWhite } from './constants'
 import { RuneSocketOverlayPoe2 } from '../sockets/RuneSocketOverlay.poe2'
 import { usePoeVersion } from '../../shared/poe-version-context'
 import type { ResultsView } from './search-settings'
 import { zebraRowBg } from '../../shared/utils'
+import { CurrencyIcon } from '../../shared/CurrencyIcon'
 
 export function TradeListings({
   listings,
@@ -43,7 +44,6 @@ export function TradeListings({
   resultsView?: ResultsView
 }): JSX.Element {
   const poeVersion = usePoeVersion()
-  const currencyIcons = getCurrencyIconMap(poeVersion)
   const openAll = resultsView === 'open-all'
   const compact = resultsView === 'shrinkydink'
   const matchCount = total ?? listings.length
@@ -254,11 +254,7 @@ export function TradeListings({
                     style={{ minWidth: priceChipMinWidth }}
                   >
                     {l.price.amount}
-                    {currencyIcons[l.price.currency] ? (
-                      <img src={currencyIcons[l.price.currency]} alt={l.price.currency} className="w-[18px] h-[18px]" />
-                    ) : (
-                      <span className="text-[10px] text-text-dim">{l.price.currency}</span>
-                    )}
+                    <CurrencyIcon name={l.price.currency} className="w-[18px] h-[18px]" />
                   </span>
                 ) : (
                   <span

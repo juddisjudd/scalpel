@@ -8,6 +8,7 @@ import type { ExternalLinkTarget } from '../../../shared/external-link'
 import { externalLinkUrl, ninjaLinkUrl } from '../../../shared/external-link'
 import { getGameFeatures } from '../../../shared/game-features'
 import { PoeVersionProvider } from '../shared/poe-version-context'
+import { CurrencyLabelsProvider } from '../shared/currency-labels-context'
 import { useReportInputFocus } from '../shared/use-report-input-focus'
 import { useCurrentZone } from '../shared/use-current-zone'
 import { FilterPanel } from '../components/FilterPanel'
@@ -730,330 +731,333 @@ export default function App(): JSX.Element {
 
   return (
     <PoeVersionProvider version={poeVersion}>
-      {view === 'item' && tierSisterOpen && overlayData && !isHidden && (
-        <TierItemsSister
-          ref={tierSisterRef}
-          baseTypes={tierSisterData?.baseTypes ?? []}
-          itemClass={tierSisterData?.itemClass ?? overlayData.item.itemClass}
-          currentBaseType={overlayData.item.baseType}
-          currentRarity={overlayData.item.rarity}
-          league={settings?.activeProfile?.league ?? ''}
-          uniqueTier={tierSisterData?.uniqueTier}
-          left={sisterLeft}
-          top={PANEL_TOP + SISTER_NAV_OFFSET}
-          width={SISTER_WIDTH}
-          dragOffset={dragOffset}
-          scale={settings?.overlayScale}
-          scaleOrigin={cursorSide === 'left' ? 'top right' : 'top left'}
-          maxHeight={sisterMaxHeight}
-          onDrillDown={() => {
-            drillDownPendingRef.current = true
-          }}
+      <CurrencyLabelsProvider value={settings?.currencyLabelsAsText ?? false}>
+        {view === 'item' && tierSisterOpen && overlayData && !isHidden && (
+          <TierItemsSister
+            ref={tierSisterRef}
+            baseTypes={tierSisterData?.baseTypes ?? []}
+            itemClass={tierSisterData?.itemClass ?? overlayData.item.itemClass}
+            currentBaseType={overlayData.item.baseType}
+            currentRarity={overlayData.item.rarity}
+            league={settings?.activeProfile?.league ?? ''}
+            uniqueTier={tierSisterData?.uniqueTier}
+            left={sisterLeft}
+            top={PANEL_TOP + SISTER_NAV_OFFSET}
+            width={SISTER_WIDTH}
+            dragOffset={dragOffset}
+            scale={settings?.overlayScale}
+            scaleOrigin={cursorSide === 'left' ? 'top right' : 'top left'}
+            maxHeight={sisterMaxHeight}
+            onDrillDown={() => {
+              drillDownPendingRef.current = true
+            }}
+          />
+        )}
+        {view === 'pricecheck' && priceCheckData && !isHidden && (
+          <SisterOverlay
+            ref={sisterRef}
+            itemName={priceCheckData.item.name}
+            league={priceCheckData.league}
+            chaosPerDivine={priceCheckData.chaosPerDivine}
+            left={sisterLeft}
+            top={PANEL_TOP + SISTER_NAV_OFFSET}
+            width={SISTER_WIDTH}
+            dragOffset={dragOffset}
+            scale={settings?.overlayScale}
+            scaleOrigin={cursorSide === 'left' ? 'top right' : 'top left'}
+            maxHeight={sisterMaxHeight}
+          />
+        )}
+        <SnapGhosts
+          leftMountX={leftMountX}
+          rightMountX={rightMountX}
+          panelTop={PANEL_TOP}
+          panelWidth={PANEL_WIDTH}
+          panelHeight={panelRef.current?.offsetHeight ?? 0}
+          snapTarget={snapTarget}
+          overlayScale={settings?.overlayScale}
         />
-      )}
-      {view === 'pricecheck' && priceCheckData && !isHidden && (
-        <SisterOverlay
-          ref={sisterRef}
-          itemName={priceCheckData.item.name}
-          league={priceCheckData.league}
-          chaosPerDivine={priceCheckData.chaosPerDivine}
-          left={sisterLeft}
-          top={PANEL_TOP + SISTER_NAV_OFFSET}
-          width={SISTER_WIDTH}
-          dragOffset={dragOffset}
-          scale={settings?.overlayScale}
-          scaleOrigin={cursorSide === 'left' ? 'top right' : 'top left'}
-          maxHeight={sisterMaxHeight}
-        />
-      )}
-      <SnapGhosts
-        leftMountX={leftMountX}
-        rightMountX={rightMountX}
-        panelTop={PANEL_TOP}
-        panelWidth={PANEL_WIDTH}
-        panelHeight={panelRef.current?.offsetHeight ?? 0}
-        snapTarget={snapTarget}
-        overlayScale={settings?.overlayScale}
-      />
-      <div
-        ref={wrapperRef}
-        className="absolute"
-        style={{
-          top: PANEL_TOP,
-          left: basePanelLeft ?? 0,
-          width: PANEL_WIDTH,
-          display: isHidden ? 'none' : 'block',
-          transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)${settings?.overlayScale && settings.overlayScale !== 1 ? ` scale(${settings.overlayScale})` : ''}`,
-          transformOrigin: cursorSide === 'left' ? 'top left' : 'top right',
-        }}
-      >
         <div
-          ref={animRef}
-          key={isHidden ? 'hidden' : `show-${showCountRef.current}`}
+          ref={wrapperRef}
+          className="absolute"
           style={{
-            animation:
-              isHidden || showAnimDone.current || skipAnimRef.current
-                ? 'none'
-                : closing
-                  ? isMounted
-                    ? cursorSide === 'left'
-                      ? 'panel-slide-out-left 0.15s ease-in both'
-                      : 'panel-slide-out 0.15s ease-in both'
-                    : 'panel-fade-out 0.15s ease-in both'
-                  : isMounted
-                    ? cursorSide === 'left'
-                      ? 'panel-slide-in-left 0.2s ease-out both'
-                      : 'panel-slide-in 0.2s ease-out both'
-                    : 'panel-fade-in 0.15s ease-out both',
+            top: PANEL_TOP,
+            left: basePanelLeft ?? 0,
             width: PANEL_WIDTH,
-          }}
-          onMouseEnter={() => {
-            showAnimDone.current = true
-            if (animRef.current) animRef.current.style.animation = 'none'
+            display: isHidden ? 'none' : 'block',
+            transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)${settings?.overlayScale && settings.overlayScale !== 1 ? ` scale(${settings.overlayScale})` : ''}`,
+            transformOrigin: cursorSide === 'left' ? 'top left' : 'top right',
           }}
         >
           <div
-            ref={panelRef}
-            className="bg-bg flex flex-col overflow-hidden border-t border-b border-border"
+            ref={animRef}
+            key={isHidden ? 'hidden' : `show-${showCountRef.current}`}
             style={{
+              animation:
+                isHidden || showAnimDone.current || skipAnimRef.current
+                  ? 'none'
+                  : closing
+                    ? isMounted
+                      ? cursorSide === 'left'
+                        ? 'panel-slide-out-left 0.15s ease-in both'
+                        : 'panel-slide-out 0.15s ease-in both'
+                      : 'panel-fade-out 0.15s ease-in both'
+                    : isMounted
+                      ? cursorSide === 'left'
+                        ? 'panel-slide-in-left 0.2s ease-out both'
+                        : 'panel-slide-in 0.2s ease-out both'
+                      : 'panel-fade-in 0.15s ease-out both',
               width: PANEL_WIDTH,
-              maxHeight: gameBounds
-                ? (gameBounds.gameHeight - PANEL_TOP * 2 - 23) / (settings?.overlayScale ?? 1)
-                : 'calc(100vh - 16px)',
-              borderRadius: isMounted ? (cursorSide === 'left' ? '0 10px 10px 0' : '10px 0 0 10px') : '10px',
-              borderLeft: isMounted && cursorSide === 'left' ? 'none' : '1px solid var(--border)',
-              borderRight: isMounted && cursorSide === 'right' ? 'none' : '1px solid var(--border)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+            }}
+            onMouseEnter={() => {
+              showAnimDone.current = true
+              if (animRef.current) animRef.current.style.animation = 'none'
             }}
           >
-            <TitleBar
-              view={view}
-              overlayData={overlayData}
-              poeVersion={poeVersion}
-              features={features}
-              hasPriceCheckData={!!priceCheckData}
-              hiddenTabs={new Set((settings?.hiddenTabs ?? []).filter(isHideableTabKey))}
-              pluginTabs={pluginTabs.map((t) => ({ pluginId: t.pluginId, label: t.label, icon: t.icon }))}
-              onSetView={setView}
-              onClose={close}
-              onMouseDown={handleTitleBarMouseDown}
-            />
-
-            <UpdateBanner
-              updateVersion={updateVersion}
-              updateProgress={updateProgress}
-              updateReady={updateReady}
-              justUpdated={justUpdated}
-              needsElevation={needsElevation}
-              brickedRelease={brickedRelease}
-              view={view}
-              overlayData={overlayData}
-              priceCheckData={priceCheckData}
-              onSaveAndInstall={(state) => {
-                window.api.saveOverlayState(state)
-                window.api.installUpdate()
-              }}
-              onDownloadUpdate={() => {
-                setUpdateProgress(0)
-                window.api.downloadUpdate()
-              }}
-            />
-
-            {view === 'item' && settings?.activeProfile?.filterPath && (
-              <FilterInfoBanner
-                filterPath={settings.activeProfile.filterPath}
-                updatedOnlineFilters={updatedOnlineFilters}
-                checkingUpdate={checkingUpdate}
-                updatingFilter={updatingFilter}
-                mergeMessage={mergeMessage}
-                onQuickUpdate={() => window.api.quickUpdateFilter()}
-                onCheckForUpdate={async () => {
-                  await window.api.checkForOnlineUpdate()
-                }}
-                onFilterUpdated={(activeFile) => {
-                  setUpdatedOnlineFilters((prev) => {
-                    const next = new Set(prev)
-                    for (const name of prev) {
-                      if (name.replace(/[<>:"/\\|?*]/g, '_') + '-local' === activeFile) next.delete(name)
-                    }
-                    return next
-                  })
-                }}
-                onMergeMessage={setMergeMessage}
-                onSetUpdatingFilter={setUpdatingFilter}
-                onSetCheckingUpdate={setCheckingUpdate}
-              />
-            )}
-
-            {/* Content */}
             <div
-              ref={contentRef}
-              className={
-                (isFullHeightView ? 'flex flex-col flex-1 overflow-hidden' : 'flex-1 overflow-y-auto p-3') + ' relative'
-              }
+              ref={panelRef}
+              className="bg-bg flex flex-col overflow-hidden border-t border-b border-border"
+              style={{
+                width: PANEL_WIDTH,
+                maxHeight: gameBounds
+                  ? (gameBounds.gameHeight - PANEL_TOP * 2 - 23) / (settings?.overlayScale ?? 1)
+                  : 'calc(100vh - 16px)',
+                borderRadius: isMounted ? (cursorSide === 'left' ? '0 10px 10px 0' : '10px 0 0 10px') : '10px',
+                borderLeft: isMounted && cursorSide === 'left' ? 'none' : '1px solid var(--border)',
+                borderRight: isMounted && cursorSide === 'right' ? 'none' : '1px solid var(--border)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+              }}
             >
-              <PluginErrorBanner broken={brokenPlugins} onDismiss={dismissBrokenPlugin} />
-              {/* Settings error banner (hotkey collisions etc) */}
-              <ErrorBanner message={settingsError} tone={settingsErrorTone} />
-              {view === 'setup' && settings && (
-                <SettingsPanel
-                  settings={settings}
-                  onSettingsChange={(s) => setSettings(s)}
-                  mode="overlay"
-                  onDone={() => setView('idle')}
-                  currentItem={overlayData?.item}
-                  onError={showSettingsError}
-                  tabRequest={settingsTabRequest}
-                  onOnlineFilterUpdated={(name) =>
+              <TitleBar
+                view={view}
+                overlayData={overlayData}
+                poeVersion={poeVersion}
+                features={features}
+                hasPriceCheckData={!!priceCheckData}
+                hiddenTabs={new Set((settings?.hiddenTabs ?? []).filter(isHideableTabKey))}
+                pluginTabs={pluginTabs.map((t) => ({ pluginId: t.pluginId, label: t.label, icon: t.icon }))}
+                onSetView={setView}
+                onClose={close}
+                onMouseDown={handleTitleBarMouseDown}
+              />
+
+              <UpdateBanner
+                updateVersion={updateVersion}
+                updateProgress={updateProgress}
+                updateReady={updateReady}
+                justUpdated={justUpdated}
+                needsElevation={needsElevation}
+                brickedRelease={brickedRelease}
+                view={view}
+                overlayData={overlayData}
+                priceCheckData={priceCheckData}
+                onSaveAndInstall={(state) => {
+                  window.api.saveOverlayState(state)
+                  window.api.installUpdate()
+                }}
+                onDownloadUpdate={() => {
+                  setUpdateProgress(0)
+                  window.api.downloadUpdate()
+                }}
+              />
+
+              {view === 'item' && settings?.activeProfile?.filterPath && (
+                <FilterInfoBanner
+                  filterPath={settings.activeProfile.filterPath}
+                  updatedOnlineFilters={updatedOnlineFilters}
+                  checkingUpdate={checkingUpdate}
+                  updatingFilter={updatingFilter}
+                  mergeMessage={mergeMessage}
+                  onQuickUpdate={() => window.api.quickUpdateFilter()}
+                  onCheckForUpdate={async () => {
+                    await window.api.checkForOnlineUpdate()
+                  }}
+                  onFilterUpdated={(activeFile) => {
                     setUpdatedOnlineFilters((prev) => {
                       const next = new Set(prev)
-                      next.delete(name)
+                      for (const name of prev) {
+                        if (name.replace(/[<>:"/\\|?*]/g, '_') + '-local' === activeFile) next.delete(name)
+                      }
                       return next
                     })
-                  }
-                />
-              )}
-              {view === 'no-filter' && (
-                <Notice
-                  icon="⚠"
-                  title="No filter loaded"
-                  body="Select your .filter file to get started."
-                  action={{
-                    label: 'Open Filter Settings',
-                    onClick: () => {
-                      setSettingsTabRequest({ tab: 'filter', n: Date.now() })
-                      setView('setup')
-                    },
                   }}
+                  onMergeMessage={setMergeMessage}
+                  onSetUpdatingFilter={setUpdatingFilter}
+                  onSetCheckingUpdate={setCheckingUpdate}
                 />
               )}
-              {view === 'no-item' && (
-                <>
+
+              {/* Content */}
+              <div
+                ref={contentRef}
+                className={
+                  (isFullHeightView ? 'flex flex-col flex-1 overflow-hidden' : 'flex-1 overflow-y-auto p-3') +
+                  ' relative'
+                }
+              >
+                <PluginErrorBanner broken={brokenPlugins} onDismiss={dismissBrokenPlugin} />
+                {/* Settings error banner (hotkey collisions etc) */}
+                <ErrorBanner message={settingsError} tone={settingsErrorTone} />
+                {view === 'setup' && settings && (
+                  <SettingsPanel
+                    settings={settings}
+                    onSettingsChange={(s) => setSettings(s)}
+                    mode="overlay"
+                    onDone={() => setView('idle')}
+                    currentItem={overlayData?.item}
+                    onError={showSettingsError}
+                    tabRequest={settingsTabRequest}
+                    onOnlineFilterUpdated={(name) =>
+                      setUpdatedOnlineFilters((prev) => {
+                        const next = new Set(prev)
+                        next.delete(name)
+                        return next
+                      })
+                    }
+                  />
+                )}
+                {view === 'no-filter' && (
                   <Notice
-                    icon={<Clipboard size={32} {...IP} />}
-                    title="No item in clipboard"
-                    body={`Hover an item in PoE and press ${prettyHotkey(settings?.hotkey) || 'Ctrl+Shift+F'}.`}
+                    icon="⚠"
+                    title="No filter loaded"
+                    body="Select your .filter file to get started."
+                    action={{
+                      label: 'Open Filter Settings',
+                      onClick: () => {
+                        setSettingsTabRequest({ tab: 'filter', n: Date.now() })
+                        setView('setup')
+                      },
+                    }}
                   />
-                  <div className="px-6 pb-6">
-                    <ItemSearchCombobox />
-                  </div>
-                </>
-              )}
-              {view === 'item' && overlayData && (
-                <FilterPanel
-                  key={searchId}
-                  data={overlayData}
-                  selectedBpIndex={selectedBpIndex}
-                  onSelectBp={setSelectedBpIndex}
-                  selectedQualityBpIndex={selectedQualityBpIndex}
-                  onSelectQualityBp={setSelectedQualityBpIndex}
-                  selectedStrandBpIndex={selectedStrandBpIndex}
-                  onSelectStrandBp={setSelectedStrandBpIndex}
-                  onClose={close}
-                  onOpenAudit={() => {
-                    setAuditBlockIndex(null)
-                    setView('audit')
-                  }}
-                  onOpenTools={features.socketRecolor ? () => setView('tools') : undefined}
-                  onOpenDustExplore={features.dustExplorer ? () => setView('dust') : undefined}
-                  onOpenDivExplore={features.divCards ? () => setView('divcards') : undefined}
-                  onOpenWiki={externalLinkHandler('wiki', overlayData?.item)}
-                  onOpenPoeDb={externalLinkHandler('poedb', overlayData?.item)}
-                  onOpenNinja={ninjaLinkHandler(overlayData?.item, overlayData?.priceInfo)}
-                  tierSisterOpen={tierSisterOpen}
-                  onToggleTierSister={() => setTierSisterOpen((v) => !v)}
-                  tierSisterSide={cursorSide === 'left' ? 'right' : 'left'}
-                  currentZone={currentZone}
-                  useCurrentZoneAreaLevel={settings?.useCurrentZoneAreaLevel ?? false}
-                  onToggleZoneAreaLevel={handleToggleZoneAreaLevel}
-                />
-              )}
-              {view === 'tools' && overlayData && features.socketRecolor && (
-                <SocketRecolor item={overlayData.item} priceInfo={overlayData.priceInfo} />
-              )}
-              {view === 'pricecheck' &&
-                (priceCheckData ? (
-                  <PriceCheck
-                    key={(priceCheckData as Record<string, unknown>)._key as number}
-                    item={priceCheckData.item}
-                    priceInfo={priceCheckData.priceInfo}
-                    statFilters={priceCheckData.statFilters}
-                    league={priceCheckData.league}
-                    poeVersion={poeVersion ?? 1}
-                    chaosPerDivine={priceCheckData.chaosPerDivine}
-                    unidCandidates={priceCheckData.unidCandidates}
-                    sessionId={priceCheckData.sessionId}
-                    learnedDecisions={priceCheckData.learnedDecisions}
+                )}
+                {view === 'no-item' && (
+                  <>
+                    <Notice
+                      icon={<Clipboard size={32} {...IP} />}
+                      title="No item in clipboard"
+                      body={`Hover an item in PoE and press ${prettyHotkey(settings?.hotkey) || 'Ctrl+Shift+F'}.`}
+                    />
+                    <div className="px-6 pb-6">
+                      <ItemSearchCombobox />
+                    </div>
+                  </>
+                )}
+                {view === 'item' && overlayData && (
+                  <FilterPanel
+                    key={searchId}
+                    data={overlayData}
+                    selectedBpIndex={selectedBpIndex}
+                    onSelectBp={setSelectedBpIndex}
+                    selectedQualityBpIndex={selectedQualityBpIndex}
+                    onSelectQualityBp={setSelectedQualityBpIndex}
+                    selectedStrandBpIndex={selectedStrandBpIndex}
+                    onSelectStrandBp={setSelectedStrandBpIndex}
                     onClose={close}
-                    onOpenWiki={externalLinkHandler('wiki', priceCheckData?.item)}
-                    onOpenPoeDb={externalLinkHandler('poedb', priceCheckData?.item)}
-                    onOpenNinja={ninjaLinkHandler(priceCheckData?.item, priceCheckData?.priceInfo)}
+                    onOpenAudit={() => {
+                      setAuditBlockIndex(null)
+                      setView('audit')
+                    }}
+                    onOpenTools={features.socketRecolor ? () => setView('tools') : undefined}
+                    onOpenDustExplore={features.dustExplorer ? () => setView('dust') : undefined}
+                    onOpenDivExplore={features.divCards ? () => setView('divcards') : undefined}
+                    onOpenWiki={externalLinkHandler('wiki', overlayData?.item)}
+                    onOpenPoeDb={externalLinkHandler('poedb', overlayData?.item)}
+                    onOpenNinja={ninjaLinkHandler(overlayData?.item, overlayData?.priceInfo)}
+                    tierSisterOpen={tierSisterOpen}
+                    onToggleTierSister={() => setTierSisterOpen((v) => !v)}
+                    tierSisterSide={cursorSide === 'left' ? 'right' : 'left'}
+                    currentZone={currentZone}
+                    useCurrentZoneAreaLevel={settings?.useCurrentZoneAreaLevel ?? false}
+                    onToggleZoneAreaLevel={handleToggleZoneAreaLevel}
                   />
-                ) : (
-                  <PriceCheckSkeleton />
-                ))}
-              {features.dustExplorer && (
-                <div className="flex-col flex-1 min-h-0" style={{ display: view === 'dust' ? 'flex' : 'none' }}>
-                  <DustExplorer onSelectItem={() => setView('item')} onPriceCheckItem={() => setView('pricecheck')} />
-                </div>
-              )}
-              {features.divCards && (
-                <div className="flex-col flex-1 min-h-0" style={{ display: view === 'divcards' ? 'flex' : 'none' }}>
-                  <DivCardExplorer onSelectItem={() => setView('item')} />
-                </div>
-              )}
-              {features.regexTool && poeVersion !== null && (
-                // Gate on poeVersion being resolved -- RegexTool's children read
-                // localStorage in their useState initializers, and those keys are
-                // namespaced by game version. Mounting before poeVersion arrives
-                // hydrates with the PoE1 default, locking in the wrong namespace.
-                <div className="flex-col flex-1 min-h-0" style={{ display: view === 'regex' ? 'flex' : 'none' }}>
-                  <RegexTool />
-                </div>
-              )}
-              {view === 'audit' && overlayData && overlayData.matches.length > 0 && (
-                <AuditView
-                  overlayData={overlayData}
-                  selectedBpIndex={selectedBpIndex}
-                  selectedQualityBpIndex={selectedQualityBpIndex}
-                  selectedStrandBpIndex={selectedStrandBpIndex}
-                  auditBlockIndex={auditBlockIndex}
-                  onSetAuditBlockIndex={setAuditBlockIndex}
-                  onSelectItem={() => setView('item')}
-                />
-              )}
-              {view.startsWith('plugin:') && (
-                <PluginTabHost
-                  pluginTabs={pluginTabs}
-                  activeId={view.slice('plugin:'.length)}
-                  onPluginError={handlePluginError}
-                />
-              )}
+                )}
+                {view === 'tools' && overlayData && features.socketRecolor && (
+                  <SocketRecolor item={overlayData.item} priceInfo={overlayData.priceInfo} />
+                )}
+                {view === 'pricecheck' &&
+                  (priceCheckData ? (
+                    <PriceCheck
+                      key={(priceCheckData as Record<string, unknown>)._key as number}
+                      item={priceCheckData.item}
+                      priceInfo={priceCheckData.priceInfo}
+                      statFilters={priceCheckData.statFilters}
+                      league={priceCheckData.league}
+                      poeVersion={poeVersion ?? 1}
+                      chaosPerDivine={priceCheckData.chaosPerDivine}
+                      unidCandidates={priceCheckData.unidCandidates}
+                      sessionId={priceCheckData.sessionId}
+                      learnedDecisions={priceCheckData.learnedDecisions}
+                      onClose={close}
+                      onOpenWiki={externalLinkHandler('wiki', priceCheckData?.item)}
+                      onOpenPoeDb={externalLinkHandler('poedb', priceCheckData?.item)}
+                      onOpenNinja={ninjaLinkHandler(priceCheckData?.item, priceCheckData?.priceInfo)}
+                    />
+                  ) : (
+                    <PriceCheckSkeleton />
+                  ))}
+                {features.dustExplorer && (
+                  <div className="flex-col flex-1 min-h-0" style={{ display: view === 'dust' ? 'flex' : 'none' }}>
+                    <DustExplorer onSelectItem={() => setView('item')} onPriceCheckItem={() => setView('pricecheck')} />
+                  </div>
+                )}
+                {features.divCards && (
+                  <div className="flex-col flex-1 min-h-0" style={{ display: view === 'divcards' ? 'flex' : 'none' }}>
+                    <DivCardExplorer onSelectItem={() => setView('item')} />
+                  </div>
+                )}
+                {features.regexTool && poeVersion !== null && (
+                  // Gate on poeVersion being resolved -- RegexTool's children read
+                  // localStorage in their useState initializers, and those keys are
+                  // namespaced by game version. Mounting before poeVersion arrives
+                  // hydrates with the PoE1 default, locking in the wrong namespace.
+                  <div className="flex-col flex-1 min-h-0" style={{ display: view === 'regex' ? 'flex' : 'none' }}>
+                    <RegexTool />
+                  </div>
+                )}
+                {view === 'audit' && overlayData && overlayData.matches.length > 0 && (
+                  <AuditView
+                    overlayData={overlayData}
+                    selectedBpIndex={selectedBpIndex}
+                    selectedQualityBpIndex={selectedQualityBpIndex}
+                    selectedStrandBpIndex={selectedStrandBpIndex}
+                    auditBlockIndex={auditBlockIndex}
+                    onSetAuditBlockIndex={setAuditBlockIndex}
+                    onSelectItem={() => setView('item')}
+                  />
+                )}
+                {view.startsWith('plugin:') && (
+                  <PluginTabHost
+                    pluginTabs={pluginTabs}
+                    activeId={view.slice('plugin:'.length)}
+                    onPluginError={handlePluginError}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <PluginHost
-        ready={poeVersion !== null}
-        poeVersion={poeVersion ?? 1}
-        league={settings?.activeProfile?.league ?? ''}
-        currentItem={overlayData?.item ?? null}
-        currentZone={currentZone}
-        onSubscribeCurrentItem={onSubscribeCurrentItem}
-        onSubscribeCurrentZone={onSubscribeCurrentZone}
-        onSubscribeLeagueChange={onSubscribeLeagueChange}
-        onOpenExternal={(url) => window.api.openExternal(url)}
-        onTabsChange={setPluginTabs}
-        onOpenPluginTab={(pluginId) => {
-          setView(`plugin:${pluginId}` as View)
-          void window.api.pluginShowOverlay()
-        }}
-        onCopyAndEvaluateItem={() => window.api.pluginTriggerMainHotkey()}
-        onPluginError={handlePluginError}
-        onPluginUnloaded={(pluginId) => {
-          if (view === `plugin:${pluginId}`) setView('idle')
-        }}
-      />
+        <PluginHost
+          ready={poeVersion !== null}
+          poeVersion={poeVersion ?? 1}
+          league={settings?.activeProfile?.league ?? ''}
+          currentItem={overlayData?.item ?? null}
+          currentZone={currentZone}
+          onSubscribeCurrentItem={onSubscribeCurrentItem}
+          onSubscribeCurrentZone={onSubscribeCurrentZone}
+          onSubscribeLeagueChange={onSubscribeLeagueChange}
+          onOpenExternal={(url) => window.api.openExternal(url)}
+          onTabsChange={setPluginTabs}
+          onOpenPluginTab={(pluginId) => {
+            setView(`plugin:${pluginId}` as View)
+            void window.api.pluginShowOverlay()
+          }}
+          onCopyAndEvaluateItem={() => window.api.pluginTriggerMainHotkey()}
+          onPluginError={handlePluginError}
+          onPluginUnloaded={(pluginId) => {
+            if (view === `plugin:${pluginId}`) setView('idle')
+          }}
+        />
+      </CurrencyLabelsProvider>
     </PoeVersionProvider>
   )
 }

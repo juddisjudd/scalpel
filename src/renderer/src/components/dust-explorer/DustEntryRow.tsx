@@ -1,10 +1,10 @@
 import { Buy, PreviewOpen, PreviewClose } from '@icon-park/react'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
-import { chaosIcon, divineIcon } from '../../shared/icons'
 import { IconGlow } from '../../shared/IconGlow'
 import { CurrencyChip } from '../../shared/CurrencyChip'
+import { CurrencyIcon } from '../../shared/CurrencyIcon'
 import type { DustEntry } from './types'
-import { COL_PRICE, COL_DUST, COL_DPC, COL_DPCS, mirrorIconUrl } from './constants'
+import { COL_PRICE, COL_DUST, COL_DPC, COL_DPCS } from './constants'
 import { formatDust, formatRatio } from './utils'
 import { zebraRowBg } from '../../shared/utils'
 
@@ -104,7 +104,7 @@ export function DustEntryRow({
             return (
               <CurrencyChip
                 value={inMir >= 10 ? String(Math.round(inMir)) : inMir.toFixed(1)}
-                icon={mirrorIconUrl}
+                currencyName="mirror"
                 iconPosition="after"
                 className={chipClass}
                 style={{ width: COL_PRICE }}
@@ -114,7 +114,8 @@ export function DustEntryRow({
             return (
               <CurrencyChip
                 value={inDiv >= 10 ? String(Math.round(inDiv)) : inDiv.toFixed(1)}
-                icon={divineIcon}
+                currencyName="divine"
+                iconSize={12}
                 iconPosition="after"
                 className={chipClass}
                 style={{ width: COL_PRICE }}
@@ -127,7 +128,8 @@ export function DustEntryRow({
                   ? `${(entry.chaosValue / 1000).toFixed(1)}k`
                   : String(Math.round(entry.chaosValue))
               }
-              icon={chaosIcon}
+              currencyName="chaos"
+              iconSize={12}
               iconPosition="after"
               className={chipClass}
               style={{ width: COL_PRICE }}
@@ -161,7 +163,7 @@ export function DustEntryRow({
             <img src={dustIcon} alt="" className="w-[10px] h-[10px]" />
             <span className="text-white font-semibold">{formatRatio(entry.dustPerChaos)}</span>
             <span className="text-text-dim text-[8px]">/</span>
-            <img src={chaosIcon} alt="" className="w-[10px] h-[10px]" />
+            <CurrencyIcon name="chaos" className="w-[10px] h-[10px]" />
           </>
         ) : (
           <span className="text-text-dim text-[9px]">--</span>

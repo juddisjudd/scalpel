@@ -192,6 +192,11 @@ export function ViewTab({ settings, update, updateMany }: Props): JSX.Element {
         checked={settings.closeOnClickOutside}
         onChange={(val) => update('closeOnClickOutside', val)}
       />
+      <SettingToggleBox
+        label="Show currency names instead of icons (accessibility)"
+        checked={settings.currencyLabelsAsText}
+        onChange={(val) => update('currencyLabelsAsText', val)}
+      />
       <ThemeSettings settings={settings} update={update} updateMany={updateMany} />
     </>
   )

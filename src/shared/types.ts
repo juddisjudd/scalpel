@@ -532,6 +532,11 @@ export interface AppSettings {
   onboardingSelectedGames?: { poe1: boolean; poe2: boolean }
   /** Legacy first-run resume: name of the online filter imported per game, if any. */
   onboardingImportedOnline?: { poe1: string | null; poe2: string | null }
+  /** When true, the overlay renders short text labels (e.g. "chaos", "divine",
+   *  "ex") in place of currency icons. Off by default. Intended for users who
+   *  have trouble distinguishing the icons. Read by <CurrencyIcon> via
+   *  CurrencyLabelsContext. */
+  currencyLabelsAsText: boolean
 }
 
 /** Title-bar tab keys the user is allowed to hide via View settings. Settings + Close

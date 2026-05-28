@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo, Fragment } from 'react'
 import type { PriceCheckProps, StatFilter, Listing, BulkListing } from './types'
 import { getTradeUrls } from '../../../../shared/endpoints'
 import { getGameFeatures } from '../../../../shared/game-features'
-import { getCurrencyIcons } from '../../shared/icons'
 import {
   RARITY_COLORS,
   INFLUENCE_ICONS,
@@ -20,6 +19,7 @@ import { AngeBanner } from './AngeBanner'
 import { TradeTimeoutBanner } from './TradeTimeoutBanner'
 import { ItemHeader } from './ItemHeader'
 import { getDustInfo } from '../../shared/dust'
+import { CurrencyIcon } from '../../shared/CurrencyIcon'
 import { StatFilterRow } from './StatFilterRow'
 import { TradeListings } from './TradeListings'
 import { BulkListings } from './BulkListings'
@@ -50,8 +50,8 @@ export function PriceCheck({
   onOpenNinja,
 }: PriceCheckProps): JSX.Element {
   const tradeUrls = getTradeUrls(poeVersion)
-  const currencyIcons = getCurrencyIcons(poeVersion)
   const features = getGameFeatures(poeVersion)
+  const baselineKey = poeVersion === 2 ? 'exalted' : 'chaos'
   const isDivCard = item.itemClass === 'Divination Cards'
   const [selectedUnique, setSelectedUnique] = useState<string | null>(null)
   const color = selectedUnique ? RARITY_COLORS['Unique'] : (RARITY_COLORS[item.rarity] ?? '#c8c8c8')
@@ -467,7 +467,7 @@ export function PriceCheck({
                   {c.chaosValue > 0 && (
                     <span className="relative flex items-center gap-[2px] text-[9px] font-[inherit] text-text-dim">
                       {formatPrice(c.chaosValue)}
-                      <img src={currencyIcons.baseline} alt="" className="w-[10px] h-[10px]" />
+                      <CurrencyIcon name={baselineKey} className="w-[10px] h-[10px]" />
                     </span>
                   )}
                 </div>

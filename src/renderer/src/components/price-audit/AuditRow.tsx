@@ -1,6 +1,5 @@
-import { getCurrencyIcons } from '../../shared/icons'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
-import { type AuditItem, calcMaxDust, divCardArtMap, formatDust, mirrorIcon } from './constants'
+import { type AuditItem, calcMaxDust, divCardArtMap, formatDust } from './constants'
 import { IconGlow } from '../../shared/IconGlow'
 import { CurrencyChip } from '../../shared/CurrencyChip'
 import { usePoeVersion } from '../../shared/poe-version-context'
@@ -26,7 +25,6 @@ export function AuditRow({
   // shows exalted/divine. `PriceInfo.chaosValue` is named for PoE1 history
   // but its semantic meaning is "baseline currency count" -- exalted in PoE2.
   const poeVersion = usePoeVersion()
-  const { baseline: baselineIcon, divine: divineIcon } = getCurrencyIcons(poeVersion)
   const isPoe1 = poeVersion === 1
   const isDivCard = itemClass === 'Divination Cards'
   const divArt = isDivCard ? divCardArtMap.get(item.name) : undefined
@@ -78,7 +76,7 @@ export function AuditRow({
             return (
               <CurrencyChip
                 value={inMir >= 10 ? String(Math.round(inMir)) : inMir.toFixed(1)}
-                icon={mirrorIcon}
+                currencyName="mirror"
                 iconSize={14}
                 iconPosition="after"
                 className={chipClass}
@@ -88,7 +86,7 @@ export function AuditRow({
             return (
               <CurrencyChip
                 value={item.divineValue}
-                icon={divineIcon}
+                currencyName="divine"
                 iconSize={14}
                 iconPosition="after"
                 className={chipClass}
@@ -97,7 +95,7 @@ export function AuditRow({
           return (
             <CurrencyChip
               value={item.chaosValue}
-              icon={baselineIcon}
+              currencyName={poeVersion === 2 ? 'exalted' : 'chaos'}
               iconSize={14}
               iconPosition="after"
               className={chipClass}

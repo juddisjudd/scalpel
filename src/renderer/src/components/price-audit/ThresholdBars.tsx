@@ -1,8 +1,8 @@
-import { getCurrencyIcons } from '../../shared/icons'
 import dustIcon from '../../assets/currency/thaumaturgic-dust.png'
 import type { FilterBlock } from '../../../../shared/types'
-import { type AuditItem, formatDust, formatTierLabel, mirrorIcon, retierSelectStyle } from './constants'
+import { type AuditItem, formatDust, formatTierLabel, retierSelectStyle } from './constants'
 import { usePoeVersion } from '../../shared/poe-version-context'
+import { CurrencyIcon } from '../../shared/CurrencyIcon'
 
 interface TierSibling {
   tier: string
@@ -69,7 +69,6 @@ export function ThresholdBars({
   // Threshold chips display in whichever currency the number rounds nicely
   // into: mirror > divine > baseline (chaos in PoE1, exalted in PoE2).
   const poeVersion = usePoeVersion()
-  const { baseline: baselineIcon, divine: divineIcon } = getCurrencyIcons(poeVersion)
 
   const thresholdInMir = mirrorRate > 0 ? threshold / mirrorRate : 0
   const thresholdInDiv = divineRate > 0 ? threshold / divineRate : 0
@@ -87,13 +86,18 @@ export function ThresholdBars({
       : threshold < 10
         ? `${threshold.toFixed(1)}`
         : String(Math.round(threshold))
-  const priceIcon = showMir ? mirrorIcon : showDiv ? divineIcon : baselineIcon
 
   const priceChipContent = (prefix: string) => (
     <span className="flex items-center gap-[3px]">
       {prefix && <span className="text-[9px] font-normal leading-none">{prefix}</span>}
       {priceLabel}
-      <img src={priceIcon} alt="" className="w-3 h-3" />
+      {showMir ? (
+        <CurrencyIcon name="mirror" className="w-3 h-3" />
+      ) : showDiv ? (
+        <CurrencyIcon name="divine" className="w-3 h-3" />
+      ) : (
+        <CurrencyIcon name={poeVersion === 2 ? 'exalted' : 'chaos'} className="w-3 h-3" />
+      )}
     </span>
   )
   const dustChipContent = (prefix: string) => (

@@ -4,10 +4,6 @@ import { render } from '@testing-library/react'
 import { PoeVersionProvider } from './poe-version-context'
 
 // PNG imports resolve to asset URLs in vite; in vitest they return the path string.
-// Mock the icons module so PriceChip doesn't fail on unresolvable asset imports.
-vi.mock('./icons', () => ({
-  getCurrencyIcons: () => ({ baseline: 'chaos.png', divine: 'divine.png' }),
-}))
 vi.mock('../assets/other/poe-ninja.png', () => ({ default: 'ninja.png' }))
 
 import { PriceChip } from './PriceChip'

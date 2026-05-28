@@ -1,4 +1,3 @@
-import { chaosIcon, divineIcon } from '../../shared/icons'
 import type { MapCardEntry, MapEntry } from './types'
 import { cards, regularMaps, DROPPOOL_WEIGHT } from './constants'
 
@@ -21,13 +20,13 @@ export function buildMapEntries(_divineRate: number): MapEntry[] {
     .sort((a, b) => b.totalEv - a.totalEv)
 }
 
-export function formatPrice(v: number, divineRate: number): { text: string; icon: string } {
+export function formatPrice(v: number, divineRate: number): { text: string; currencyKey: string } {
   if (divineRate > 0 && v >= divineRate) {
     const d = v / divineRate
-    return { text: d >= 100 ? Math.round(d).toString() : parseFloat(d.toFixed(1)).toString(), icon: divineIcon }
+    return { text: d >= 100 ? Math.round(d).toString() : parseFloat(d.toFixed(1)).toString(), currencyKey: 'divine' }
   }
-  if (v < 0.01) return { text: '0', icon: chaosIcon }
-  return { text: v >= 100 ? Math.round(v).toString() : parseFloat(v.toFixed(1)).toString(), icon: chaosIcon }
+  if (v < 0.01) return { text: '0', currencyKey: 'chaos' }
+  return { text: v >= 100 ? Math.round(v).toString() : parseFloat(v.toFixed(1)).toString(), currencyKey: 'chaos' }
 }
 
 export function formatEv(v: number): string {
