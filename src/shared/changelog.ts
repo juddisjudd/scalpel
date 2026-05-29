@@ -4,11 +4,8 @@ export const CHANGELOG: { version: string; notes: string[] }[] = [
     notes: [
       'Expanded the plugin SDK - plugins can now read the live game log (zones, deaths, whispers, and more) and open their own pop-out overlay windows, not just a tab.',
       "You can now bind a plugin's hotkeys straight from the Plugins settings box, mirrored with the Macros tab.",
-    ],
-  },
-  {
-    version: '0.9.9-rc2',
-    notes: [
+      'Added adaptive price-check defaults - Scalpel learns which stat mods you usually keep or drop for each kind of item and pre-selects them for you. Set it to Eager, Conservative, or Off under Trade settings.',
+      'Added profiles - save a named setup of filter, league, and trade settings per character or league and switch between them in settings. Switching games still prompts a relaunch.',
       'Added distance rulers and radius to the whiteboard so maybe you precious non-streamers can get some use out of my product bloat.',
       'Added an option to start Scalpel minimized to the tray.',
       'Added Alt and Shift modifiers for scrolling between tabs.',
@@ -16,17 +13,10 @@ export const CHANGELOG: { version: string; notes: string[] }[] = [
       'Added support-development buttons in Settings > General.',
       'Expanded the bug report diagnostics with additional context.',
       'Added a tooltip on the filter page clarifying that online filters need to be loaded the same way.',
+      'Improved the onboarding steps.',
       'Fixed PoE2 pinning the item description when hotkeying (thanks kvan).',
       'Fixed low iLvl gear defaulting to a leveling area level instead of endgame.',
       'Fixed gem sockets in the price checker to follow the correct 2x3 layout.',
-    ],
-  },
-  {
-    version: '0.9.9-rc1',
-    notes: [
-      'Added adaptive price-check defaults - Scalpel learns which stat mods you usually keep or drop for each kind of item and pre-selects them for you. Set it to Eager, Conservative, or Off under Trade settings.',
-      'Added profiles - save a named setup of filter, league, and trade settings per character or league and switch between them in settings. Switching games still prompts a relaunch.',
-      'Improved the onboarding steps.',
       'Fixed the Linux overlay not registering clicks on hover (X11).',
       'Fixed stacked items showing the wrong filter block when hotkeying the same item at a different stack size.',
       'Updated FAQs',
