@@ -1,5 +1,12 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.9',
+    notes: [
+      'Expanded the plugin SDK - plugins can now read the live game log (zones, deaths, whispers, and more) and open their own pop-out overlay windows, not just a tab.',
+      "You can now bind a plugin's hotkeys straight from the Plugins settings box, mirrored with the Macros tab.",
+    ],
+  },
+  {
     version: '0.9.9-rc2',
     notes: [
       'Added distance rulers and radius to the whiteboard so maybe you precious non-streamers can get some use out of my product bloat.',
