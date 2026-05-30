@@ -647,6 +647,51 @@ describe('parseItemText', () => {
       expect(item.physDamageMin).toBe(425)
       expect(item.physDamageMax).toBe(1148)
     })
+
+    it('sums PoE2 per-color elemental damage lines into eleDamageAvg', () => {
+      const text = [
+        'Item Class: Spears',
+        'Rarity: Rare',
+        'Sol Edge',
+        'Branched Spear',
+        '--------',
+        'Quality: +20% (augmented)',
+        'Physical Damage: 65-188 (augmented)',
+        'Fire Damage: 15-26 (fire)',
+        'Lightning Damage: 5-89 (lightning)',
+        'Critical Hit Chance: 5.00%',
+        'Attacks per Second: 1.72 (augmented)',
+        '--------',
+        'Item Level: 55',
+        '--------',
+        '47% increased Physical Damage',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      // (15+26)/2 + (5+89)/2 = 20.5 + 47 = 67.5
+      expect(item.eleDamageAvg).toBe(67.5)
+    })
+
+    it('parses the combined PoE1 Elemental Damage line with multiple colors', () => {
+      const text = [
+        'Item Class: Bows',
+        'Rarity: Rare',
+        'Doom Thirst',
+        'Spine Bow',
+        '--------',
+        'Physical Damage: 50-100',
+        'Elemental Damage: 1-20, 5-89',
+        'Attacks per Second: 1.40',
+        '--------',
+        'Item Level: 80',
+        '--------',
+        '10% increased Physical Damage',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      // (1+20)/2 + (5+89)/2 = 10.5 + 47 = 57.5
+      expect(item.eleDamageAvg).toBe(57.5)
+    })
   })
 
   // ---------------------------------------------------------------------------

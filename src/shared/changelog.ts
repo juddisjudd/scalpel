@@ -1,5 +1,9 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.10-rc2',
+    notes: ['Fixed PoE2 elemental damage not accumulating in weapon DPS due to PoE1/PoE2 clipboard differences.'],
+  },
+  {
     version: '0.9.10-rc1',
     notes: [
       'Added a regex remote sister overlay you can bind to a hotkey, so your regex strings can pop out on demand.',

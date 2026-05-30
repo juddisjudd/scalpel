@@ -307,12 +307,21 @@ export function parseItemText(text: string): PoeItem | null {
     }
   }
 
-  const eleDamageLine = allLines.find((l) => l.startsWith('Elemental Damage:'))?.replace(/,/g, '')
+  // PoE1 lists a single combined "Elemental Damage:" line with comma-separated
+  // per-color ranges; PoE2 lists each color on its own line (e.g.
+  // "Lightning Damage: 5-89"). Sum the average of every range across both formats
+  // so weapon edps/total dps includes all elemental sources.
   let eleDamageAvg: number | undefined
-  if (eleDamageLine) {
-    const ranges = [...eleDamageLine.matchAll(/(\d+)-(\d+)/g)]
-    if (ranges.length > 0) {
-      eleDamageAvg = ranges.reduce((sum, m) => sum + (parseInt(m[1], 10) + parseInt(m[2], 10)) / 2, 0)
+  const eleDamageLines = allLines.filter(
+    (l) =>
+      l.startsWith('Elemental Damage:') ||
+      l.startsWith('Fire Damage:') ||
+      l.startsWith('Cold Damage:') ||
+      l.startsWith('Lightning Damage:'),
+  )
+  for (const line of eleDamageLines) {
+    for (const m of line.replace(/,/g, '').matchAll(/(\d+)-(\d+)/g)) {
+      eleDamageAvg = (eleDamageAvg ?? 0) + (parseInt(m[1], 10) + parseInt(m[2], 10)) / 2
     }
   }
 
