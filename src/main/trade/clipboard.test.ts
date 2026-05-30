@@ -579,6 +579,64 @@ describe('parseItemText', () => {
       expect(item.areaLevel).toBe(84)
     })
 
+    it('extracts a charm prefix that is a bare-integer mod (single affix, no %/sign)', () => {
+      const text = [
+        'Item Class: Charms',
+        'Rarity: Magic',
+        'Drizzling Dousing Charm',
+        '--------',
+        'Lasts 3 Seconds',
+        'Consumes 30 of 40 Charges on use',
+        'Currently has 40 Charges',
+        'Grants Immunity to Ignite',
+        '--------',
+        'Requires: Level 32 (unmet)',
+        '--------',
+        'Item Level: 37',
+        '--------',
+        'Used when you become Ignited (implicit)',
+        '--------',
+        'Recover 17 Mana when Used',
+        '--------',
+        'Used automatically when condition is met. Can only hold charges while in belt. Refill at Wells or by killing monsters.',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.itemClass).toBe('Charms')
+      // The bare-integer affix must be captured, and the intrinsic state block must not.
+      expect(item.explicits).toContain('Recover 17 Mana when Used')
+      expect(item.explicits).not.toContain('Lasts 3 Seconds')
+      expect(item.explicits).not.toContain('Currently has 40 Charges')
+    })
+
+    it('extracts both charm affixes when one carries a % (regression guard)', () => {
+      const text = [
+        'Item Class: Charms',
+        'Rarity: Magic',
+        'Mistbound Antidote Charm of the Practitioner',
+        '--------',
+        'Lasts 3 Seconds',
+        'Consumes 16 (augmented) of 40 Charges on use',
+        'Currently has 40 Charges',
+        'Grants Immunity to Poison',
+        '--------',
+        'Requires: Level 24 (unmet)',
+        '--------',
+        'Item Level: 26',
+        '--------',
+        'Used when you become Poisoned (implicit)',
+        '--------',
+        'Recover 59 Mana when Used',
+        '19% reduced Charges per use',
+        '--------',
+        'Used automatically when condition is met. Can only hold charges while in belt. Refill at Wells or by killing monsters.',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.explicits).toContain('Recover 59 Mana when Used')
+      expect(item.explicits).toContain('19% reduced Charges per use')
+    })
+
     it('parses a Flask', () => {
       const text = [
         'Item Class: Flasks',

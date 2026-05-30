@@ -405,7 +405,7 @@ export function parseItemText(text: string): PoeItem | null {
   const explicits: string[] = []
   const implicits: string[] = []
   const enchants: string[] = []
-  parseModSections(sections, explicits, implicits)
+  parseModSections(sections, explicits, implicits, itemClass)
 
   // Parse logbook factions and bosses from section text
   const logbookFactions: string[] = []
@@ -625,7 +625,12 @@ function computeLinkedSockets(sockets: string): number {
  * Rough heuristic: explicit mods appear in the last substantive section
  * before cosmetic/corruption lines. Implicit mods appear right after sockets/requirements.
  */
-function parseModSections(sections: string[], explicits: string[], implicits: string[]): void {
+function parseModSections(sections: string[], explicits: string[], implicits: string[], itemClass?: string): void {
+  // Charms expose their rollable affixes as bare-integer lines ("Recover 17 Mana
+  // when Used") with no % or sign, which the generic mod heuristic treats as
+  // flavour and drops. The charm-only branches below recognize those lines and
+  // skip the charm's intrinsic state block so it isn't mistaken for affixes.
+  const isCharm = itemClass === 'Charms'
   const skipPrefixes = [
     'Item Class:',
     'Rarity:',
@@ -669,6 +674,12 @@ function parseModSections(sections: string[], explicits: string[], implicits: st
     'Cost & Reservation',
   ]
 
+  // A charm's intrinsic block ("Lasts 3 Seconds", "Consumes 30 of 40 Charges on
+  // use", "Currently has 40 Charges", "Grants Immunity to Ignite") is runtime
+  // state / base effect, never a rollable affix -- exclude it so it can't be
+  // picked as the explicit section.
+  if (isCharm) skipPrefixes.push('Lasts ', 'Consumes ', 'Currently has ', 'Grants Immunity')
+
   const skipSuffixes = ['--------']
 
   const isModLine = (line: string): boolean =>
@@ -699,8 +710,12 @@ function parseModSections(sections: string[], explicits: string[], implicits: st
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
-    // Flavour text sections have no mod-like patterns (no numbers with +/%)
-    return lines.every((l) => !l.match(/[+-]\d|^\d+%|\d+(?:\.\d+)?%/) && !l.endsWith('(crafted)'))
+    // Flavour text sections have no mod-like patterns (no numbers with +/%).
+    // Charm affixes can be bare integers ("Recover 17 Mana when Used"), so for
+    // charms any digit counts as a mod pattern.
+    return lines.every(
+      (l) => !l.match(/[+-]\d|^\d+%|\d+(?:\.\d+)?%/) && !l.endsWith('(crafted)') && !(isCharm && /\d/.test(l)),
+    )
   }
 
   const modSections = sections.filter((s) => {
@@ -711,7 +726,13 @@ function parseModSections(sections: string[], explicits: string[], implicits: st
     if (!lines.some(isModLine)) return false
     if (isImplicitSection(s)) return false
     // Skip single-word/short sections that are likely flavour or labels
-    if (lines.length === 1 && lines[0].length < 20 && !lines[0].match(/[+-]\d|^\d+%/)) return false
+    if (
+      lines.length === 1 &&
+      lines[0].length < 20 &&
+      !lines[0].match(/[+-]\d|^\d+%/) &&
+      !(isCharm && /\d/.test(lines[0]))
+    )
+      return false
     return true
   })
 
@@ -725,7 +746,11 @@ function parseModSections(sections: string[], explicits: string[], implicits: st
       .filter(Boolean)
       .filter(isModLine)
     const hasRealMods = lines.some(
-      (l) => l.match(/[+-]\d|^\d+%|\d+(?:\.\d+)?%/) || l.endsWith('(crafted)') || l.startsWith('Adds '),
+      (l) =>
+        l.match(/[+-]\d|^\d+%|\d+(?:\.\d+)?%/) ||
+        l.endsWith('(crafted)') ||
+        l.startsWith('Adds ') ||
+        (isCharm && /\d/.test(l)),
     )
     if (hasRealMods || !isFlavourOrMeta(modSections[i])) {
       lines
