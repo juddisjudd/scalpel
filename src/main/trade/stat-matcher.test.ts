@@ -1183,6 +1183,24 @@ describe('matchItemMods', () => {
       expect(filters.find((f) => f.id === 'map.map_revives')?.value).toBe(1)
       expect(filters.find((f) => f.id === 'map.map_bonus')?.value).toBe(80)
     })
+
+    it('shows the tier chip on a white (Normal) waystone with no affix properties', () => {
+      _setStatEntriesForTests([])
+      const filters = matchItemMods(
+        [],
+        [],
+        undefined,
+        makeItemInfo({ itemClass: 'Waystones', rarity: 'Normal', mapTier: 14 }),
+      )
+      const tier = filters.find((f) => f.id === 'map.map_tier')
+      expect(tier).toBeDefined()
+      expect(tier?.enabled).toBe(true)
+      expect(tier?.min).toBe(14)
+      expect(tier?.max).toBe(14)
+      // No affix-derived chips on a white waystone.
+      expect(filters.find((f) => f.id === 'map.map_iir')).toBeUndefined()
+      expect(filters.find((f) => f.id === 'map.map_packsize')).toBeUndefined()
+    })
   })
 
   describe('memory strands', () => {

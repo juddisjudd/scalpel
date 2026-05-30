@@ -115,8 +115,10 @@ export function buildMapFilters(itemInfo: MapItemInfo | undefined, advancedMods?
   // map_gold, map_magic_monsters, map_rare_monsters. The random per-waystone
   // monster affixes still flow through the normal explicit matcher. Tier defaults
   // on (the dominant price axis); the rest are opt-in so the search isn't
-  // over-constrained.
-  if (itemInfo && itemInfo.itemClass === 'Waystones' && itemInfo.rarity === 'Rare') {
+  // over-constrained. No rarity gate: tier is a base property present on white and
+  // magic waystones too; rarity/packsize/etc. just come from affixes (so the
+  // per-property guards below naturally skip them on lower rarities).
+  if (itemInfo && itemInfo.itemClass === 'Waystones') {
     const wsMin = (v: number) => Math.floor(v * 0.9)
     const pushChip = (id: string, label: string, value: number, enabled: boolean, exact = false) =>
       out.push({
