@@ -54,6 +54,7 @@ const PRICE_OPTIONS_POE2: Array<{ value: PriceOption; label: string }> = [
   { value: 'exalted_equivalent', label: 'Exalted equivalent' },
   { value: 'exalted', label: 'Exalted only' },
   { value: 'divine', label: 'Divine only' },
+  { value: 'chaos', label: 'Chaos only' },
 ]
 
 export function getPriceOptions(version: 1 | 2): Array<{ value: PriceOption; label: string }> {
