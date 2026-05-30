@@ -331,8 +331,14 @@ export interface RegexPresetTag {
 
 export interface RegexPreset {
   id: string
+  /** Human-readable name for display and hotkey selection. Supports spaces
+   *  and special characters; not constrained like tags. */
+  name?: string
+  /** Optional load-grid box tint. One of PRESET_COLORS values; undefined = neutral. */
+  color?: string
   generator?: string
-  tags: RegexPresetTag[]
+  /** Legacy descriptive labels. No longer written on new saves; retained so old stored presets parse and their name can be derived on read. */
+  tags?: RegexPresetTag[]
   avoid: number[]
   want: number[]
   wantMode: 'any' | 'all'
@@ -479,7 +485,7 @@ export interface AppSettings {
   tradeKeepUncheckedVisible?: boolean
   tradeNeverAutoSearch?: boolean
   chatCommands: Array<{ hotkey: string; command: string; autoSubmit?: boolean; scope?: MacroScope }>
-  appMacros: Array<{ action: string; hotkey: string; tag?: string; scope?: MacroScope }>
+  appMacros: Array<{ action: string; hotkey: string; tag?: string; presetId?: string; scope?: MacroScope }>
   stashScrollEnabled: boolean
   /** Modifier held with the scroll wheel to switch stash tabs. Defaults to Ctrl. */
   stashScrollModifier?: 'Ctrl' | 'Shift' | 'Alt'

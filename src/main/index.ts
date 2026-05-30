@@ -122,6 +122,7 @@ import {
   subscribeToPoeMoves,
 } from './windowing'
 import { initAppMacrosRefresh, withPluginHotkeys } from './app-macros'
+import { runRegexMacroMigration } from './regex-macro-migration'
 import type { AppSettings, CheatSheetsSettings, GameVariant, LegacyAppSettings, RegexPreset } from '../shared/types'
 import { initProfileStore } from './profiles/store'
 import {
@@ -303,6 +304,7 @@ if (!IS_E2E)
     )
   })
 
+runRegexMacroMigration(store)
 setEvaluationStore(store)
 initLearning(store, store.get('poeVersion'))
 initAppMacrosRefresh(() => store.get('appMacros') ?? [])
@@ -552,16 +554,18 @@ app.whenReady().then(() => {
     setTimeout(restoreClip, 100)
   }
 
-  setAppMacroHandler((action, tag) => {
+  setAppMacroHandler((action, tag, presetId) => {
     if (action === 'pasteRegex') {
       if (currentRegex) pasteRegexToSearch(currentRegex)
       return
     }
     if (action === 'useSavedRegex') {
-      if (!tag) return
+      if (!tag && !presetId) return
       const key = store.get(PROFILE_VERSION_KEY) === 2 ? 'regexPresetsPoe2' : 'regexPresetsPoe1'
       const presets = store.get(key) ?? []
-      const preset = presets.find((p) => p.tags?.some((t) => t.text === tag && (!t.source || t.source === 'custom')))
+      const preset = presetId
+        ? presets.find((p) => p.id === presetId)
+        : presets.find((p) => p.tags?.some((t) => t.text === tag && (!t.source || t.source === 'custom')))
       if (preset?.regex) pasteRegexToSearch(preset.regex)
       return
     }
