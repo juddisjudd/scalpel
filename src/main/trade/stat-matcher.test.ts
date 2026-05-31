@@ -1613,6 +1613,21 @@ describe('matchModToStat (PoE2 stat text without leading sign)', () => {
     expect(result?.value).toBe(20)
   })
 
+  it('matches a global hybrid defence mod despite the clipboard Oxford comma', () => {
+    // PoE2 clipboard writes "Global Armour, Evasion, and Energy Shield" (Oxford
+    // comma) but the trade API stat text drops the comma before "and".
+    _setStatEntriesForTests([
+      {
+        id: 'explicit.stat_1177404658',
+        text: '#% increased Global Armour, Evasion and Energy Shield',
+        type: 'explicit',
+      },
+    ])
+    const result = matchModToStat('29% increased Global Armour, Evasion, and Energy Shield', false, 'explicit')
+    expect(result?.statId).toBe('explicit.stat_1177404658')
+    expect(result?.value).toBe(29)
+  })
+
   it('averages multiple signed numeric captures (PoE2 "Adds #-#" hybrid case)', () => {
     _setStatEntriesForTests([{ id: 'explicit.stat_z', text: 'Adds # to # Cold Damage', type: 'explicit' }])
     const result = matchModToStat('Adds +5 to +15 Cold Damage')

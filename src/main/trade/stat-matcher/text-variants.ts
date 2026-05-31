@@ -44,6 +44,13 @@ function generateTextVariants(text: string): string[] {
     variants.push(text.replace(/\ban additional [A-Za-z]+\b/i, `1 additional ${noun}s`))
   }
 
+  // Oxford comma: the PoE2 clipboard writes three-item lists as "A, B, and C"
+  // (e.g. "Global Armour, Evasion, and Energy Shield") but the trade API stat
+  // text drops the comma before "and" ("A, B and C"). Strip it so they match.
+  if (/,\s+and\b/i.test(text)) {
+    variants.push(text.replace(/,(\s+and\b)/gi, '$1'))
+  }
+
   const replacements: Array<[RegExp, string]> = [
     [/Flasks constantly apply their Flask Effects/g, 'Flask constantly applies its Flask Effect'],
     [/Flasks constantly apply their/g, 'Flask constantly applies its'],
