@@ -184,6 +184,27 @@ export function RegexGenerator({ settings, update, tryHotkey }: Props): JSX.Elem
     }
   }, [])
 
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Keep an open preset in sync with live edits. Once a preset is loaded
+  // (editingPresetId set), toggling mods updates `regex` but does not persist on its
+  // own; this writes the change back. Guards: only already-saved presets; never
+  // overwrite to empty; skip when already in sync so loading a preset does not
+  // re-save it and the post-save setPresets does not loop. Debounced because the
+  // Custom generator's regex is a per-keystroke text input.
+  useEffect(() => {
+    if (editingPresetId == null || !regex) return
+    const stored = presets.find((p) => p.id === editingPresetId)
+    if (stored && stored.regex === regex) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      void upsertPreset()
+    }, 400)
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    }
+  }, [regex, editingPresetId, presets])
+
   const copyRegex = (): void => {
     if (!regex) return
     navigator.clipboard.writeText(regex)
