@@ -56,25 +56,38 @@ export const ITEM_CLASS_TO_CATEGORY: Record<string, string> = {
   Waystones: 'map.waystone',
 }
 
-const ARMOUR_CLASSES = new Set(['Helmets', 'Body Armours', 'Gloves', 'Boots', 'Shields'])
+const ARMOUR_CLASSES = new Set([
+  'Helmets',
+  'Body Armours',
+  'Gloves',
+  'Boots',
+  'Shields',
+  // PoE2 offhand/armour classes that roll local block / energy-shield mods
+  'Bucklers',
+  'Foci',
+])
 // Item classes that have local weapon mods
 const WEAPON_CLASSES = new Set([
   'Bows',
   'Claws',
+  'Crossbows',
   'Daggers',
+  'Fishing Rods',
   'One Hand Axes',
   'One Hand Maces',
   'One Hand Swords',
+  'Quarterstaves',
+  'Rune Daggers',
   'Sceptres',
+  'Spears',
   'Staves',
+  'Talismans',
   'Thrusting One Hand Swords',
   'Two Hand Axes',
   'Two Hand Maces',
   'Two Hand Swords',
   'Wands',
   'Warstaves',
-  'Quarterstaves',
-  'Rune Daggers',
 ])
 
 export { ARMOUR_CLASSES, WEAPON_CLASSES }

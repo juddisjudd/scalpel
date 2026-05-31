@@ -1504,6 +1504,53 @@ describe('matchItemMods', () => {
       expect(defIdx).toBeLessThan(miscIdx)
     })
   })
+
+  describe('local vs global variant selection', () => {
+    it('spear attack speed picks the local variant', () => {
+      _setStatEntriesForTests([
+        { id: 'explicit.stat_210067635', text: '#% increased Attack Speed (Local)', type: 'explicit' },
+        { id: 'explicit.stat_681332047', text: '#% increased Attack Speed', type: 'explicit' },
+      ])
+      const filters = matchItemMods(
+        ['12% increased Attack Speed'],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Spears' }),
+      )
+      expect(filters.find((f) => f.id === 'explicit.stat_210067635')).toBeDefined()
+      expect(filters.find((f) => f.id === 'explicit.stat_681332047')).toBeUndefined()
+    })
+
+    it('shield "increased Block chance" picks the local variant', () => {
+      _setStatEntriesForTests([
+        { id: 'explicit.stat_2481353198', text: '#% increased Block chance (Local)', type: 'explicit' },
+        { id: 'explicit.stat_4147897060', text: '#% increased Block chance', type: 'explicit' },
+      ])
+      const filters = matchItemMods(
+        ['25% increased Block chance'],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Shields' }),
+      )
+      expect(filters.find((f) => f.id === 'explicit.stat_2481353198')).toBeDefined()
+      expect(filters.find((f) => f.id === 'explicit.stat_4147897060')).toBeUndefined()
+    })
+
+    it('ring with "increased Attack Speed" picks the global variant (no local mods on accessories)', () => {
+      _setStatEntriesForTests([
+        { id: 'explicit.stat_210067635', text: '#% increased Attack Speed (Local)', type: 'explicit' },
+        { id: 'explicit.stat_681332047', text: '#% increased Attack Speed', type: 'explicit' },
+      ])
+      const filters = matchItemMods(
+        ['12% increased Attack Speed'],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Rings' }),
+      )
+      expect(filters.find((f) => f.id === 'explicit.stat_681332047')).toBeDefined()
+      expect(filters.find((f) => f.id === 'explicit.stat_210067635')).toBeUndefined()
+    })
+  })
 })
 
 // ─── matchModToStat: requires stat entries (network-dependent) ───────────────

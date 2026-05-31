@@ -1,6 +1,8 @@
 // Defence mod patterns -- local on both armour and weapons
 const LOCAL_DEFENCE_PATTERNS = [
   /^\+?\d+(?:\.\d+)?%? (?:increased |to )(?:Armour|Evasion Rating|Energy Shield|Armour and Evasion|Armour and Energy Shield|Evasion and Energy Shield|Armour, Evasion and Energy Shield|maximum Energy Shield|Ward)/i,
+  // Local shield/buckler block mod; anchored to avoid matching "increased Block chance against Projectiles"
+  /^\d+(?:\.\d+)?% increased Block chance$/i,
 ]
 
 // Offensive mod patterns -- only local on weapons, NOT on armour (gloves, boots, etc.)
