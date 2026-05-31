@@ -965,6 +965,60 @@ describe('parseItemText', () => {
       expect(item.advancedMods?.[2].name).toBe('of the Furnace')
     })
 
+    it('parses a { Desecrated Prefix Modifier } as its own mod (does not merge into the previous affix)', () => {
+      const text = [
+        'Item Class: Spears',
+        'Rarity: Rare',
+        'Hypnotic Edge',
+        'Jagged Spear',
+        '--------',
+        'Item Level: 65',
+        '--------',
+        '{ Prefix Modifier "Tempered" (Tier: 2) -- Damage, Physical, Attack }',
+        'Adds 21(21-31) to 48(36-53) Physical Damage',
+        '{ Desecrated Prefix Modifier "Wicked" (Tier: 6) -- Damage, Physical, Attack }',
+        '75(65-84)% increased Physical Damage',
+        '{ Suffix Modifier "of Calamity" (Tier: 3) -- Attack, Critical }',
+        '+3.45(3.11-3.8)% to Critical Hit Chance',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.advancedMods?.length).toBe(3)
+      expect(item.advancedMods?.[1].name).toBe('Wicked')
+      expect(item.advancedMods?.[1].type).toBe('prefix')
+      // The two phys mods must stay separate -- no merged "Adds ... \n75% increased ..." line
+      expect(item.explicits).toContain('Adds 21 to 48 Physical Damage')
+      expect(item.explicits).toContain('75% increased Physical Damage')
+      expect(item.explicits.some((e) => e.includes('Adds 21 to 48 Physical Damage') && e.includes('increased'))).toBe(
+        false,
+      )
+    })
+
+    it('treats an unknown qualifier as a header (does not merge the next affix)', () => {
+      // Header detection is generic: any "{ <words> Prefix/Suffix Modifier ... }" registers,
+      // so a future GGG-added qualifier we have never seen still splits mods correctly.
+      const text = [
+        'Item Class: Body Armours',
+        'Rarity: Rare',
+        'Doom Shell',
+        'Astral Plate',
+        '--------',
+        'Item Level: 86',
+        '--------',
+        '{ Prefix Modifier "Athlete\'s" (Tier: 3) -- Life }',
+        '+42 to maximum Life',
+        '{ Gilded Prefix Modifier "Imaginary" (Tier: 1) -- Defences }',
+        '+200 to Armour',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.advancedMods?.length).toBe(2)
+      expect(item.advancedMods?.[1].name).toBe('Imaginary')
+      expect(item.explicits).toContain('+42 to maximum Life')
+      expect(item.explicits).toContain('+200 to Armour')
+      expect(item.explicits.some((e) => e.includes('maximum Life') && e.includes('Armour'))).toBe(false)
+    })
+
     it('strips roll ranges from mod text', () => {
       const text = [
         'Item Class: Body Armours',

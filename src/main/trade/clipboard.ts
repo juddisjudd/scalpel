@@ -785,11 +785,16 @@ function parseAdvancedMods(text: string): AdvancedMod[] {
   const mods: AdvancedMod[] = []
   const lines = text.split('\n').map((l) => l.trim())
 
-  // Match: { Prefix/Suffix/Implicit/Unique Modifier "Name" (Tier: N) -- Tags }
-  // Name and Tier are optional (implicits and uniques may omit them)
-  // Eldritch mods use named tiers like (Exquisite), (Grand) instead of (Tier: N)
+  // Match: { [Qualifier ]Prefix/Suffix/Implicit/Unique Modifier "Name" (Tier: N) -- Tags }
+  // Name and Tier are optional (implicits and uniques may omit them).
+  // Eldritch mods use named tiers like (Exquisite), (Grand) instead of (Tier: N).
+  // The leading qualifier (Fractured/Desecrated/Master Crafted/Searing Exarch/...) is
+  // matched generically as "any words before the Prefix/Suffix/... keyword" so a new
+  // GGG-added qualifier still registers as a header and doesn't merge into the prior mod
+  // (issue: Desecrated mods absorbed the next affix). Specific qualifiers that drive flags
+  // (fractured, master crafted, eldritch, foulborn) are still keyed off the captured text.
   const headerPattern =
-    /^\{\s*((?:(?:Foulborn|Corruption|Enchant|Scourge|Fractured|Master Crafted|Searing Exarch|Eater of Worlds)\s+)?)(Prefix|Suffix|Implicit|Unique)\s+Modifier\s*(?:"([^"]*)")?\s*(?:\((?:(?:Tier|Rank):\s*(\d+)|[A-Za-z]+)\))?\s*(?:[—-]+\s*(.+))?\s*\}$/
+    /^\{\s*((?:[A-Za-z]+\s+)*?)(Prefix|Suffix|Implicit|Unique)\s+Modifier\s*(?:"([^"]*)")?\s*(?:\((?:(?:Tier|Rank):\s*(\d+)|[A-Za-z]+)\))?\s*(?:[—-]+\s*(.+))?\s*\}$/
 
   let currentMod: AdvancedMod | null = null
 
