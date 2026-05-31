@@ -1,6 +1,6 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
-    version: '0.9.11-rc1',
+    version: '0.9.11',
     notes: [
       'Added runic ward support to the price checker.',
       'Added support for decimal affix values in the price checker.',
@@ -8,6 +8,7 @@ export const CHANGELOG: { version: string; notes: string[] }[] = [
       'Added a crafting-ready chip, now on by default for PoE2 trade.',
       'Trade search now re-runs on hover when you have changed filters since the last search.',
       'Added charm support to belts.',
+      'Regex strings now save automatically.',
       'More regex chip UX cleanup.',
       'Fixed whiteboard rulers causing lag in passthrough.',
       'Fixed various local mods not price checking correctly.',
