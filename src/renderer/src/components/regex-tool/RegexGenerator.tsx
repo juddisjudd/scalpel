@@ -19,6 +19,7 @@ import { CustomGenerator } from './CustomGenerator'
 import { FlaskGenerator } from './FlaskGenerator'
 import { WaystonesGenerator } from './WaystonesGenerator'
 import { VendorGenerator } from './VendorGenerator'
+import { TabletGenerator } from './TabletGenerator'
 import { usePoeVersion } from '../../shared/poe-version-context'
 import { HotkeyField } from '../settings/HotkeyField'
 import { PresetColorPicker } from './PresetColorPicker'
@@ -51,11 +52,12 @@ const GENERATORS_POE1 = [
 
 const GENERATORS_POE2 = [
   { key: 'waystones', label: 'Waystones' },
+  { key: 'tablet', label: 'Tablet' },
   { key: 'vendor', label: 'Vendor' },
   { key: 'custom', label: 'Custom' },
 ] as const satisfies readonly GeneratorConfig[]
 
-type GeneratorKey = 'maps' | 'flasks' | 'waystones' | 'vendor' | 'custom'
+type GeneratorKey = 'maps' | 'flasks' | 'waystones' | 'tablet' | 'vendor' | 'custom'
 
 export function RegexGenerator({ settings, update, tryHotkey }: Props): JSX.Element {
   // Move legacy unsuffixed regex-tool keys into the poe1: namespace before any
@@ -116,6 +118,7 @@ export function RegexGenerator({ settings, update, tryHotkey }: Props): JSX.Elem
   const flasksRef = useRef<GeneratorHandle>(null)
   const customRef = useRef<GeneratorHandle>(null)
   const waystonesRef = useRef<GeneratorHandle>(null)
+  const tabletRef = useRef<GeneratorHandle>(null)
   const vendorRef = useRef<GeneratorHandle>(null)
   const refForGenerator = (g: GeneratorKey): React.RefObject<GeneratorHandle> => {
     switch (g) {
@@ -125,6 +128,8 @@ export function RegexGenerator({ settings, update, tryHotkey }: Props): JSX.Elem
         return flasksRef
       case 'waystones':
         return waystonesRef
+      case 'tablet':
+        return tabletRef
       case 'vendor':
         return vendorRef
       case 'custom':
@@ -409,6 +414,8 @@ export function RegexGenerator({ settings, update, tryHotkey }: Props): JSX.Elem
         return <FlaskGenerator ref={flasksRef} {...sharedProps} />
       case 'waystones':
         return <WaystonesGenerator ref={waystonesRef} {...sharedProps} />
+      case 'tablet':
+        return <TabletGenerator ref={tabletRef} {...sharedProps} />
       case 'vendor':
         return <VendorGenerator ref={vendorRef} {...sharedProps} />
       case 'custom':

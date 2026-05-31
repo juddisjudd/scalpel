@@ -141,6 +141,12 @@ function makeSettings(overrides: {
       itemLevel: { min: 0, max: 0 },
       characterLevel: { min: 0, max: 0 },
     },
+    tablet: {
+      resultSettings: { customText: '', autoCopy: false },
+      rarity: { normal: false, magic: false },
+      type: { breach: false, delirium: false, irradiated: false, expedition: false, ritual: false, overseer: false },
+      modifier: { usesRemaining: false, numUsesRemaining: 1, affixes: [], affixSelectType: 'any', round10: false },
+    },
   }
 }
 

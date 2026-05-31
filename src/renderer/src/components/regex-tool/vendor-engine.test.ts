@@ -85,6 +85,12 @@ function asUpstream(v: VendorSettings, customText = ''): Settings {
       },
     },
     vendor: { ...v, resultSettings: { customText, autoCopy: false } },
+    tablet: {
+      resultSettings: { customText: '', autoCopy: false },
+      rarity: { normal: false, magic: false },
+      type: { breach: false, delirium: false, irradiated: false, expedition: false, ritual: false, overseer: false },
+      modifier: { usesRemaining: false, numUsesRemaining: 1, affixes: [], affixSelectType: 'any', round10: false },
+    },
   }
 }
 

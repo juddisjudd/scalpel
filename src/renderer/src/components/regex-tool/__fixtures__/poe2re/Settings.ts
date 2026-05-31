@@ -89,4 +89,23 @@ export interface Settings {
     itemLevel: { min: number; max: number }
     characterLevel: { min: number; max: number }
   }
+  tablet: {
+    resultSettings: ResultSettings
+    rarity: { normal: boolean; magic: boolean }
+    type: {
+      breach: boolean
+      delirium: boolean
+      irradiated: boolean
+      expedition: boolean
+      ritual: boolean
+      overseer: boolean
+    }
+    modifier: {
+      usesRemaining: boolean
+      numUsesRemaining: number
+      affixes: SelectOption[]
+      affixSelectType: string
+      round10: boolean
+    }
+  }
 }
