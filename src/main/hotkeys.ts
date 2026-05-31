@@ -652,7 +652,7 @@ export async function sendItemFilterCommand(filterName: string, currentFilter?: 
  * Releases any modifier keys the user is holding from their hotkey combo
  * so PoE receives a clean Ctrl+Alt+C.
  */
-export function sendCtrlCToPoE(): Promise<void> {
+export async function sendCtrlCToPoE(): Promise<void> {
   injecting = true
 
   // Instead of releasing all user modifiers (racy to restore), piggyback on
@@ -660,11 +660,18 @@ export function sendCtrlCToPoE(): Promise<void> {
   const needCtrl = !heldModifiers.ctrl
   const needAlt = !heldModifiers.alt
 
-  // Temporarily release Shift if held (Shift+Ctrl+Alt+C may not register in PoE)
+  // Temporarily release Shift if held. PoE2 ignores the copy when Shift is still
+  // down at the moment C is tapped -- most visibly on equipped items, which
+  // silently fail and drop through to the slow focus-retry fallback (issue #338).
+  // The release must land *before* the tap, and PoE2 drops modifier events that
+  // fire too close together (same fragility as the post-tap hold below, ee2 issue
+  // #124), so a synchronous Shift-up immediately followed by the tap doesn't take.
+  // Give the Shift-up ~30ms to register first. Only paid when Shift is held.
   const heldShift = heldModifiers.shift
   if (heldShift) {
     uIOhook.keyToggle(UiohookKey.Shift, 'up')
     uIOhook.keyToggle(UiohookKey.ShiftRight, 'up')
+    await new Promise((r) => setTimeout(r, 30))
   }
 
   if (needCtrl) uIOhook.keyToggle(UiohookKey.Ctrl, 'down')
@@ -677,7 +684,7 @@ export function sendCtrlCToPoE(): Promise<void> {
   // focus round-trip resyncs PoE's view of held modifiers). Hold the modifiers
   // ~10ms before releasing so PoE registers them in order. Same root cause and
   // fix as Exiled-Exchange-2 issue #124.
-  return new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     setTimeout(() => {
       if (needAlt) uIOhook.keyToggle(UiohookKey.Alt, 'up')
       if (needCtrl) uIOhook.keyToggle(UiohookKey.Ctrl, 'up')
