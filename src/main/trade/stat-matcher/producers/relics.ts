@@ -36,6 +36,7 @@ export function buildRelicFilters(ctx: MatchContext): StatFilter[] {
       enabled: true,
       type: 'sanctum',
       option: matched.option,
+      aggregated: matched.aggregated,
       modTier,
       modRange,
     })

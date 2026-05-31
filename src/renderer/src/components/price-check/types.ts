@@ -18,6 +18,11 @@ export interface StatFilter {
   foulborn?: boolean
   modTier?: number
   modRange?: { min: number; max: number }
+  /** True when `value` was synthesized by averaging/summing/computing multiple
+   *  numbers (e.g. "Adds # to #" averages, weapon DPS) rather than read as a
+   *  single literal number. Such values have no meaningful decimal precision,
+   *  so the price-check slider scrubs them as integers. */
+  aggregated?: boolean
   /** Ternary chip state: 'yes' | 'no' | undefined (= any). Also used by
    *  minmax chips: 'min' | 'max' | undefined (= off). */
   chipState?: 'yes' | 'no' | 'min' | 'max'

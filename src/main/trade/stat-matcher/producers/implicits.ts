@@ -44,6 +44,7 @@ export function processImplicits(ctx: MatchContext): StatFilter[] {
           itemInfo?.itemClass === 'Maps',
         type: 'implicit',
         option: matched.option,
+        aggregated: matched.aggregated,
       })
     }
   }

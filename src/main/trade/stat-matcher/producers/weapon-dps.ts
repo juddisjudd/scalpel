@@ -40,6 +40,7 @@ export function buildWeaponDpsFilters(
         max: null,
         enabled: true,
         type: 'weapon',
+        aggregated: true,
       })
     if (edps > 0)
       out.push({
@@ -50,6 +51,7 @@ export function buildWeaponDpsFilters(
         max: null,
         enabled: true,
         type: 'weapon',
+        aggregated: true,
       })
     if (cdps > 0)
       out.push({
@@ -60,6 +62,7 @@ export function buildWeaponDpsFilters(
         max: null,
         enabled: false,
         type: 'weapon',
+        aggregated: true,
       })
     if (totalDps > 0)
       out.push({
@@ -70,6 +73,7 @@ export function buildWeaponDpsFilters(
         max: null,
         enabled: false,
         type: 'weapon',
+        aggregated: true,
       })
 
     // APS chip. One decimal is plenty of precision for search purposes.

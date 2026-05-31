@@ -35,7 +35,7 @@ export function matchModToStat(
   preferLocal = false,
   modType: 'explicit' | 'crafted' | 'implicit' | 'enchant' | 'imbued' | 'sanctum' = 'explicit',
   preferIndexableSupport = false,
-): { statId: string; value: number | null; option?: number } | null {
+): { statId: string; value: number | null; option?: number; aggregated?: boolean } | null {
   // Check direct mappings first (for mods with completely different trade API wording)
   const directKey = modText.toLowerCase().trim()
   if (DIRECT_MOD_MAPPINGS[directKey]) return DIRECT_MOD_MAPPINGS[directKey]
@@ -52,7 +52,7 @@ function _matchModToStat(
   preferLocal = false,
   modType: 'explicit' | 'crafted' | 'implicit' | 'enchant' | 'imbued' | 'sanctum' = 'explicit',
   preferIndexableSupport = false,
-): { statId: string; value: number | null; option?: number } | null {
+): { statId: string; value: number | null; option?: number; aggregated?: boolean } | null {
   const statEntries: StatEntry[] = getStatEntries()
   const typePrefix = `${modType}.`
   const textVariants = generateTextVariants(modText)
@@ -67,8 +67,20 @@ function _matchModToStat(
     // Match against whitespace-normalized input so multi-line mods joined with "\n"
     // match stat patterns whose text uses " " (or vice versa).
     const normalizedVariant = variant.replace(/\s+/g, ' ')
-    let nonLocalMatch: { statId: string; value: number | null; option?: number; _textLen: number } | null = null
-    let localMatch: { statId: string; value: number | null; option?: number; _textLen: number } | null = null
+    let nonLocalMatch: {
+      statId: string
+      value: number | null
+      option?: number
+      aggregated?: boolean
+      _textLen: number
+    } | null = null
+    let localMatch: {
+      statId: string
+      value: number | null
+      option?: number
+      aggregated?: boolean
+      _textLen: number
+    } | null = null
 
     for (const entry of statEntries) {
       if (!entry.id.startsWith(typePrefix)) continue
@@ -85,7 +97,8 @@ function _matchModToStat(
           .filter((v) => v && NUMERIC_CAPTURE.test(v))
         const rawValue = match[1]
         let value: number | null
-        if (numericCaptures.length >= 2) {
+        const aggregated = numericCaptures.length >= 2
+        if (aggregated) {
           value = numericCaptures.reduce((sum, v) => sum + parseFloat(v), 0) / numericCaptures.length
         } else {
           value = rawValue && NUMERIC_CAPTURE.test(rawValue) ? parseFloat(rawValue) : null
@@ -104,7 +117,13 @@ function _matchModToStat(
           const opt = entry.option.options.find((o) => o.text === rawValue)
           if (opt) option = opt.id
         }
-        const result = { statId: entry.id, value, option, _textLen: entry.text.length }
+        const result = {
+          statId: entry.id,
+          value,
+          option,
+          aggregated: aggregated || undefined,
+          _textLen: entry.text.length,
+        }
         if (isLocal) {
           if (!localMatch || entry.text.length > localMatch._textLen) localMatch = result
         } else {
@@ -122,7 +141,7 @@ function _matchModToStat(
   // Handles cases like trade API having "increased by 50% of Overcapped" but item text has a different value.
   for (const variant of textVariants) {
     const normalizedVariant = variant.replace(/\s+/g, ' ')
-    let bestMatch: { statId: string; value: number | null; option?: number; _textLen: number } | null = null
+    let bestMatch: { statId: string; value: number | null; aggregated?: boolean; _textLen: number } | null = null
     for (const entry of statEntries) {
       if (!entry.id.startsWith(typePrefix)) continue
       if (BLOCKED_STAT_IDS.has(entry.id)) continue
@@ -153,7 +172,7 @@ function _matchModToStat(
   //            Essence" belt suffix has a hidden 100% chance, so the clipboard drops
   //            the leading "#% chance to ")
   for (const variant of textVariants) {
-    let bestMatch: { statId: string; value: number | null; _textLen: number } | null = null
+    let bestMatch: { statId: string; value: number | null; aggregated?: boolean; _textLen: number } | null = null
     for (const entry of statEntries) {
       if (!entry.id.startsWith(typePrefix)) continue
       if (BLOCKED_STAT_IDS.has(entry.id)) continue

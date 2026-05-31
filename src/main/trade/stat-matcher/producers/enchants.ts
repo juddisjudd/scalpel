@@ -43,6 +43,7 @@ export function buildEnchantFilters(itemInfo: EnchantItemInfo | undefined): Stat
           enabled: true,
           type: 'enchant',
           option: matched.option,
+          aggregated: matched.aggregated,
         })
       }
     }

@@ -35,6 +35,7 @@ export function buildTabletFilters(ctx: MatchContext): StatFilter[] {
     let id: string
     let value: number | null
 
+    let aggregated: boolean | undefined
     const mappedId = TABLET_MODS[normalizeTabletModKey(cleaned)]
     if (mappedId) {
       id = mappedId
@@ -47,6 +48,7 @@ export function buildTabletFilters(ctx: MatchContext): StatFilter[] {
       if (!matched) continue
       id = matched.statId
       value = matched.value
+      aggregated = matched.aggregated
     }
 
     let modTier: number | undefined
@@ -69,6 +71,7 @@ export function buildTabletFilters(ctx: MatchContext): StatFilter[] {
       enabled: true,
       type: 'explicit',
       option: undefined,
+      aggregated,
       modTier,
       modRange,
     })

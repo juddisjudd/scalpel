@@ -46,6 +46,15 @@ function formatRange(range: { min: number; max: number }): string {
   return `${fmt(range.min)}-${fmt(range.max)}`
 }
 
+/** How many digits follow the decimal point in a finite number. Returns 0 for
+ *  integers, null/undefined, or exponential-notation values we can't read off. */
+function decimalPlaces(n: number | null | undefined): number {
+  if (n == null || !Number.isFinite(n) || Number.isInteger(n)) return 0
+  const s = String(n)
+  const dot = s.indexOf('.')
+  return dot === -1 ? 0 : s.length - dot - 1
+}
+
 /**
  * Determine the text tint when the search criteria (min/max scrubber values)
  * exceed what a unique mod can legitimately roll.
@@ -93,9 +102,16 @@ export function StatFilterRow({
 }): JSX.Element {
   const minTint = getSearchTint(f.min, null, f.modRange, itemRarity, f.type)
   const maxTint = getSearchTint(null, f.max, f.modRange, itemRarity, f.type)
-  // Filters whose values are inherently fractional (APS, crit %) need decimal
-  // input; everything else stays integer-only.
-  const decimals = f.id === 'weapon.aps' || f.id === 'weapon.crit' ? 1 : 0
+  // Match the slider's precision to the affix's own value: a fractional roll
+  // (APS 1.45, crit 8.5%, "12.5% increased ...") scrubs at that many decimals,
+  // integer rolls stay integer-only. Derived from the value/min/max so it works
+  // for any stat in either game without a per-id allowlist. Pseudo totals (summed
+  // across mods) and aggregated values (averaged/computed from multiple numbers,
+  // e.g. "Adds # to #" or weapon DPS) stay integer regardless of their components.
+  const decimals =
+    f.type === 'pseudo' || f.aggregated
+      ? 0
+      : Math.max(decimalPlaces(f.value), decimalPlaces(f.min), decimalPlaces(f.max))
   // Per-filter scrub cap. Most stats top out under 99999, but Facetor's Lens
   // stored experience can hit ~1.95B (max gem level XP); without a higher cap
   // both the slider and the field would clip at 99999. Add new entries here

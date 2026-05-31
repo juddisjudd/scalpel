@@ -180,6 +180,7 @@ export function processExplicits(ctx: MatchContext): StatFilter[] {
             !(itemInfo?.itemClass === 'Maps')),
         type: isFractured ? 'fractured' : isCrafted ? 'crafted' : 'explicit',
         option: matched.option,
+        aggregated: matched.aggregated,
         foulborn: isFoulborn || undefined,
         modTier: matchedTier,
         modRange: matchedRange,
@@ -195,6 +196,7 @@ export function processExplicits(ctx: MatchContext): StatFilter[] {
           max: null,
           enabled: false,
           type: 'explicit',
+          aggregated: matched.aggregated,
           modTier: matchedTier,
           modRange: matchedRange,
         })
