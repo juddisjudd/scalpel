@@ -443,15 +443,15 @@ function startLiveServices(): void {
   refreshManifest().catch(() => {})
 
   // Fetch prices in background, refresh every 10 minutes
-  refreshPrices(store.get('league'))
-  setInterval(() => refreshPrices(store.get('league')), 10 * 60 * 1000)
+  refreshPrices(getProfileBackedSetting(store, 'league'))
+  setInterval(() => refreshPrices(getProfileBackedSetting(store, 'league')), 10 * 60 * 1000)
 
   // After the OS wakes from sleep, Electron's network stack often bails on pending
   // requests with ERR_NETWORK_IO_SUSPENDED. Invalidate the price cache and re-fetch so
   // we don't sit on stale/empty prices for up to 10 minutes.
   powerMonitor.on('resume', () => {
     invalidatePriceCache()
-    refreshPrices(store.get('league'))
+    refreshPrices(getProfileBackedSetting(store, 'league'))
   })
 
   // Wire the updater unconditionally so broadcasts (update-available, update-rescinded)
