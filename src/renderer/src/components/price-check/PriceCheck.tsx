@@ -500,12 +500,18 @@ export function PriceCheck({
                   <span className="relative text-[9px] font-semibold text-center leading-tight text-[#af6025]">
                     {c.name}
                   </span>
-                  {c.chaosValue > 0 && (
-                    <span className="relative flex items-center gap-[2px] text-[9px] font-[inherit] text-text-dim">
-                      {formatPrice(c.chaosValue)}
-                      <CurrencyIcon name={baselineKey} className="w-[10px] h-[10px]" />
-                    </span>
-                  )}
+                  {c.chaosValue > 0 &&
+                    (() => {
+                      // Roll high-baseline candidates (e.g. Headhunter at 11.9k exalted)
+                      // up to divines once they clear one divine, matching PriceChip.
+                      const useDivine = chaosPerDivine != null && chaosPerDivine > 0 && c.chaosValue >= chaosPerDivine
+                      return (
+                        <span className="relative flex items-center gap-[2px] text-[9px] font-[inherit] text-text-dim">
+                          {formatPrice(useDivine ? c.chaosValue / chaosPerDivine : c.chaosValue)}
+                          <CurrencyIcon name={useDivine ? 'divine' : baselineKey} className="w-[10px] h-[10px]" />
+                        </span>
+                      )
+                    })()}
                 </div>
               )
             })}
