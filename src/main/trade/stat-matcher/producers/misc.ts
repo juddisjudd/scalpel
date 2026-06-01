@@ -113,8 +113,19 @@ export function buildMiscFilters(
     // base; rare gear is 3, rare jewels 2.
     const isJewel = itemInfo.itemClass === 'Jewels' || itemInfo.itemClass === 'Abyss Jewels'
     const maxAffix = itemInfo.rarity === 'Magic' ? 1 : isJewel ? 2 : 3
-    const maxPrefixes = maxAffix
-    const maxSuffixes = maxAffix
+    let maxPrefixes = maxAffix
+    let maxSuffixes = maxAffix
+    // PoE2 items can carry implicits that grant or remove allowed affix slots,
+    // e.g. "-1 Prefix Modifier allowed" / "+1 Suffix Modifier allowed".
+    for (const m of advancedMods) {
+      for (const line of m.lines) {
+        const allow = line.match(/([+-]\d+)\s+(Prefix|Suffix)\s+Modifiers?\s+allowed/i)
+        if (!allow) continue
+        const delta = parseInt(allow[1], 10)
+        if (allow[2].toLowerCase() === 'prefix') maxPrefixes += delta
+        else maxSuffixes += delta
+      }
+    }
     const openPrefixes = maxPrefixes - prefixCount
     const openSuffixes = maxSuffixes - suffixCount
     if (openPrefixes > 0) {

@@ -563,6 +563,40 @@ describe('matchItemMods', () => {
       }
     })
 
+    it('adjusts max affixes for "Modifier allowed" implicits', () => {
+      const advancedMods: AdvancedMod[] = [
+        {
+          type: 'implicit',
+          name: '',
+          tier: 0,
+          tags: [],
+          lines: ['-1 Prefix Modifier allowed', '+1 Suffix Modifier allowed'],
+          ranges: [],
+        },
+        { type: 'prefix', name: 'Buttressed', tier: 4, tags: [], lines: ['28% increased Armour'], ranges: [] },
+        { type: 'suffix', name: 'of the Kiln', tier: 5, tags: [], lines: ['+24% to Fire Resistance'], ranges: [] },
+        { type: 'suffix', name: 'of the Meteor', tier: 7, tags: [], lines: ['+9 to all Attributes'], ranges: [] },
+        {
+          type: 'suffix',
+          name: 'of the Flatworm',
+          tier: 8,
+          tags: [],
+          lines: ['4 Life Regeneration per second'],
+          ranges: [],
+        },
+      ]
+      const filters = matchItemMods(
+        [],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Amulets', sockets: '' }),
+        advancedMods,
+      )
+      // max prefixes 3-1=2, one used -> 1 open. max suffixes 3+1=4, three used -> 1 open.
+      expect(filters.find((f) => f.id === 'pseudo.pseudo_number_of_empty_prefix_mods')?.value).toBe(1)
+      expect(filters.find((f) => f.id === 'pseudo.pseudo_number_of_empty_suffix_mods')?.value).toBe(1)
+    })
+
     it('does not generate open affix chips for unique items', () => {
       const advancedMods: AdvancedMod[] = [
         { type: 'prefix', name: 'Mod1', tier: 1, tags: [], lines: ['some mod'], ranges: [] },
