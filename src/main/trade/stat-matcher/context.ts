@@ -54,6 +54,7 @@ export interface ItemInfo {
   ultimatumRewardText?: string
   ultimatumRequired?: string
   isSynthetic?: boolean
+  unidentifiedTier?: number
 }
 
 export interface DefenseValues {

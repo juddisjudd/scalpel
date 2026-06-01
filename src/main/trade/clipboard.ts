@@ -405,8 +405,12 @@ export function parseItemText(text: string): PoeItem | null {
   const zanaMemory = allLines.some((l) => l.toLowerCase().includes("originator's memories"))
   const implicitCount = allLines.filter((l) => l.endsWith('(implicit)')).length
 
-  // Identified: unidentified items have "Unidentified" line
-  const identified = !allLines.some((l) => l === 'Unidentified')
+  // Identified: unidentified items have an "Unidentified" line. PoE2 unid drops
+  // append a tier, e.g. "Unidentified (Tier 4)" -- match both forms and pull the tier.
+  const unidLine = allLines.find((l) => l === 'Unidentified' || /^Unidentified \(Tier \d+\)$/.test(l))
+  const identified = !unidLine
+  const unidTierMatch = unidLine?.match(/\(Tier (\d+)\)/)
+  const unidentifiedItemTier = unidTierMatch ? parseInt(unidTierMatch[1], 10) : undefined
 
   // Influence
   const influence: string[] = []
@@ -590,6 +594,7 @@ export function parseItemText(text: string): PoeItem | null {
     twiceCorrupted,
     hasVaalUniqueMod,
     identified,
+    ...(unidentifiedItemTier != null ? { unidentifiedItemTier } : {}),
     mirrored,
     synthesised,
     fractured,

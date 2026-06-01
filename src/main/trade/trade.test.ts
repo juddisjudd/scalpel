@@ -437,6 +437,36 @@ describe('searchTrade filter-group dispatch', () => {
     expect(body.query.filters.equipment_filters.filters.ev.min).toBe(487)
     expect(body.query.filters.socket_filters).toBeUndefined()
   })
+
+  it('enabled misc.unidentified_tier filter lands in misc_filters.filters.unidentified_tier', async () => {
+    setPoeVersion(2)
+    const crossbow = {
+      name: '',
+      baseType: 'Trarthan Cannon',
+      itemClass: 'Crossbows',
+      rarity: 'Magic',
+    }
+    const unidTierFilter: StatFilter[] = [
+      {
+        id: 'misc.unidentified_tier',
+        text: 'Unid Tier',
+        type: 'gem',
+        enabled: true,
+        value: 4,
+        min: 2,
+        max: 4,
+      },
+    ]
+    await searchTrade('Fate of the Vaal', crossbow, unidTierFilter, {
+      tradeStatus: 'any',
+      tradePriceOption: 'exalted_divine',
+    })
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    const body = parseCapturedBody(req)
+    const miscFilters = (body.query.filters as Record<string, { filters: Record<string, unknown> }>).misc_filters
+    expect(miscFilters).toBeDefined()
+    expect(miscFilters.filters.unidentified_tier).toEqual({ min: 2, max: 4 })
+  })
 })
 
 describe('searchTrade pseudo emission', () => {

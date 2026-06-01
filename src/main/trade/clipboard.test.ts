@@ -960,6 +960,34 @@ describe('parseItemText', () => {
 
       const item = parseItemText(text)!
       expect(item.identified).toBe(false)
+      expect(item.unidentifiedItemTier).toBeUndefined()
+    })
+
+    it('detects PoE2 unidentified item with tier and extracts tier number', () => {
+      const text = [
+        'Item Class: Crossbows',
+        'Rarity: Magic',
+        'Trarthan Cannon',
+        '--------',
+        'Physical Damage: 58-134',
+        'Critical Hit Chance: 5.00%',
+        'Attacks per Second: 1.40',
+        '--------',
+        'Requires: 114 (unmet) Str, 63 (unmet) Dex',
+        '--------',
+        'Item Level: 69',
+        '--------',
+        '{ Implicit Modifier }',
+        'Cannot load or fire Ammunition — Unscalable Value',
+        '--------',
+        'Unidentified (Tier 4)',
+        '--------',
+        'Note: ~b/o 1 exalted',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.identified).toBe(false)
+      expect(item.unidentifiedItemTier).toBe(4)
     })
   })
 

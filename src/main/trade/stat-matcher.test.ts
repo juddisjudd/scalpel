@@ -317,6 +317,27 @@ describe('matchItemMods', () => {
       expect(unidChip?.text).toBe('Unidentified')
     })
 
+    it('generates misc.unidentified_tier filter enabled with exact min/max when unidentifiedTier is set', () => {
+      const filters = matchItemMods(
+        [],
+        [],
+        undefined,
+        makeItemInfo({ identified: false, itemClass: 'Crossbows', unidentifiedTier: 4 }),
+      )
+      const tierFilter = filters.find((f) => f.id === 'misc.unidentified_tier')
+      expect(tierFilter).toBeDefined()
+      expect(tierFilter?.enabled).toBe(true)
+      expect(tierFilter?.min).toBe(4)
+      expect(tierFilter?.max).toBe(4)
+      expect(tierFilter?.type).toBe('gem')
+    })
+
+    it('does not generate misc.unidentified_tier filter when unidentifiedTier is absent', () => {
+      const filters = matchItemMods([], [], undefined, makeItemInfo({ identified: false, itemClass: 'Crossbows' }))
+      const tierFilter = filters.find((f) => f.id === 'misc.unidentified_tier')
+      expect(tierFilter).toBeUndefined()
+    })
+
     it('generates ilvl chip disabled by default', () => {
       const filters = matchItemMods([], [], undefined, makeItemInfo({ itemLevel: 84, sockets: '' }))
       const ilvlChip = filters.find((f) => f.id === 'misc.ilvl')

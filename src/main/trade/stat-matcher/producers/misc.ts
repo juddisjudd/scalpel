@@ -14,6 +14,7 @@ type MiscItemInfo = {
   influence?: string[]
   memoryStrands?: number
   isSynthetic?: boolean
+  unidentifiedTier?: number
 }
 
 // Non-gem quality, item level, open prefix/suffix, memory strands, corrupted,
@@ -74,6 +75,22 @@ export function buildMiscFilters(
       value: 83,
       min: 83,
       max: null,
+      enabled: true,
+      type: 'gem',
+    })
+  }
+
+  // PoE2 unidentified-item tier. type 'gem' routes through StatFilterRow for an
+  // editable min/max pair (same trick as the synthetic ilvl row) while still
+  // landing in the misc_filters group server-side (trade.ts dispatches by id).
+  // Only PoE2 unid drops carry a tier, so presence of the field is the gate.
+  if (itemInfo.unidentifiedTier != null) {
+    out.push({
+      id: 'misc.unidentified_tier',
+      text: 'Unid Tier',
+      value: itemInfo.unidentifiedTier,
+      min: itemInfo.unidentifiedTier,
+      max: itemInfo.unidentifiedTier,
       enabled: true,
       type: 'gem',
     })
