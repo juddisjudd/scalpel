@@ -1370,6 +1370,40 @@ describe('parseItemText', () => {
     })
   })
 
+  // ---------------------------------------------------------------------------
+  // "You cannot use this item" warning line
+  // ---------------------------------------------------------------------------
+
+  describe('unusable item warning', () => {
+    it('ignores the "You cannot use this item" line and parses the real name/base', () => {
+      const text = [
+        'Item Class: Wands',
+        'Rarity: Rare',
+        'You cannot use this item. Its stats will be ignored',
+        '--------',
+        'Gloom Needle',
+        'Withered Wand',
+        '--------',
+        'Quality: +20% (augmented)',
+        '--------',
+        'Item Level: 81',
+        '--------',
+        '{ Prefix Modifier "Vile" (Tier: 3) — Damage, Chaos }',
+        '81(75-89)% increased Chaos Damage',
+        '--------',
+        'Corrupted',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.name).toBe('Gloom Needle')
+      expect(item.baseType).toBe('Withered Wand')
+      expect(item.itemClass).toBe('Wands')
+      expect(item.rarity).toBe('Rare')
+      expect(item.itemLevel).toBe(81)
+      expect(item.explicits).toContain('81% increased Chaos Damage')
+    })
+  })
+
   describe('heist parsing', () => {
     it('parses heist job requirement from a contract (no unmet suffix)', () => {
       const text = [

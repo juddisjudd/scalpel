@@ -163,6 +163,19 @@ export function parseItemText(text: string): PoeItem | null {
   const sections = text.split('--------').map((s) => s.trim())
   if (sections.length < 2) return null
 
+  // Unusable items (wrong class/level/attributes) wedge a "You cannot use this
+  // item. Its stats will be ignored" line between Rarity and the name/base, which
+  // bumps the real name/base into the next section. Drop the warning and merge the
+  // Class/Rarity header back onto the name/base block so nameplate parsing lines up.
+  if (sections.length >= 3 && sections[0].split('\n').some((l) => l.trim().startsWith('You cannot use this item'))) {
+    const headerLines = sections[0]
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('You cannot use this item'))
+    sections[1] = [...headerLines, sections[1]].join('\n')
+    sections.shift()
+  }
+
   // Section 0: header — Item Class, Rarity, Name, Base Type
   const headerLines = sections[0]
     .split('\n')
