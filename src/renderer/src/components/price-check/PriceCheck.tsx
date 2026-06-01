@@ -436,7 +436,7 @@ export function PriceCheck({
         {/* Unidentified unique: show candidate selection */}
         {unidCandidates && (
           <div
-            className="flex gap-[6px] flex-wrap overflow-x-hidden"
+            className="flex gap-[6px] flex-wrap overflow-x-hidden shrink-0"
             style={{
               maxHeight: selectedUnique ? 0 : 200,
               overflowY: selectedUnique ? 'hidden' : 'auto',
