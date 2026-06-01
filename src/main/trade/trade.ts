@@ -517,6 +517,12 @@ export async function searchTrade(
     status: { option: isDivCard ? 'available' : tradeStatus },
   }
 
+  // Unid items have hidden mods, so any explicit/implicit/fractured/crafted/pseudo
+  // filter would never match -- the stat-filter loop below drops those when the
+  // unid chip is on. Computed up here too because an unidentified unique must skip
+  // the name search (see the Unique branch).
+  const unidEnabled = statFilters.some((f) => f.id === 'misc.identified' && f.enabled)
+
   // For uniques, search by name + base type
   // Strip "Foulborn " prefix from the trade search name
   if (item.rarity === 'Unique' && item.itemClass === 'Maps') {
@@ -527,6 +533,16 @@ export async function searchTrade(
     // the beast name and the name field is empty. Setting query.name would AND-filter
     // every listing out. Match APT's behavior and search by type only.
     query.type = item.baseType
+  } else if (item.rarity === 'Unique' && unidEnabled) {
+    // An unidentified unique has no name line in the clipboard, so the parser sets
+    // name == baseType. Sending that as query.name searches for a unique literally
+    // named e.g. "Heavy Belt" (no such unique) and returns 0 results. Search by base
+    // type + rarity:unique instead, matching the trade site's own unid-unique search.
+    query.type = item.baseType
+    query.filters = {
+      ...((query.filters as Record<string, unknown>) ?? {}),
+      type_filters: { filters: { rarity: { option: 'unique' } } },
+    }
   } else if (item.rarity === 'Unique') {
     query.name = item.name.replace(/^Foulborn\s+/i, '')
     query.type = item.baseType
@@ -794,8 +810,7 @@ export async function searchTrade(
   // Unid items have hidden mods, so any explicit/implicit/fractured/crafted/pseudo
   // filter would never match -- drop those when the unid chip is on. Enchants
   // and imbues survive identification (cluster jewel passive count etc.), so
-  // those keep flowing through.
-  const unidEnabled = statFilters.some((f) => f.id === 'misc.identified' && f.enabled)
+  // those keep flowing through. `unidEnabled` is computed once near the top.
   const survivesUnid = (f: StatFilter): boolean => f.type === 'enchant' || f.type === 'imbued'
   const enabledFilters = statFilters.filter(
     (f) =>

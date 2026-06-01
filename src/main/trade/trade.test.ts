@@ -370,6 +370,28 @@ describe('searchTrade filter-group dispatch', () => {
     expect(body.query.name).toBeUndefined()
   })
 
+  it('unidentified unique searches by type + rarity:unique, not by name', async () => {
+    setPoeVersion(2)
+    // An unidentified unique has no name line in the clipboard, so the parser sets
+    // name == baseType. Sending that as query.name searches for a unique literally
+    // named "Heavy Belt" (no such unique) -> 0 results. Search by base + rarity unique.
+    const unidUnique = {
+      name: 'Heavy Belt',
+      baseType: 'Heavy Belt',
+      itemClass: 'Belts',
+      rarity: 'Unique',
+    }
+    const filters: StatFilter[] = [
+      { id: 'misc.identified', text: 'Unidentified', type: 'misc', enabled: true, value: null, min: null, max: null },
+    ]
+    await searchTrade('Fate of the Vaal', unidUnique, filters, { tradeStatus: 'any' })
+    const req = capturedRequests.find((r) => r.url.includes('/search/'))
+    const body = parseCapturedBody(req)
+    expect(body.query.name).toBeUndefined()
+    expect(body.query.type).toBe('Heavy Belt')
+    expect(body.query.filters.type_filters.filters.rarity).toEqual({ option: 'unique' })
+  })
+
   it('unidentified item still sends enchant filters (cluster jewel passive count survives id)', async () => {
     setPoeVersion(1)
     const unidCluster = {
