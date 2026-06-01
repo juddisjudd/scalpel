@@ -1,5 +1,14 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.12-rc1',
+    notes: [
+      'Fixed PoE2 corruption enchantments and anointments not price checking.',
+      "Fixed unusable items (such as runes raising a requirement you can't meet) shifting the item name and breaking price checks.",
+      'White, mirrored, and corrupted items no longer show price-check chips that cannot apply to them.',
+      'Fixed the base chip flickering and shifting the layout when toggling the mirrored filter.',
+    ],
+  },
+  {
     version: '0.9.11',
     notes: [
       'Added runic ward support to the price checker.',
