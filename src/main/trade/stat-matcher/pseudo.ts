@@ -1,3 +1,4 @@
+import { getPoeVersion } from '../../game-state'
 import { getStatEntries } from './stats-cache'
 
 // Pseudo stat mappings: combine individual mods into pseudo totals. A single
@@ -13,6 +14,14 @@ export type PseudoContribution = {
   multiplier: number
   minCount?: number
   nonWeaponOnly?: boolean
+  /** When true, the individual mod row that feeds this pseudo is NOT disabled by
+   *  the explicits producer (the default for total-life/total-res pseudos, which
+   *  replace their source rows). Used by the PoE2 "Damage as Extra" summary rows,
+   *  which are additive convenience rows layered on top of the real mod rows. */
+  keepSourceRow?: boolean
+  /** When true, the emitted pseudo row defaults to unchecked (enabled: false) so it
+   *  is an opt-in summary rather than an active filter. */
+  disabledByDefault?: boolean
 }
 
 export const PSEUDO_CONTRIBUTIONS: Record<string, PseudoContribution[]> = {}
@@ -29,7 +38,13 @@ function buildPseudoMap(): void {
   // 0.5 Life, each Intelligence gives 0.5 Mana. Hybrid attribute mods (Str+Int,
   // all attributes) contribute via both halves. Anchored patterns so "+# to
   // Strength" doesn't also match "+# to Strength and Intelligence".
-  type Mapping = [RegExp, string, string, number?, { minCount?: number; nonWeaponOnly?: boolean }?]
+  type Mapping = [
+    RegExp,
+    string,
+    string,
+    number?,
+    { minCount?: number; nonWeaponOnly?: boolean; keepSourceRow?: boolean; disabledByDefault?: boolean }?,
+  ]
   const ELE_DMG_OPTS = { minCount: 2, nonWeaponOnly: true }
   const pseudoMappings: Mapping[] = [
     [
@@ -100,6 +115,32 @@ function buildPseudoMap(): void {
     }
   }
 
+  // PoE2-only: "Gain #% of Damage as Extra <element> Damage" summary pseudos. Two
+  // opt-in, additive rows that weighted-sum the four affixes. The three elemental
+  // colors feed both the ele-only and the ele+chaos totals; chaos feeds ele+chaos
+  // only. Anchored so "Attacks Gain ...", "Monsters deal ... as Extra Fire", and
+  // "Gain ...% of Damage as Chaos Damage per Undead Minion" are NOT matched.
+  // keepSourceRow: the four real mod rows stay enabled; these are extras on top.
+  // disabledByDefault: emitted unchecked - the user opts in.
+  if (getPoeVersion() === 2) {
+    const EXTRA_ELE = { id: 'pseudo.pseudo_damage_as_extra_elemental', label: 'Damage as Extra (Ele)' }
+    const EXTRA_ELE_CHAOS = {
+      id: 'pseudo.pseudo_damage_as_extra_elemental_chaos',
+      label: 'Damage as Extra (Ele+Chaos)',
+    }
+    const EXTRA_OPTS = { keepSourceRow: true, disabledByDefault: true }
+    const extraColors: Array<{ color: string; pseudos: Array<{ id: string; label: string }> }> = [
+      { color: 'Fire', pseudos: [EXTRA_ELE, EXTRA_ELE_CHAOS] },
+      { color: 'Cold', pseudos: [EXTRA_ELE, EXTRA_ELE_CHAOS] },
+      { color: 'Lightning', pseudos: [EXTRA_ELE, EXTRA_ELE_CHAOS] },
+      { color: 'Chaos', pseudos: [EXTRA_ELE_CHAOS] },
+    ]
+    for (const { color, pseudos } of extraColors) {
+      const re = new RegExp(`^Gain #% of Damage as Extra ${color} Damage$`, 'i')
+      for (const p of pseudos) pseudoMappings.push([re, p.id, p.label, 1, EXTRA_OPTS])
+    }
+  }
+
   const statEntries = getStatEntries()
   for (const entry of statEntries) {
     if (entry.type !== 'explicit' && entry.type !== 'implicit' && entry.type !== 'crafted') continue
@@ -134,6 +175,7 @@ export type PseudoAccumulatorEntry = {
   total: number
   count: number
   minCount: number
+  disabledByDefault: boolean
 }
 
 /** Roll the contributions of a matched mod into the running pseudo accumulator.
@@ -158,6 +200,7 @@ export function accumulatePseudo(
         total: 0,
         count: 0,
         minCount: c.minCount ?? 1,
+        disabledByDefault: c.disabledByDefault ?? false,
       }
     }
     acc[c.pseudoId].total += value * c.multiplier
@@ -166,7 +209,15 @@ export function accumulatePseudo(
 }
 
 /** Lazy-init the pseudo map if it hasn't been built yet and stat entries are
- *  available. Replaces the inline check previously in matchItemMods. */
+ *  available. Replaces the inline check previously in matchItemMods.
+ *
+ *  Version-dependent: buildPseudoMap reads getPoeVersion() to decide whether to
+ *  register the PoE2-only "Damage as Extra" mappings, and the result is cached for
+ *  the process lifetime. This is safe today because stat entries arrive (via the
+ *  trade API fetch) well after createOverlayWindow sets the version at startup, so
+ *  the first build always sees the correct game. If startup ordering ever changes
+ *  so stats can be present before setPoeVersion runs, gate this on the version
+ *  being known, or _resetPseudoMap once it is. */
 export function ensurePseudoMapBuilt(): void {
   if (Object.keys(PSEUDO_CONTRIBUTIONS).length === 0 && getStatEntries().length > 0) buildPseudoMap()
 }

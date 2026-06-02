@@ -75,6 +75,10 @@ const POE2_WEIGHTED_PSEUDO_IDS: ReadonlySet<string> = new Set([
   'pseudo.pseudo_adds_elemental_damage',
   'pseudo.pseudo_adds_elemental_damage_to_attacks',
   'pseudo.pseudo_adds_elemental_damage_to_spells',
+  // Custom (non-GGG) summary pseudos: sum of the four "Gain #% of Damage as Extra
+  // <element>" affixes. Sent as Weighted Sum groups over the real explicit stat ids.
+  'pseudo.pseudo_damage_as_extra_elemental',
+  'pseudo.pseudo_damage_as_extra_elemental_chaos',
 ])
 
 const TRADE_DIALECTS: Record<1 | 2, TradeDialect> = {

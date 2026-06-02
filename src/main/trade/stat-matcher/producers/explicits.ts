@@ -150,6 +150,10 @@ export function processExplicits(ctx: MatchContext): StatFilter[] {
       const isPerMod = /\bper\b/i.test(cleaned)
       const isCluster = itemInfo ? isClusterJewel(itemInfo) : false
       const pseudoList = isCluster || isPerMod ? undefined : PSEUDO_CONTRIBUTIONS[matched.statId]
+      // A pseudo normally disables its source row (total-life/total-res replace it).
+      // keepSourceRow contributions (PoE2 "Damage as Extra" summaries) are additive,
+      // so they must NOT suppress the underlying mod row.
+      const suppressesSourceRow = pseudoList != null && pseudoList.some((c) => !c.keepSourceRow)
       if (pseudoList && matched.value != null) {
         accumulatePseudo(pseudoAccumulator, pseudoList, matched.value, isWeapon)
       }
@@ -204,7 +208,7 @@ export function processExplicits(ctx: MatchContext): StatFilter[] {
           isFoulborn ||
           (!lowPriority &&
             !craftedForTrade &&
-            !pseudoList &&
+            !suppressesSourceRow &&
             !isHybridCompanion &&
             !(hasDefenses && isDefenseMod(cleaned)) &&
             !useLocal &&

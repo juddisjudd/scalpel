@@ -27,7 +27,7 @@ export function emitPseudoFilters(
           value: total,
           min: total < 0 ? Math.ceil(total * (2 - pct)) : Math.floor(total * pct),
           max: null,
-          enabled: true,
+          enabled: !data.disabledByDefault,
           type: 'pseudo',
           weightFilters: [...(PSEUDO_WEIGHT_GROUPS[id] ?? [])],
         } satisfies StatFilter

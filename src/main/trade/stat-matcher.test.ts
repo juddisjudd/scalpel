@@ -2079,6 +2079,109 @@ describe('matchModToStat (Forbidden Shako indexable_support routing)', () => {
   })
 })
 
+describe('PoE2 Damage-as-Extra summary pseudos (end to end)', () => {
+  const ELE_ID = 'pseudo.pseudo_damage_as_extra_elemental'
+  const ELE_CHAOS_ID = 'pseudo.pseudo_damage_as_extra_elemental_chaos'
+  const ENTRIES = [
+    { id: 'explicit.stat_extra_fire', text: 'Gain #% of Damage as Extra Fire Damage', type: 'explicit' },
+    { id: 'explicit.stat_extra_cold', text: 'Gain #% of Damage as Extra Cold Damage', type: 'explicit' },
+    { id: 'explicit.stat_extra_light', text: 'Gain #% of Damage as Extra Lightning Damage', type: 'explicit' },
+    { id: 'explicit.stat_extra_chaos', text: 'Gain #% of Damage as Extra Chaos Damage', type: 'explicit' },
+  ]
+
+  it('3-ele staff: both rows emitted disabled, equal sums, source rows kept enabled', () => {
+    const prev = getPoeVersion()
+    setPoeVersion(2)
+    try {
+      _setStatEntriesForTests(ENTRIES)
+      const filters = matchItemMods(
+        [
+          'Gain 27% of Damage as Extra Lightning Damage',
+          'Gain 43% of Damage as Extra Cold Damage',
+          'Gain 40% of Damage as Extra Fire Damage',
+        ],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Staves' }),
+      )
+      const ele = filters.find((f) => f.id === ELE_ID)
+      const eleChaos = filters.find((f) => f.id === ELE_CHAOS_ID)
+      expect(ele).toBeDefined()
+      expect(eleChaos).toBeDefined()
+      expect(ele?.enabled).toBe(false)
+      expect(eleChaos?.enabled).toBe(false)
+      expect(ele?.value).toBe(110)
+      expect(eleChaos?.value).toBe(110) // no chaos present -> same total
+      // The four real mod rows stay enabled.
+      const fireRow = filters.find((f) => f.id === 'explicit.stat_extra_fire')
+      expect(fireRow?.enabled).toBe(true)
+      // Weight group carries the contributing stat ids.
+      expect(ele?.weightFilters).toContainEqual({ id: 'explicit.stat_extra_fire' })
+    } finally {
+      setPoeVersion(prev)
+    }
+  })
+
+  it('all four: ele = 3-sum, ele+chaos = 4-sum', () => {
+    const prev = getPoeVersion()
+    setPoeVersion(2)
+    try {
+      _setStatEntriesForTests(ENTRIES)
+      const filters = matchItemMods(
+        [
+          'Gain 10% of Damage as Extra Fire Damage',
+          'Gain 20% of Damage as Extra Cold Damage',
+          'Gain 30% of Damage as Extra Lightning Damage',
+          'Gain 5% of Damage as Extra Chaos Damage',
+        ],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Staves' }),
+      )
+      expect(filters.find((f) => f.id === ELE_ID)?.value).toBe(60)
+      expect(filters.find((f) => f.id === ELE_CHAOS_ID)?.value).toBe(65)
+    } finally {
+      setPoeVersion(prev)
+    }
+  })
+
+  it('chaos only: ele-only pseudo absent, ele+chaos present', () => {
+    const prev = getPoeVersion()
+    setPoeVersion(2)
+    try {
+      _setStatEntriesForTests(ENTRIES)
+      const filters = matchItemMods(
+        ['Gain 15% of Damage as Extra Chaos Damage'],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Staves' }),
+      )
+      expect(filters.find((f) => f.id === ELE_ID)).toBeUndefined()
+      expect(filters.find((f) => f.id === ELE_CHAOS_ID)?.value).toBe(15)
+    } finally {
+      setPoeVersion(prev)
+    }
+  })
+
+  it('PoE1: neither summary pseudo emitted', () => {
+    const prev = getPoeVersion()
+    setPoeVersion(1)
+    try {
+      _setStatEntriesForTests(ENTRIES)
+      const filters = matchItemMods(
+        ['Gain 27% of Damage as Extra Lightning Damage'],
+        [],
+        undefined,
+        makeItemInfo({ rarity: 'Rare', itemClass: 'Staves' }),
+      )
+      expect(filters.find((f) => f.id === ELE_ID)).toBeUndefined()
+      expect(filters.find((f) => f.id === ELE_CHAOS_ID)).toBeUndefined()
+    } finally {
+      setPoeVersion(prev)
+    }
+  })
+})
+
 describe('parseAdvancedMods (Forbidden Shako randomSupport detection)', () => {
   // Sanity: the clipboard parser must set randomSupport=true on advanced mod blocks
   // whose lines start with "Socketed Gems are Supported by" AND carry the
