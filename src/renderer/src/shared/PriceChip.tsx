@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { CurrencyIcon } from './CurrencyIcon'
 import { usePoeVersion } from './poe-version-context'
 import ninjaIcon from '../assets/other/poe-ninja.png'
-import { formatPrice } from './utils'
+import { promoteChaos } from './utils'
 import { PriceTrend } from './PriceTrend'
 import { SparklineOverlay } from './SparklineOverlay'
 import { InfoChip } from './InfoChip'
+import { formatPriceTooltip } from './currency-short-labels'
+import { HoverTooltip } from './HoverTooltip'
 
 interface PriceChipProps {
   chaosValue: number
@@ -32,15 +34,9 @@ export function PriceChip({
   hideTrend,
 }: PriceChipProps): JSX.Element {
   const version = usePoeVersion()
-  const useDivine =
-    divineValue != null
-      ? divineValue >= 1
-      : chaosPerDivine != null && chaosPerDivine > 0 && chaosValue >= chaosPerDivine
-  const displayValue = useDivine
-    ? formatPrice(divineValue != null && divineValue >= 1 ? divineValue : chaosValue / chaosPerDivine!)
-    : formatPrice(chaosValue)
-  // PoE1 baseline = chaos, PoE2 baseline = exa(lted). Both use "divine" for the high tier.
-  const currencyKey = useDivine ? 'divine' : version === 2 ? 'exalted' : 'chaos'
+  // PoE1 baseline = chaos, PoE2 baseline = exa(lted). Both use "divine" for the
+  // high tier. Shared with the sparkline footer so the two always agree.
+  const { text: displayValue, currencyKey } = promoteChaos(chaosValue, chaosPerDivine, version, divineValue)
 
   const showTrend = !hideTrend && graph != null && graph.length > 0
   const [hovered, setHovered] = useState(false)
@@ -56,26 +52,35 @@ export function PriceChip({
     setCursor({ viewportX: e.clientX, viewportY: e.clientY, scale })
   }
 
+  const chip = (
+    <InfoChip icon={showNinja ? ninjaIcon : undefined} label={label} size={size}>
+      <span className="font-semibold">{displayValue}</span>
+      <CurrencyIcon name={currencyKey} className="w-3 h-3" />
+      {showTrend && <PriceTrend graph={graph} />}
+    </InfoChip>
+  )
+
+  // When the ninja trend graph is present, the hover surface is the sparkline
+  // overlay, so we skip the price tooltip. Otherwise the chip gets the snappy
+  // price tooltip like every other price display.
+  if (!showTrend) {
+    return <HoverTooltip text={formatPriceTooltip(displayValue, currencyKey)}>{chip}</HoverTooltip>
+  }
+
   return (
     <div
       className="relative inline-flex"
-      onMouseEnter={showTrend ? () => setHovered(true) : undefined}
-      onMouseLeave={showTrend ? () => setHovered(false) : undefined}
-      onMouseMove={showTrend ? handleMouseMove : undefined}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onMouseMove={handleMouseMove}
     >
-      <InfoChip icon={showNinja ? ninjaIcon : undefined} label={label} size={size}>
-        <span className="font-semibold">{displayValue}</span>
-        <CurrencyIcon name={currencyKey} className="w-3 h-3" />
-        {showTrend && <PriceTrend graph={graph} />}
-      </InfoChip>
-      {showTrend && (
-        <SparklineOverlay
-          graph={graph}
-          visible={hovered}
-          cursor={cursor}
-          currentPrice={{ chaosValue, divineValue, chaosPerDivine }}
-        />
-      )}
+      {chip}
+      <SparklineOverlay
+        graph={graph}
+        visible={hovered}
+        cursor={cursor}
+        currentPrice={{ chaosValue, divineValue, chaosPerDivine }}
+      />
     </div>
   )
 }

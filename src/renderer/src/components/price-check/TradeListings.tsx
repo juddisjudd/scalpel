@@ -7,6 +7,8 @@ import { usePoeVersion } from '../../shared/poe-version-context'
 import type { ResultsView } from './search-settings'
 import { zebraRowBg } from '../../shared/utils'
 import { CurrencyIcon } from '../../shared/CurrencyIcon'
+import { formatPriceTooltip } from '../../shared/currency-short-labels'
+import { HoverTooltip } from '../../shared/HoverTooltip'
 
 export function TradeListings({
   listings,
@@ -249,13 +251,15 @@ export function TradeListings({
 
                 {/* Price */}
                 {l.price ? (
-                  <span
-                    className="flex items-center justify-center gap-1 font-bold text-sm font-[inherit] shrink-0 bg-black/30 rounded-full px-[10px] py-[3px]"
-                    style={{ minWidth: priceChipMinWidth }}
-                  >
-                    {l.price.amount}
-                    <CurrencyIcon name={l.price.currency} className="w-[18px] h-[18px]" />
-                  </span>
+                  <HoverTooltip text={formatPriceTooltip(l.price.amount, l.price.currency)} className="shrink-0">
+                    <span
+                      className="flex items-center justify-center gap-1 font-bold text-sm font-[inherit] bg-black/30 rounded-full px-[10px] py-[3px]"
+                      style={{ minWidth: priceChipMinWidth }}
+                    >
+                      {l.price.amount}
+                      <CurrencyIcon name={l.price.currency} className="w-[18px] h-[18px]" />
+                    </span>
+                  </HoverTooltip>
                 ) : (
                   <span
                     className="flex items-center justify-center shrink-0 text-text-dim text-[11px] bg-black/30 rounded-full px-[10px] py-[3px]"

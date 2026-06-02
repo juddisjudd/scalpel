@@ -42,3 +42,12 @@ export const CURRENCY_SHORT_LABELS: Record<string, string> = {
 export function getCurrencyShortLabel(currencyKey: string): string {
   return CURRENCY_SHORT_LABELS[currencyKey] ?? currencyKey
 }
+
+/** Human-readable "amount + short currency label" for a native title tooltip,
+ *  e.g. formatPriceTooltip("20", "divine") -> "20 div". Currency key is
+ *  optional (some chips render a non-currency icon like mirror art); when
+ *  absent the tooltip is just the amount. */
+export function formatPriceTooltip(displayValue: number | string, currencyKey?: string): string {
+  const label = currencyKey ? getCurrencyShortLabel(currencyKey) : ''
+  return `${displayValue} ${label}`.trim()
+}

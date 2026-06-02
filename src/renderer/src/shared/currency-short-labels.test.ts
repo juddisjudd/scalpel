@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getCurrencyShortLabel, CURRENCY_SHORT_LABELS } from './currency-short-labels'
+import { getCurrencyShortLabel, CURRENCY_SHORT_LABELS, formatPriceTooltip } from './currency-short-labels'
 import { getCurrencyIconMap } from '../components/price-check/constants'
 
 describe('getCurrencyShortLabel', () => {
@@ -32,5 +32,23 @@ describe('getCurrencyShortLabel', () => {
     const keys = Object.keys(getCurrencyIconMap(2))
     const missing = keys.filter((k) => !(k in CURRENCY_SHORT_LABELS))
     expect(missing).toEqual([])
+  })
+})
+
+describe('formatPriceTooltip', () => {
+  it('formats a number amount with a known currency key', () => {
+    expect(formatPriceTooltip(20, 'divine')).toBe('20 div')
+  })
+
+  it('formats a string amount with a known currency key', () => {
+    expect(formatPriceTooltip('1.5', 'chaos')).toBe('1.5 c')
+  })
+
+  it('returns just the amount when no currency key is provided', () => {
+    expect(formatPriceTooltip(20)).toBe('20')
+  })
+
+  it('formats zero amount with a known currency key', () => {
+    expect(formatPriceTooltip(0, 'exalted')).toBe('0 ex')
   })
 })

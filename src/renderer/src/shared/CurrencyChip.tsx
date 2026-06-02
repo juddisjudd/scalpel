@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 import { CurrencyIcon } from './CurrencyIcon'
 import { formatPrice } from './utils'
+import { formatPriceTooltip } from './currency-short-labels'
+import { HoverTooltip } from './HoverTooltip'
 
 interface CurrencyChipProps {
   value: number | string
@@ -49,18 +51,20 @@ export function CurrencyChip({
   const valueEl = <span className="text-white font-semibold">{displayValue}</span>
 
   return (
-    <span className={className} style={style}>
-      {iconPosition === 'before' ? (
-        <>
-          {iconEl}
-          {valueEl}
-        </>
-      ) : (
-        <>
-          {valueEl}
-          {iconEl}
-        </>
-      )}
-    </span>
+    <HoverTooltip text={formatPriceTooltip(displayValue, currencyName)}>
+      <span className={className} style={style}>
+        {iconPosition === 'before' ? (
+          <>
+            {iconEl}
+            {valueEl}
+          </>
+        ) : (
+          <>
+            {valueEl}
+            {iconEl}
+          </>
+        )}
+      </span>
+    </HoverTooltip>
   )
 }

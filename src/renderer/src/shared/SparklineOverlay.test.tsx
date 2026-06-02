@@ -97,6 +97,27 @@ describe('SparklineOverlay', () => {
     expect(queryByTestId('sparkline-valley-label')).toBeNull()
   })
 
+  it('renders a current-price footer bar when currentPrice is provided', () => {
+    const graph = [10, 5, -8, 3, 25, 12, 18]
+    const { getByTestId } = render(
+      <SparklineOverlay
+        graph={graph}
+        visible
+        cursor={{ viewportX: 100, viewportY: 100, scale: 1 }}
+        currentPrice={{ chaosValue: 42 }}
+      />,
+    )
+    expect(getByTestId('sparkline-current-price').textContent).toContain('42')
+  })
+
+  it('omits the current-price footer bar when currentPrice is absent', () => {
+    const graph = [10, 5, -8, 3, 25, 12, 18]
+    const { queryByTestId } = render(
+      <SparklineOverlay graph={graph} visible cursor={{ viewportX: 100, viewportY: 100, scale: 1 }} />,
+    )
+    expect(queryByTestId('sparkline-current-price')).toBeNull()
+  })
+
   it('does not render extrema markers when graph is all null', () => {
     const graph = [null, null, null, null, null, null, null]
     const { queryByTestId } = render(

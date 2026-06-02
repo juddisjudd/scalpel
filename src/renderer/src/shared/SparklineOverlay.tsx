@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { CurrencyIcon } from './CurrencyIcon'
 import { usePoeVersion } from './poe-version-context'
 import { getTrendDirection, TREND_DOWN_COLOR, TREND_UP_COLOR } from './price-trend'
-import { formatPrice } from './utils'
+import { promoteChaos } from './utils'
 
 interface CurrentPrice {
   chaosValue: number
@@ -159,9 +159,7 @@ function MiniPriceChip({
   testId: string
 }): JSX.Element {
   const version = usePoeVersion()
-  const useDivine = chaosPerDivine != null && chaosPerDivine > 0 && chaosValue >= chaosPerDivine
-  const display = useDivine ? formatPrice(chaosValue / chaosPerDivine!) : formatPrice(chaosValue)
-  const currencyKey = useDivine ? 'divine' : version === 2 ? 'exalted' : 'chaos'
+  const { text: display, currencyKey } = promoteChaos(chaosValue, chaosPerDivine, version)
   return (
     <div
       data-testid={testId}
@@ -192,6 +190,7 @@ function MiniPriceChip({
  *  0-600ms line traces left-to-right, 600-750ms peak/valley dots pop in,
  *  700-900ms peak/valley markers fade. */
 export function SparklineOverlay({ graph, visible, cursor, currentPrice }: Props): JSX.Element {
+  const version = usePoeVersion()
   const direction = getTrendDirection(graph)
   const strokeColor = direction === 'up' ? TREND_UP_COLOR : direction === 'down' ? TREND_DOWN_COLOR : '#888'
   const totalChange = graph[graph.length - 1]
@@ -220,6 +219,11 @@ export function SparklineOverlay({ graph, visible, cursor, currentPrice }: Props
   const valleyColor = TREND_DOWN_COLOR
 
   const cpd = currentPrice ? effectiveChaosPerDivine(currentPrice) : undefined
+  // Current price shown in the footer bar. Pass the raw currentPrice fields (not
+  // the derived cpd) so it formats identically to the PriceChip the user hovered.
+  const currentDisplay = currentPrice
+    ? promoteChaos(currentPrice.chaosValue, currentPrice.chaosPerDivine, version, currentPrice.divineValue)
+    : null
   const todayPct = totalChange ?? null
   const peakChaos = currentPrice && peak ? historicalChaos(currentPrice.chaosValue, todayPct, peak.value) : null
   const valleyChaos = currentPrice && valley ? historicalChaos(currentPrice.chaosValue, todayPct, valley.value) : null
@@ -410,6 +414,27 @@ export function SparklineOverlay({ graph, visible, cursor, currentPrice }: Props
           </div>
         )}
       </div>
+      {currentDisplay && (
+        // Current price footer. Sits a touch darker than the card background and
+        // runs flush to the overlay's rounded bottom edge (negative bottom margin
+        // eats the overlay's 6px bottom padding; overflow:hidden rounds the
+        // corners). Side padding is 0 on the overlay, so this spans edge-to-edge.
+        <div
+          data-testid="sparkline-current-price"
+          style={{
+            marginBottom: -6,
+            padding: '1px 8px',
+            background: 'rgba(0, 0, 0, 0.25)',
+            textAlign: 'center',
+            fontSize: 11,
+            fontWeight: 700,
+            lineHeight: 1.5,
+            color: 'var(--text, #fff)',
+          }}
+        >
+          {currentDisplay.text} {currentDisplay.currencyKey}
+        </div>
+      )}
       <style>{`
         @keyframes sparkline-draw {
           from { stroke-dashoffset: 1; }

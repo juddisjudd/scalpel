@@ -7,6 +7,31 @@ export function formatPrice(value: number): string {
   return String(parseFloat(value.toFixed(2)))
 }
 
+/** Promote a chaos-denominated price to divine when it clears one divine,
+ *  returning the formatted display text and the currency trade-API key. Single
+ *  source of truth for PriceChip, the sparkline mini-chips, and the sparkline
+ *  current-price footer so they all format identically. `divineValue` (when the
+ *  caller already knows the exact divine price) takes precedence over deriving
+ *  it from `chaosPerDivine`; `version` selects the low-tier currency (PoE1
+ *  chaos, PoE2 exalted). */
+export function promoteChaos(
+  chaosValue: number,
+  chaosPerDivine: number | undefined,
+  version: number,
+  divineValue?: number | null,
+): { text: string; currencyKey: string } {
+  const useDivine =
+    divineValue != null
+      ? divineValue >= 1
+      : chaosPerDivine != null && chaosPerDivine > 0 && chaosValue >= chaosPerDivine
+  return {
+    text: useDivine
+      ? formatPrice(divineValue != null && divineValue >= 1 ? divineValue : chaosValue / chaosPerDivine!)
+      : formatPrice(chaosValue),
+    currencyKey: useDivine ? 'divine' : version === 2 ? 'exalted' : 'chaos',
+  }
+}
+
 export function formatDust(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`
   if (value >= 1_000) return `${Math.round(value / 1_000)}k`
