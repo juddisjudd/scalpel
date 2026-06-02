@@ -558,7 +558,7 @@ export interface AppSettings {
  *  intentionally aren't here (always-on); Audit + Tools also aren't here (temp tabs
  *  that only render when actively viewed). The tuple is the runtime source of truth;
  *  the union type is derived from it so the two can never drift. */
-export const HIDEABLE_TAB_KEYS = ['item', 'pricecheck', 'dust', 'divcards', 'regex'] as const
+export const HIDEABLE_TAB_KEYS = ['item', 'pricecheck', 'dust', 'divcards', 'regex', 'extras'] as const
 export type HideableTabKey = (typeof HIDEABLE_TAB_KEYS)[number]
 
 /** Type guard for filtering persisted-settings input. Existing users may have stale

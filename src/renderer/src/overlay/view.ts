@@ -10,5 +10,6 @@ export type BuiltinView =
   | 'divcards'
   | 'pricecheck'
   | 'regex'
+  | 'extras'
 
 export type View = BuiltinView | `plugin:${string}`

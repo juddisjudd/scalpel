@@ -1,4 +1,4 @@
-import { Setting, CloseSmall, ChartHistogram, Flask, Buy } from '@icon-park/react'
+import { Setting, CloseSmall, ChartHistogram, Flask, Buy, AllApplication } from '@icon-park/react'
 import type { HideableTabKey, OverlayData } from '../../../shared/types'
 import type { GameFeatures } from '../../../shared/game-features'
 import { getCurrencyIcons } from '../shared/icons'
@@ -184,6 +184,19 @@ export function TitleBar({
             />
           )
         })}
+        {!hiddenTabs.has('extras') && (
+          <button
+            onClick={() => onSetView('extras')}
+            title="Extra Features"
+            className="btn-bounce w-[30px] h-[30px] flex items-center justify-center"
+            style={{
+              background: view === 'extras' ? 'var(--accent)' : undefined,
+              color: view === 'extras' ? '#171821' : undefined,
+            }}
+          >
+            <AllApplication size={16} {...IP} />
+          </button>
+        )}
         <button
           onClick={() => onSetView('setup')}
           className="btn-bounce w-[30px] h-[30px] flex items-center justify-center"

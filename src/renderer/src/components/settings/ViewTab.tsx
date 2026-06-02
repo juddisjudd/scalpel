@@ -3,7 +3,7 @@ import type { AppSettings, HideableTabKey } from '../../../../shared/types'
 import { ScrubInput } from '../regex-tool/ScrubInput'
 import { SettingToggleBox } from './SettingToggleBox'
 import { ThemeSettings } from './ThemeSettings'
-import { Setting, CloseSmall, Buy, Filter } from '@icon-park/react'
+import { Setting, CloseSmall, Buy, Filter, AllApplication } from '@icon-park/react'
 import { getGameFeatures } from '../../../../shared/game-features'
 import { DIV_CARD_ICON_URL, IP } from '../../shared/constants'
 import dustIconAsset from '../../assets/currency/thaumaturgic-dust.png'
@@ -65,6 +65,7 @@ export function ViewTab({ settings, update, updateMany }: Props): JSX.Element {
       title: 'Regex Tool',
       show: features.regexTool,
     },
+    { key: 'extras', icon: <AllApplication size={16} {...IP} />, title: 'Extra Features', show: true },
   ]
 
   // Settings and Close get a grey border in the preview row -- they exist in the title

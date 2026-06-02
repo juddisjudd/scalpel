@@ -17,6 +17,7 @@ import { SocketRecolor } from '../components/SocketRecolor'
 import { DustExplorer } from '../components/dust-explorer'
 import { DivCardExplorer } from '../components/div-card-explorer'
 import { RegexTool } from '../components/regex-tool'
+import { ExtraFeaturesPanel } from '../components/extra-features/ExtraFeaturesPanel'
 import { PriceCheck } from '../components/price-check'
 import { PriceCheckSkeleton } from '../components/price-check/PriceCheckSkeleton'
 import { SnapGhosts } from './SnapGhosts'
@@ -1038,6 +1039,35 @@ export default function App(): JSX.Element {
                     pluginTabs={pluginTabs}
                     activeId={view.slice('plugin:'.length)}
                     onPluginError={handlePluginError}
+                  />
+                )}
+                {view === 'extras' && settings && (
+                  <ExtraFeaturesPanel
+                    settings={settings}
+                    onSettingsChange={(s) => setSettings(s)}
+                    update={updateSetting}
+                    tryHotkey={regexTryHotkey}
+                    onOpenSettingsTab={(tab) => {
+                      setSettingsTabRequest((prev) => ({ tab, n: (prev?.n ?? 0) + 1 }))
+                      setView('setup')
+                    }}
+                    onHideTab={() => {
+                      window.api.setSetting('hiddenTabs', [
+                        ...new Set([...(settings.hiddenTabs ?? []), 'extras' as const]),
+                      ])
+                      setSettings((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              hiddenTabs: [...new Set([...(prev.hiddenTabs ?? []), 'extras' as const])],
+                            }
+                          : prev,
+                      )
+                      // Land them on Settings > View so they can see where the tab
+                      // toggles back on, rather than closing the overlay.
+                      setSettingsTabRequest((prev) => ({ tab: 'view', n: (prev?.n ?? 0) + 1 }))
+                      setView('setup')
+                    }}
                   />
                 )}
               </div>
