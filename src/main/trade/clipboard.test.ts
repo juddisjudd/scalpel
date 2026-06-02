@@ -1417,6 +1417,32 @@ describe('parseItemText', () => {
       expect(item.implicits).toContain('-1 Prefix Modifier allowed')
       expect(item.enchants).not.toContain('Allocates Sigil of Ice — Unscalable Value')
     })
+
+    it('captures a signless whole-number explicit (Voices "Allocates N ... sockets")', () => {
+      const text = [
+        'Item Class: Jewels',
+        'Rarity: Unique',
+        'Voices',
+        'Sapphire',
+        '--------',
+        'Limited to: 1',
+        '--------',
+        'Item Level: 79',
+        '--------',
+        'Allocates 2 Sinister Jewel sockets',
+        '--------',
+        "Only a madman would ignore a god's instructions.",
+        '--------',
+        'Place into an allocated Jewel Socket on the Passive Skill Tree. Right click to remove from the Socket.',
+        '--------',
+        'Corrupted',
+      ].join('\n')
+
+      const item = parseItemText(text)!
+      expect(item.explicits).toContain('Allocates 2 Sinister Jewel sockets')
+      // The flavour quote must not leak into explicits.
+      expect(item.explicits).not.toContain("Only a madman would ignore a god's instructions.")
+    })
   })
 
   // ---------------------------------------------------------------------------

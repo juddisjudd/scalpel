@@ -808,6 +808,10 @@ function parseModSections(sections: string[], explicits: string[], implicits: st
         l.match(/[+-]\d|^\d+%|\d+(?:\.\d+)?%/) ||
         l.endsWith('(crafted)') ||
         l.startsWith('Adds ') ||
+        // Signless whole-number mods that the sign/percent patterns miss, e.g.
+        // Voices' "Allocates 2 Sinister Jewel sockets" -- without this the
+        // backward scan treats the section as flavour and drops the explicit.
+        l.startsWith('Allocates ') ||
         (isCharm && /\d/.test(l)),
     )
     if (hasRealMods || !isFlavourOrMeta(modSections[i])) {
