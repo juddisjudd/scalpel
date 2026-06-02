@@ -1,5 +1,12 @@
 export const CHANGELOG: { version: string; notes: string[] }[] = [
   {
+    version: '0.9.12-rc3',
+    notes: [
+      'Added draggable tier chips that scrub price-check affix minimums across their roll range.',
+      'Added PoE2 "Damage as Extra" pseudo rows that sum your elemental and chaos as-extra affixes.',
+    ],
+  },
+  {
     version: '0.9.12-rc2',
     notes: [
       'Added support for the all the new items in PoE2 0.5.',
