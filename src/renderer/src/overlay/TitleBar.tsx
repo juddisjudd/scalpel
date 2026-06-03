@@ -7,6 +7,7 @@ import dustIconAsset from '../assets/currency/thaumaturgic-dust.png'
 import appIcon from '../../../../resources/icon.png'
 import poereIcon from '../assets/other/poere-logo.svg'
 import type { View } from './view'
+import { m } from '../../../shared/paraglide/messages.js'
 
 interface TitleBarProps {
   view: View
@@ -43,7 +44,7 @@ export function TitleBar({
         <img src={appIcon} alt="" className="w-4 h-4" />
         Scalpel
         <span className="text-[9px] text-accent font-medium opacity-60 self-end mb-px -ml-0.5">
-          Beta {__APP_VERSION__}
+          {m.settings_beta_version({ version: __APP_VERSION__ })}
           {poeVersion ? ` / PoE${poeVersion}` : ''}
         </span>
       </span>
@@ -52,7 +53,7 @@ export function TitleBar({
         {view === 'tools' && (
           <button
             onClick={() => onSetView('tools')}
-            title="Tools"
+            title={m.feature_tools()}
             className="btn-bounce w-[30px] h-[30px] flex items-center justify-center bg-accent text-[#171821]"
           >
             <Flask size={16} {...IP} />
@@ -64,7 +65,7 @@ export function TitleBar({
         {view === 'audit' && (
           <button
             onClick={() => onSetView('audit')}
-            title="Price Audit"
+            title={m.feature_price_audit()}
             className="btn-bounce w-[30px] h-[30px] flex items-center justify-center bg-accent text-[#171821]"
           >
             <ChartHistogram size={16} {...IP} />
@@ -76,7 +77,7 @@ export function TitleBar({
             onClick={() => {
               if (overlayData) onSetView('item')
             }}
-            title="Filter Editor"
+            title={m.feature_filter_editor()}
             className="btn-bounce p-0.5 w-[30px] h-[30px] flex items-center justify-center"
             style={{
               background: view === 'item' ? 'var(--accent)' : undefined,
@@ -113,7 +114,7 @@ export function TitleBar({
           <button
             onClick={() => hasPriceCheckData && onSetView('pricecheck')}
             disabled={!hasPriceCheckData}
-            title={hasPriceCheckData ? 'Price Checker' : 'Price Checker (no item checked yet)'}
+            title={hasPriceCheckData ? m.feature_price_checker() : m.titlebar_price_checker_empty()}
             className="btn-bounce w-[30px] h-[30px] flex items-center justify-center disabled:cursor-default"
             style={{
               background: view === 'pricecheck' ? 'var(--accent)' : undefined,
@@ -127,7 +128,7 @@ export function TitleBar({
         {features.dustExplorer && !hiddenTabs.has('dust') && (
           <button
             onClick={() => onSetView('dust')}
-            title="Dust Explorer"
+            title={m.feature_dust_explorer()}
             className="btn-bounce w-[30px] h-[30px] flex items-center justify-center p-0.5"
             style={{
               background: view === 'dust' ? 'var(--accent)' : undefined,
@@ -139,7 +140,7 @@ export function TitleBar({
         {features.divCards && !hiddenTabs.has('divcards') && (
           <button
             onClick={() => onSetView('divcards')}
-            title="Div Card Explorer"
+            title={m.feature_div_card_explorer()}
             className="btn-bounce w-[30px] h-[30px] flex items-center justify-center p-0.5 text-[15px]"
             style={{
               background: view === 'divcards' ? 'var(--accent)' : undefined,
@@ -151,7 +152,7 @@ export function TitleBar({
         {features.regexTool && !hiddenTabs.has('regex') && (
           <button
             onClick={() => onSetView('regex')}
-            title="Regex Tool"
+            title={m.feature_regex_tool()}
             className="btn-bounce w-[30px] h-[30px] flex items-center justify-center p-0.5"
             style={{
               background: view === 'regex' ? 'var(--accent)' : undefined,
@@ -187,7 +188,7 @@ export function TitleBar({
         {!hiddenTabs.has('extras') && (
           <button
             onClick={() => onSetView('extras')}
-            title="Extra Features"
+            title={m.feature_extra_features()}
             className="btn-bounce w-[30px] h-[30px] flex items-center justify-center"
             style={{
               background: view === 'extras' ? 'var(--accent)' : undefined,
