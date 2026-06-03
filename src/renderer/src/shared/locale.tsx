@@ -142,3 +142,16 @@ export function LocaleProvider({ children }: { children: ReactNode }): JSX.Eleme
 export function useCurrentLocale(): Locale {
   return useContext(LocaleContext)
 }
+
+/** Test-only: reset module state (active locale, subscribers, localStorage
+ *  mirror) back to baseLocale so each case starts clean. Mirrors the reset hooks
+ *  used elsewhere in the codebase (e.g. `_setStatEntriesForTests`). */
+export function _resetLocaleForTests(): void {
+  current = baseLocale
+  listeners.clear()
+  try {
+    localStorage.removeItem(MIRROR_KEY)
+  } catch {
+    // ignore - nothing to reset if storage is unavailable
+  }
+}
